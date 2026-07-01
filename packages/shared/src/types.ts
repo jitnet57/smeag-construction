@@ -185,6 +185,32 @@ export interface EmployeeSkill {
   level: number; // 0 = not rated, 1–10 = proficiency
 }
 
+// ---- Task-based manpower assignment ---------------------------------------
+
+export type TaskStatus = "draft" | "closed";
+
+/**
+ * A unit of work planned for a given work day (registered/closed the day
+ * before). requiredManday is total person-days (공수); requiredHeadcount is
+ * how many workers to place on it that day.
+ */
+export interface Task {
+  id: string;
+  workDate: string; // YYYY-MM-DD
+  name: string;
+  skillKey: string; // which trade this task needs
+  requiredManday: number;
+  requiredHeadcount: number;
+  status: TaskStatus;
+}
+
+/** A worker placed on a task for a work day (auto-matched from attendance). */
+export interface TaskAssignment {
+  taskId: string;
+  employeeId: string;
+  workDate: string;
+}
+
 // ---- API contract ----------------------------------------------------------
 
 export interface ApiError {

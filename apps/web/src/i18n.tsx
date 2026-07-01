@@ -24,6 +24,7 @@ const DICT = {
   'nav.payslip': { en: 'Payslip', ko: '급여명세서' },
   'nav.employees': { en: 'Employees', ko: '인부 관리' },
   'nav.skills': { en: 'Skills', ko: '멀티 스킬' },
+  'nav.tasks': { en: 'Task Assign', ko: '작업 배정' },
   'nav.settings': { en: 'Settings', ko: '규칙 설정' },
 
   // --- Skills matrix --------------------------------------------------------
@@ -51,6 +52,49 @@ const DICT = {
   'skill.paint': { en: 'Paint', ko: '페인트' },
   'skill.scaffolding': { en: 'Scaffolding', ko: '스카폴딩' },
   'skill.pipe': { en: 'Pipe', ko: '파이프' },
+
+  // --- Task assignment ------------------------------------------------------
+  'task.title': {
+    en: 'Task Assignment — plan work the day before, auto-match by attendance',
+    ko: '작업 배정 — 전일 작업 등록, 당일 출근 기준 자동 매칭',
+  },
+  'task.workDate': { en: 'Work date:', ko: '작업일:' },
+  'task.planTitle': { en: 'Planned Tasks (registered the day before)', ko: '작업 계획 (전일 등록)' },
+  'task.addTask': { en: '+ Add Task', ko: '+ 작업 추가' },
+  'task.thName': { en: 'Task', ko: '작업명' },
+  'task.thTrade': { en: 'Trade', ko: '직종' },
+  'task.thManday': { en: 'Man-days (공수)', ko: '필요공수 (인·일)' },
+  'task.thHeadcount': { en: 'Headcount', ko: '필요인원' },
+  'task.thStatus': { en: 'Status', ko: '상태' },
+  'task.thActions': { en: '', ko: '' },
+  'task.stDraft': { en: 'Draft', ko: '작성중' },
+  'task.stClosed': { en: 'Closed', ko: '마감' },
+  'task.newTaskName': { en: 'New task name', ko: '새 작업명' },
+  'task.close': { en: 'Close', ko: '마감' },
+  'task.reopen': { en: 'Reopen', ko: '재개' },
+  'task.delete': { en: 'Delete', ko: '삭제' },
+  'task.save': { en: 'Save Plan', ko: '계획 저장' },
+  'task.saving': { en: 'Saving…', ko: '저장 중…' },
+  'task.saved': { en: 'Task plan saved.', ko: '작업 계획이 저장되었습니다.' },
+  'task.saveError': { en: 'Failed to save task plan.', ko: '작업 계획 저장에 실패했습니다.' },
+  'task.noTasks': { en: 'No tasks planned for this day. Add one above.', ko: '이 날짜에 등록된 작업이 없습니다. 위에서 추가하세요.' },
+  'task.matchTitle': { en: 'Auto-Match — present workers → tasks (highest skill first)', ko: '자동 매칭 — 당일 출근자 → 작업 (스킬 점수 높은 순)' },
+  'task.runMatch': { en: 'Run Auto-Match', ko: '자동 매칭 실행' },
+  'task.saveAssign': { en: 'Save Assignments', ko: '배정 저장' },
+  'task.assignSaved': { en: 'Assignments saved.', ko: '배정이 저장되었습니다.' },
+  'task.assignError': { en: 'Failed to save assignments.', ko: '배정 저장에 실패했습니다.' },
+  'task.present': { en: 'Present today', ko: '당일 출근' },
+  'task.assigned': { en: 'Assigned', ko: '배정됨' },
+  'task.unassigned': { en: 'Unassigned (standby)', ko: '미배정 (대기)' },
+  'task.thWorker': { en: 'Worker', ko: '인부' },
+  'task.thSkill': { en: 'Skill', ko: '스킬점수' },
+  'task.needMatch': { en: 'Run auto-match to place present workers on tasks.', ko: '자동 매칭을 실행하면 출근자가 작업에 배치됩니다.' },
+  'task.noPresent': { en: 'No workers are marked present on this date.', ko: '이 날짜에 출근으로 표시된 인부가 없습니다.' },
+  'task.filled': { en: 'filled', ko: '충원' },
+  'task.note': {
+    en: '※ Man-day (인·일) = total person-days of work. Auto-match fills each task up to its headcount using present workers, choosing the highest skill score for the task\'s trade first.',
+    ko: '※ 공수(인·일) = 총 투입 person-day. 자동 매칭은 당일 출근자 중 해당 직종 스킬 점수가 높은 사람부터 필요인원만큼 각 작업에 배치합니다.',
+  },
 
   // --- Dashboard ------------------------------------------------------------
   'dash.mockBanner': {

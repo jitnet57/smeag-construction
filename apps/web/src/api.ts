@@ -4,6 +4,8 @@ import type {
   PayPeriod,
   AttendanceRecord,
   EmployeeSkill,
+  Task,
+  TaskAssignment,
   PayslipResult,
   PayrollConfig,
 } from '@brightem/shared';
@@ -201,6 +203,40 @@ const networkApi = {
     await fetchApi('/api/employee-skills', {
       method: 'POST',
       body: JSON.stringify(skills),
+    });
+  },
+
+  async getTasks(date: string): Promise<Task[]> {
+    try {
+      return await fetchApi<Task[]>(`/api/tasks?date=${date}`);
+    } catch {
+      return [];
+    }
+  },
+
+  async saveTask(task: Task): Promise<Task> {
+    return await fetchApi<Task>('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    });
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    await fetchApi(`/api/tasks/${id}`, { method: 'DELETE' });
+  },
+
+  async getAssignments(date: string): Promise<TaskAssignment[]> {
+    try {
+      return await fetchApi<TaskAssignment[]>(`/api/assignments?date=${date}`);
+    } catch {
+      return [];
+    }
+  },
+
+  async saveAssignments(date: string, rows: TaskAssignment[]): Promise<void> {
+    await fetchApi('/api/assignments', {
+      method: 'POST',
+      body: JSON.stringify({ date, rows }),
     });
   },
 };

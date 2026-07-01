@@ -20,6 +20,8 @@ import type {
   AttendanceRecord,
   EmployeeDeductions,
   EmployeeSkill,
+  Task,
+  TaskAssignment,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -125,6 +127,18 @@ function toDeductions(r: any): EmployeeDeductions {
 }
 function num(v: unknown): number | undefined {
   return v == null ? undefined : Number(v);
+}
+
+function toTask(r: any): Task {
+  return {
+    id: r.id,
+    workDate: r.work_date,
+    name: r.name,
+    skillKey: r.skill_key,
+    requiredManday: Number(r.required_manday) || 0,
+    requiredHeadcount: Number(r.required_headcount) || 0,
+    status: r.status,
+  };
 }
 
 // --- query helpers ----------------------------------------------------------
@@ -327,6 +341,67 @@ export const supabaseApi = {
     const { error } = await sb()
       .from('employee_skills')
       .upsert(rows, { onConflict: 'employee_id,skill_key' });
+    if (error) throw error;
+  },
+
+  async getTasks(date: string): Promise<Task[]> {
+    const { data, error } = await sb()
+      .from('tasks')
+      .select('*')
+      .eq('work_date', date)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map(toTask);
+  },
+
+  async saveTask(task: Task): Promise<Task> {
+    const row: any = {
+      work_date: task.workDate,
+      name: task.name,
+      skill_key: task.skillKey,
+      required_manday: task.requiredManday,
+      required_headcount: task.requiredHeadcount,
+      status: task.status,
+    };
+    if (task.id) row.id = task.id;
+    const { data, error } = await sb()
+      .from('tasks')
+      .upsert(row)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return toTask(data);
+  },
+
+  async deleteTask(id: string): Promise<void> {
+    const { error } = await sb().from('tasks').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async getAssignments(date: string): Promise<TaskAssignment[]> {
+    const { data, error } = await sb()
+      .from('task_assignments')
+      .select('task_id, employee_id, work_date')
+      .eq('work_date', date);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      taskId: r.task_id,
+      employeeId: r.employee_id,
+      workDate: r.work_date,
+    }));
+  },
+
+  async saveAssignments(date: string, rows: TaskAssignment[]): Promise<void> {
+    // Replace all assignments for the given work day.
+    const del = await sb().from('task_assignments').delete().eq('work_date', date);
+    if (del.error) throw del.error;
+    if (!rows.length) return;
+    const insert = rows.map((r) => ({
+      task_id: r.taskId,
+      employee_id: r.employeeId,
+      work_date: r.workDate,
+    }));
+    const { error } = await sb().from('task_assignments').insert(insert);
     if (error) throw error;
   },
 };

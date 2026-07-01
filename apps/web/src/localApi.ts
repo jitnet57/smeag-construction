@@ -15,6 +15,8 @@ import type {
   AttendanceRecord,
   EmployeeDeductions,
   EmployeeSkill,
+  Task,
+  TaskAssignment,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -141,6 +143,9 @@ const periods: PayPeriod[] = [
 
 const deductionsByKey = new Map<string, EmployeeDeductions>();
 const skills = new Map<string, EmployeeSkill>(); // key: `${employeeId}::${skillKey}`
+const tasks = new Map<string, Task>(); // key: task.id
+let assignments: TaskAssignment[] = [];
+let taskSeq = 1;
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // --- query helpers ----------------------------------------------------------
@@ -256,6 +261,26 @@ export const localApi = {
     for (const s of next) {
       skills.set(`${s.employeeId}::${s.skillKey}`, { ...s });
     }
+  },
+  async getTasks(date: string): Promise<Task[]> {
+    return Array.from(tasks.values()).filter((tk) => tk.workDate === date);
+  },
+  async saveTask(task: Task): Promise<Task> {
+    const id = task.id || `task-${taskSeq++}`;
+    const saved: Task = { ...task, id };
+    tasks.set(id, saved);
+    return saved;
+  },
+  async deleteTask(id: string): Promise<void> {
+    tasks.delete(id);
+    assignments = assignments.filter((a) => a.taskId !== id);
+  },
+  async getAssignments(date: string): Promise<TaskAssignment[]> {
+    return assignments.filter((a) => a.workDate === date);
+  },
+  async saveAssignments(date: string, rows: TaskAssignment[]): Promise<void> {
+    assignments = assignments.filter((a) => a.workDate !== date);
+    assignments.push(...rows.map((r) => ({ ...r })));
   },
 };
 
