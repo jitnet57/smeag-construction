@@ -1,0 +1,2156 @@
+{
+ "company": "BRIGHTEM REALTY CORP.",
+ "address": "Datag, Maribago, Lapu-Lapu City, Cebu",
+ "period": "JUNE 19-25, 2026",
+ "pay_dates": [
+  "2026-06-19",
+  "2026-06-20",
+  "2026-06-21",
+  "2026-06-22",
+  "2026-06-23",
+  "2026-06-24",
+  "2026-06-25"
+ ],
+ "crews": [
+  "ANTHONY",
+  "FOREMAN",
+  "JASON",
+  "JERRY",
+  "NANTE",
+  "RICO",
+  "UNASSIGNED"
+ ],
+ "employees": [
+  {
+   "name": "ABADILLA , COCOY",
+   "nickname": "COCOY",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ABADILLA , JEFFREY",
+   "nickname": "JEFF",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BALUCOS, JOSEPH LARRY",
+   "nickname": "JOSEPH",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CENIZA , LINO",
+   "nickname": "LINO",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ECOY, MARTIN",
+   "nickname": "MARTIN",
+   "crew": "FOREMAN",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "GALLARDO, EDDIE",
+   "nickname": "EDDIE",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "HERIDA, JOHN",
+   "nickname": "JOHN",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "HIYOCA, JOBEN",
+   "nickname": "JOBEN",
+   "crew": "FOREMAN",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MANCIO, JUPITER",
+   "nickname": "JUPITER",
+   "crew": "FOREMAN",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "OHENDRAS, AGANE",
+   "nickname": "AGANE",
+   "crew": "FOREMAN",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "RENDON, NIÑO",
+   "nickname": "NIÑO",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "TOQUERO, PABLITO",
+   "nickname": "PABLITO",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "YBANEZ, JOBERT",
+   "nickname": "JOBERT",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "RETES, MARCELO",
+   "nickname": "MAR",
+   "crew": "FOREMAN",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "AYING, JAYCINTH",
+   "nickname": "JAY",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "AYING, DIETHER",
+   "nickname": "DIETHER",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BALANSAG, JEFFREY",
+   "nickname": "JEFF",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BEBELONE , RONNIL",
+   "nickname": "NIL",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "JAMAR, ALLAN LLOYD",
+   "nickname": "ALLAN",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "GULBIN, REMILO LIPON",
+   "nickname": "MILO",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BEBELONE , RODEL",
+   "nickname": "DEL",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "GARCIA , ARMANDO DIAZ",
+   "nickname": "ARMAN",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PAEL , JERRY A.",
+   "nickname": "JERRY",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PATIGDAS, ADBYENTO",
+   "nickname": "ADBYENTO",
+   "crew": "FOREMAN",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MALOLOY-ON, JUSTINE",
+   "nickname": "JUSTINE",
+   "crew": "FOREMAN",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "RANDINA , FABRITO",
+   "nickname": "RICO",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BACALLA , BENJIE",
+   "nickname": "BENJIE",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CAPUTE, ARIEL",
+   "nickname": "ARIEL",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CASIBAN, ROBERT",
+   "nickname": "ROBERT",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "RENDON, ABEL",
+   "nickname": "ABEL",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "QUINES, ENRIQUE",
+   "nickname": "ENRIQUE",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "DANO, CLIFF MARK",
+   "nickname": "MARK",
+   "crew": "RICO",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MAHUSAY, RUFINO JR.",
+   "nickname": "RUFINO",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PEPITO, JASON",
+   "nickname": "JASON",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MAHUSAY, JORALD",
+   "nickname": "JORALD",
+   "crew": "RICO",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MAHUSAY , MARRYL",
+   "nickname": "MARRYL",
+   "crew": "RICO",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "LARGADO, JOSELITO",
+   "nickname": "JOSE",
+   "crew": "RICO",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CONEJOS, JUN JUN",
+   "nickname": "JUN",
+   "crew": "RICO",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ARCENAL , GERRY",
+   "nickname": "GERRY",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ACASO , JERRY",
+   "nickname": "JERRY",
+   "crew": "JERRY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "GONZAGA , ARUEL",
+   "nickname": "ARUEL",
+   "crew": "JERRY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "QUIROY, ASI",
+   "nickname": "ASI",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "LAGRINO, JOSELITO",
+   "nickname": "JOSE",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SAGRADO , RAVE",
+   "nickname": "RAVE",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BONGHANOY, BERNARDINO",
+   "nickname": "BERNARD",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "GESTA,MICHAEL",
+   "nickname": "MICHAEL",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "INOT , PHILIP",
+   "nickname": "PHILIP",
+   "crew": "JERRY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MANCIO, ROLANDO",
+   "nickname": "LANDO",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MIRAMBEL, RICHARD",
+   "nickname": "RICHARD",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SABEJON, MERCULINO",
+   "nickname": "LINO",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SAMONTISA , JONIE",
+   "nickname": "BOY",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SEDILLO, JOSE VICMAR",
+   "nickname": "VICMAR",
+   "crew": "JERRY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ANASARIO, JOHN PAUL",
+   "nickname": "PAUL",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ARO, JIGGER",
+   "nickname": "JIGGER",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CALIMUTAN, JEAMS",
+   "nickname": "JEAMS",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SUMALINOG, ALBERTO",
+   "nickname": "ALBERTO",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "VERACES, RENERIO JR.",
+   "nickname": "RENE",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CARINAL, DIONILO",
+   "nickname": "NILO",
+   "crew": "NANTE",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CABUGUAS, JAYSON",
+   "nickname": "JAY",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ARIENZANO, CARLO",
+   "nickname": "CARL",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ABARCA, JOMAR",
+   "nickname": "JOMAR",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ARIENZANO, JASON",
+   "nickname": "JAYSON",
+   "crew": "NANTE",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BENARO , ASHLEY",
+   "nickname": "ASH",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "DEGRACIA , NORMAN",
+   "nickname": "NORM",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "INOC, RONALD",
+   "nickname": "NALD",
+   "crew": "NANTE",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PEBIDA, DEMCHIE",
+   "nickname": "CHIE",
+   "crew": "NANTE",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CANETE, ROBERT EARL",
+   "nickname": "EARL",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "GOMEZ , RENEBOY",
+   "nickname": "RENE",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "IGOT, NARCISO",
+   "nickname": "NARCISO",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "INTONG, ARCHIE",
+   "nickname": "ARCHIE",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "JAKOSALEM, JERRY",
+   "nickname": "JERRY",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "KYAMKO, ARMJOVIE",
+   "nickname": "JOVIE",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "LABUCA, JOMAR",
+   "nickname": "JOMAR",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MACALIPAY, ROLANDO",
+   "nickname": "NANDO",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MENDOZA , FRANCIS",
+   "nickname": "FRANCIS",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "OYAO, DIONISIO",
+   "nickname": "DIONISIO",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "RENDON , DANTE",
+   "nickname": "DANTE",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "APOSTOL , ADONIS",
+   "nickname": "ADONIS",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "OMAMBAC , FRANCO",
+   "nickname": "FRANCO",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "TAMPUS , NIEL",
+   "nickname": "NIEL",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "DELA CUESTA, AL AL",
+   "nickname": "AL AL",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PAGOBO , BONIFACIO",
+   "nickname": "BONI",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PREGONER JULITO JR.",
+   "nickname": "LITO",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ROBLES , MANUEL",
+   "nickname": "MANUEL",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SAGA , JASON",
+   "nickname": "JASON",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SAGA , REX",
+   "nickname": "REX",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SULLANO, FEDERICO",
+   "nickname": "PD",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "TAGHOY, LARRY",
+   "nickname": "LARRY",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "UGSANG , ALVIN",
+   "nickname": "ALVIN",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "VELONTA, ARNOLD",
+   "nickname": "ARNOLD",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CABUGNASON, JOREN",
+   "nickname": "JOREN",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ALCONERA, ARNEL",
+   "nickname": "ARNEL",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ALCONERA , RENJIE",
+   "nickname": "RENJIE",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "AVENIDO, DJ BOY",
+   "nickname": "DJ",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "TORREON, RENANTE",
+   "nickname": "RENAN",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "OMANDAC , ROBERTO",
+   "nickname": "BERTO",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "OMANDAC , LOURDESO",
+   "nickname": "LOU",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PATENIO, AZPEN",
+   "nickname": "AZ",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "POTOT, JOHN BRIAN",
+   "nickname": "BRY",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MOSQUERA , JAY-AR",
+   "nickname": "JAY",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ROSENDE, RONEL",
+   "nickname": "RON",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ONDIANO, MILES",
+   "nickname": "MILES",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PAGOBO, GARY",
+   "nickname": "GARY",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ALBARINA , ALIMAR",
+   "nickname": "ALIMAR",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SUYAO, SIGREDO",
+   "nickname": "EDO",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "DORIMON, RICHARD",
+   "nickname": "CHARD",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "EBONIA, REYMON",
+   "nickname": "REY",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "EBONIA, MAMERTO",
+   "nickname": "MERTO",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "EBONIA, REYNALD",
+   "nickname": "NALD",
+   "crew": "ANTHONY",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "DIQUE, MARK",
+   "nickname": "MARK",
+   "crew": "ANTHONY",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CAYA, LOUIS GABRIEL",
+   "nickname": "GAB",
+   "crew": "JASON",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "SUYAO, SHERWIN",
+   "nickname": "WIN",
+   "crew": "JASON",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MAHUSAY JAYSON",
+   "nickname": "JAYSON",
+   "crew": "JASON",
+   "position": "ELECTRICIAN",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "FOLIO , WENCESLAO",
+   "nickname": "LAO",
+   "crew": "JASON",
+   "position": "ELECTRICIAN",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PELESCO, JOHNREY",
+   "nickname": "REY",
+   "crew": "JASON",
+   "position": "ELECTRICIAN",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "LIBONGCOGON, LEMUEL",
+   "nickname": "LEM",
+   "crew": "JASON",
+   "position": "ELECTRICIAN",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CASIBAN , MARK JUSTINE",
+   "nickname": "JUSTINE",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ORILLO, IROSS JHON",
+   "nickname": "JHON",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CENIZA , WARRIEN",
+   "nickname": "RIEN",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "INTONG, KIANNE",
+   "nickname": "KIA",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CURIMATMAT, CEDRICK",
+   "nickname": "CED",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MONTADAS, SENRYX",
+   "nickname": "RYX",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "DANO, RYNNIE",
+   "nickname": "RY",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "IBAG , RAIZEN",
+   "nickname": "RAI",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "COSEP, LUIS",
+   "nickname": "LUIS",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CENIZA, WENDEL",
+   "nickname": "DEL",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PANTONIAL, BLESS EARL",
+   "nickname": "EARL",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BERMODEZ, JOSELEN",
+   "nickname": "JOSE",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "AMITH, KENT BRYAN",
+   "nickname": "KENT",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CENIZA, LEO",
+   "nickname": "LEO",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "LOFRANCO, ELGIE",
+   "nickname": "GIE",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CASIBAN, KEN",
+   "nickname": "KEN",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "COSEP, MARK",
+   "nickname": "MARK",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "PEPITO, ELMO",
+   "nickname": "ELMO",
+   "crew": "JASON",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "MATIDIOS, EZEKIEL",
+   "nickname": "EKILL",
+   "crew": "JASON",
+   "position": "SECURITY",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-21": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full"
+   }
+  },
+  {
+   "name": "CASAS, DEMAR",
+   "nickname": "DEMAR",
+   "crew": "JASON",
+   "position": "SKILLED",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "BERMODEZ, Vincent",
+   "nickname": "Vince",
+   "crew": "JASON",
+   "position": "HOUSEKEEPING",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CASIBAN, JEFFREY",
+   "nickname": "JEFF",
+   "crew": "JASON",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "YONGCO, YJE",
+   "nickname": "YJE",
+   "crew": "JASON",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "ENSALADA, VINCENT",
+   "nickname": "VINCENT",
+   "crew": "JASON",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "CANETE, REX",
+   "nickname": "REX",
+   "crew": "JASON",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {
+    "2026-06-19": "full",
+    "2026-06-20": "full",
+    "2026-06-22": "full",
+    "2026-06-23": "full",
+    "2026-06-24": "full",
+    "2026-06-25": "full"
+   }
+  },
+  {
+   "name": "+",
+   "nickname": "",
+   "crew": "JASON",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {}
+  },
+  {
+   "name": "5+8",
+   "nickname": "",
+   "crew": "UNASSIGNED",
+   "position": "LABOR",
+   "rate": 540.0,
+   "attendance": {}
+  }
+ ]
+}

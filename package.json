@@ -1,0 +1,13 @@
+{
+  "name": "brightem-payroll",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev": "node dev.mjs",
+    "dev:api": "npm --workspace @brightem/api run dev",
+    "dev:web": "npm --workspace @brightem/web run dev",
+    "import": "npm --workspace @brightem/api run import --",
+    "test": "npm --workspace @brightem/engine run test"
+  }
+}

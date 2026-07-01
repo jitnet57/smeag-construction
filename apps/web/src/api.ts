@@ -1,0 +1,197 @@
+import type {
+  Employee,
+  Crew,
+  PayPeriod,
+  AttendanceRecord,
+  PayslipResult,
+  PayrollConfig,
+} from '@brightem/shared';
+import { localApi } from './localApi';
+import { supabaseApi } from './supabaseApi';
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+
+// When built for a static (backend-free) deployment, run everything in the
+// browser via the shared payroll engine. Enabled with VITE_USE_LOCAL=1.
+const USE_LOCAL = import.meta.env.VITE_USE_LOCAL === '1';
+
+// When built for the Vercel + Supabase deployment, read data straight from
+// Supabase and run the engine client-side. Enabled with VITE_USE_SUPABASE=1.
+const USE_SUPABASE = import.meta.env.VITE_USE_SUPABASE === '1';
+
+// Flag to enable mock fallback if API is unreachable
+let USE_MOCK = false;
+
+// Small mock data sample derived from types
+const MOCK_DATA = {
+  employees: [
+    {
+      id: 'abadilla-cocoy',
+      name: 'ABADILLA , COCOY',
+      nickname: 'COCOY',
+      crewId: 'FOREMAN',
+      position: 'SKILLED',
+      ratePerDay: 540,
+      active: true,
+    } as Employee,
+    {
+      id: 'gomez-reneboy',
+      name: 'GOMEZ, RENEBOY',
+      nickname: 'RENEBOY',
+      crewId: 'ANTHONY',
+      position: 'LABOR',
+      ratePerDay: 540,
+      active: true,
+    } as Employee,
+  ],
+  crews: [
+    { id: 'FOREMAN', name: 'FOREMAN', foreman: 'FOREMAN' } as Crew,
+    { id: 'ANTHONY', name: 'ANTHONY', foreman: 'ANTHONY' } as Crew,
+  ] as Crew[],
+  periods: [
+    {
+      id: 'period-jun-19-25',
+      label: 'JUNE 19-25, 2026',
+      startDate: '2026-06-19',
+      endDate: '2026-06-25',
+      payDate: '2026-06-27',
+      status: 'open' as const,
+    } as PayPeriod,
+  ],
+};
+
+// Graceful fetch wrapper
+async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  try {
+    const url = `${API_URL}${endpoint}`;
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.warn(`API call failed for ${endpoint}:`, error);
+    USE_MOCK = true;
+    throw error;
+  }
+}
+
+// API endpoints
+const networkApi = {
+  // Master data
+  async getEmployees(): Promise<Employee[]> {
+    try {
+      return await fetchApi<Employee[]>('/api/employees');
+    } catch {
+      return MOCK_DATA.employees;
+    }
+  },
+
+  async getCrews(): Promise<Crew[]> {
+    try {
+      return await fetchApi<Crew[]>('/api/crews');
+    } catch {
+      return MOCK_DATA.crews;
+    }
+  },
+
+  async getPeriods(): Promise<PayPeriod[]> {
+    try {
+      return await fetchApi<PayPeriod[]>('/api/periods');
+    } catch {
+      return MOCK_DATA.periods;
+    }
+  },
+
+  // Attendance
+  async getAttendance(period: string): Promise<AttendanceRecord[]> {
+    try {
+      return await fetchApi<AttendanceRecord[]>(`/api/attendance?period=${period}`);
+    } catch {
+      return [];
+    }
+  },
+
+  async updateAttendance(records: AttendanceRecord[]): Promise<void> {
+    await fetchApi('/api/attendance', {
+      method: 'POST',
+      body: JSON.stringify(records),
+    });
+  },
+
+  // Payroll
+  async getPayroll(period: string): Promise<PayslipResult[]> {
+    try {
+      return await fetchApi<PayslipResult[]>(`/api/payroll?period=${period}`);
+    } catch {
+      return [];
+    }
+  },
+
+  async getPayslip(employeeId: string, period: string): Promise<PayslipResult> {
+    try {
+      return await fetchApi<PayslipResult>(
+        `/api/payslip/${employeeId}?period=${period}`
+      );
+    } catch {
+      return {
+        employeeId,
+        periodId: period,
+        earnings: [],
+        grossPay: 0,
+        deductions: [],
+        totalDeductions: 0,
+        netPay: 0,
+        workedDays: 0,
+        absentDays: 0,
+      };
+    }
+  },
+
+  // Configuration
+  async getConfig(): Promise<PayrollConfig> {
+    try {
+      return await fetchApi<PayrollConfig>('/api/config');
+    } catch {
+      return {
+        currency: 'PHP',
+        standardHoursPerDay: 8,
+        incentiveDailyRate: 10,
+        overtime: {
+          regularDay: 1.25,
+          restDay: 0.3,
+          specialHoliday: 0.3,
+          legalHoliday: 1.0,
+        },
+        nightDifferential: {
+          windowStart: 22,
+          windowEnd: 6,
+          ratePct: 0.1,
+        },
+        contributions: [],
+      };
+    }
+  },
+
+  async updateConfig(config: PayrollConfig): Promise<void> {
+    await fetchApi('/api/config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+  },
+};
+
+// Pick the data source at build time. Supabase (Vercel deploy) and local
+// (fully static/offline) both run the pure engine in the browser; otherwise
+// fall back to the network-backed Express API. Same shape either way.
+export const api = USE_SUPABASE ? supabaseApi : USE_LOCAL ? localApi : networkApi;
+
+export { USE_MOCK };
