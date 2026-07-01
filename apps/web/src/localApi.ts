@@ -14,6 +14,7 @@ import type {
   PayPeriod,
   AttendanceRecord,
   EmployeeDeductions,
+  EmployeeSkill,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -139,6 +140,7 @@ const periods: PayPeriod[] = [
 ];
 
 const deductionsByKey = new Map<string, EmployeeDeductions>();
+const skills = new Map<string, EmployeeSkill>(); // key: `${employeeId}::${skillKey}`
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // --- query helpers ----------------------------------------------------------
@@ -246,6 +248,14 @@ export const localApi = {
   },
   async updateConfig(next: PayrollConfig): Promise<void> {
     config = next;
+  },
+  async getEmployeeSkills(): Promise<EmployeeSkill[]> {
+    return Array.from(skills.values());
+  },
+  async saveEmployeeSkills(next: EmployeeSkill[]): Promise<void> {
+    for (const s of next) {
+      skills.set(`${s.employeeId}::${s.skillKey}`, { ...s });
+    }
   },
 };
 

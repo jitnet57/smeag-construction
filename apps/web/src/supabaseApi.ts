@@ -19,6 +19,7 @@ import type {
   PayPeriod,
   AttendanceRecord,
   EmployeeDeductions,
+  EmployeeSkill,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -300,6 +301,32 @@ export const supabaseApi = {
     const { error } = await sb()
       .from('config')
       .upsert({ id: 1, data: next }, { onConflict: 'id' });
+    if (error) throw error;
+  },
+
+  async getEmployeeSkills(): Promise<EmployeeSkill[]> {
+    const { data, error } = await sb()
+      .from('employee_skills')
+      .select('employee_id, skill_key, level');
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      employeeId: r.employee_id,
+      skillKey: r.skill_key,
+      level: Number(r.level) || 0,
+    }));
+  },
+
+  async saveEmployeeSkills(skills: EmployeeSkill[]): Promise<void> {
+    if (!skills.length) return;
+    const rows = skills.map((s) => ({
+      employee_id: s.employeeId,
+      skill_key: s.skillKey,
+      level: s.level,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await sb()
+      .from('employee_skills')
+      .upsert(rows, { onConflict: 'employee_id,skill_key' });
     if (error) throw error;
   },
 };

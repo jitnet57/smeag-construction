@@ -164,6 +164,27 @@ export interface PayslipResult {
   meta?: Record<string, number>;
 }
 
+// ---- Multi-skill matrix ----------------------------------------------------
+
+/** Trade/skill categories tracked per worker. Extendable — add keys here. */
+export const SKILL_KEYS = [
+  "tile",
+  "carpentry",
+  "plastering",
+  "paint",
+  "scaffolding",
+  "pipe",
+] as const;
+
+export type SkillKey = (typeof SKILL_KEYS)[number];
+
+/** A single worker's proficiency (0–10) in one trade. */
+export interface EmployeeSkill {
+  employeeId: string;
+  skillKey: string;
+  level: number; // 0 = not rated, 1–10 = proficiency
+}
+
 // ---- API contract ----------------------------------------------------------
 
 export interface ApiError {

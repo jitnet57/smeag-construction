@@ -23,7 +23,34 @@ const DICT = {
   'nav.payroll': { en: 'Payroll', ko: '급여표' },
   'nav.payslip': { en: 'Payslip', ko: '급여명세서' },
   'nav.employees': { en: 'Employees', ko: '인부 관리' },
+  'nav.skills': { en: 'Skills', ko: '멀티 스킬' },
   'nav.settings': { en: 'Settings', ko: '규칙 설정' },
+
+  // --- Skills matrix --------------------------------------------------------
+  'skill.title': {
+    en: 'Multi-Skill Matrix — proficiency by trade (0–10)',
+    ko: '멀티 스킬 매트릭스 — 직종별 숙련도 (0~10점)',
+  },
+  'skill.search': { en: 'Search name…', ko: '성명 검색…' },
+  'skill.save': { en: 'Save', ko: '저장' },
+  'skill.saving': { en: 'Saving…', ko: '저장 중…' },
+  'skill.saved': { en: 'Skill scores saved.', ko: '스킬 점수가 저장되었습니다.' },
+  'skill.saveError': { en: 'Failed to save skill scores.', ko: '스킬 점수 저장에 실패했습니다.' },
+  'skill.export': { en: 'Export Excel', ko: '엑셀 내보내기' },
+  'skill.unsaved': { en: 'unsaved', ko: '미저장' },
+  'skill.thName': { en: 'Name', ko: '성명' },
+  'skill.thCrew': { en: 'Crew', ko: '조' },
+  'skill.thAvg': { en: 'Avg', ko: '평균' },
+  'skill.note': {
+    en: '※ 0 = not rated, 1–10 = proficiency. Edits are saved to the database. Trades can be added later.',
+    ko: '※ 0 = 미평가, 1~10 = 숙련도. 수정 내용은 데이터베이스에 저장됩니다. 직종은 추후 추가할 수 있습니다.',
+  },
+  'skill.tile': { en: 'Tile', ko: '타일' },
+  'skill.carpentry': { en: 'Carpentry', ko: '목수' },
+  'skill.plastering': { en: 'Plastering', ko: '미장' },
+  'skill.paint': { en: 'Paint', ko: '페인트' },
+  'skill.scaffolding': { en: 'Scaffolding', ko: '스카폴딩' },
+  'skill.pipe': { en: 'Pipe', ko: '파이프' },
 
   // --- Dashboard ------------------------------------------------------------
   'dash.mockBanner': {

@@ -3,6 +3,7 @@ import type {
   Crew,
   PayPeriod,
   AttendanceRecord,
+  EmployeeSkill,
   PayslipResult,
   PayrollConfig,
 } from '@brightem/shared';
@@ -185,6 +186,21 @@ const networkApi = {
     await fetchApi('/api/config', {
       method: 'PUT',
       body: JSON.stringify(config),
+    });
+  },
+
+  async getEmployeeSkills(): Promise<EmployeeSkill[]> {
+    try {
+      return await fetchApi<EmployeeSkill[]>('/api/employee-skills');
+    } catch {
+      return [];
+    }
+  },
+
+  async saveEmployeeSkills(skills: EmployeeSkill[]): Promise<void> {
+    await fetchApi('/api/employee-skills', {
+      method: 'POST',
+      body: JSON.stringify(skills),
     });
   },
 };
