@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm install --workspace @brightem/web --include-workspace-root",
-  "buildCommand": "npm --workspace @brightem/web run build && rm -rf dist && cp -R apps/web/dist dist",
+  "buildCommand": "npm --workspace @brightem/web run build && if [ -d apps/web/dist ]; then rm -rf dist && cp -R apps/web/dist dist; fi",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
