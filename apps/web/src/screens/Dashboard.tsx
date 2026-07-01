@@ -25,15 +25,17 @@ interface DayBar {
 }
 
 const DOW_KEYS = ['dow.sun', 'dow.mon', 'dow.tue', 'dow.wed', 'dow.thu', 'dow.fri', 'dow.sat'];
+const ALL_CREWS = '__ALL__';
 
 export default function Dashboard({ period }: Props): JSX.Element {
   const { t } = useI18n();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [payslips, setPayslips] = useState<PayslipResult[]>([]);
+  const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
 
   useEffect(() => {
-    api.getEmployees().then(setEmployees);
+    api.getEmployees().then(setAllEmployees);
   }, []);
 
   useEffect(() => {
@@ -42,16 +44,31 @@ export default function Dashboard({ period }: Props): JSX.Element {
     api.getPayroll(period.id).then(setPayslips);
   }, [period]);
 
+  // ---- Crew list (from all employees) for the filter dropdown ----
+  const crewCounts = new Map<string, number>();
+  allEmployees.forEach((e) => crewCounts.set(e.crewId, (crewCounts.get(e.crewId) ?? 0) + 1));
+  const crewList = Array.from(crewCounts.entries())
+    .map(([id, count]) => ({ id, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // ---- Apply the crew filter to every downstream dataset ----
+  const empIdSet = new Set(
+    allEmployees.filter((e) => selectedCrew === ALL_CREWS || e.crewId === selectedCrew).map((e) => e.id)
+  );
+  const employees = allEmployees.filter((e) => empIdSet.has(e.id));
+  const fAttendance = attendance.filter((a) => empIdSet.has(a.employeeId));
+  const fPayslips = payslips.filter((p) => empIdSet.has(p.employeeId));
+
   // ---- Derive KPIs and charts from real data ----
   const totalEmployees = employees.length;
 
   // Present = any status other than "absent" (full or half day counts as present).
-  const dates = Array.from(new Set(attendance.map((a) => a.date))).sort();
+  const dates = Array.from(new Set(fAttendance.map((a) => a.date))).sort();
   const numDays = dates.length || 1;
 
   const presentByDate = new Map<string, number>();
   const presentByEmp = new Map<string, number>();
-  attendance.forEach((a) => {
+  fAttendance.forEach((a) => {
     if (a.status !== 'absent') {
       presentByDate.set(a.date, (presentByDate.get(a.date) ?? 0) + 1);
       presentByEmp.set(a.employeeId, (presentByEmp.get(a.employeeId) ?? 0) + 1);
@@ -75,12 +92,12 @@ export default function Dashboard({ period }: Props): JSX.Element {
   const avgAttendance = totalPresent / numDays;
   const attRate = totalEmployees ? (totalPresent / (totalEmployees * numDays)) * 100 : 0;
 
-  const weeklyGross = payslips.reduce((s, p) => s + p.grossPay, 0);
-  const totalDeductions = payslips.reduce((s, p) => s + p.totalDeductions, 0);
-  const totalManHours = payslips.reduce((s, p) => s + p.workedDays, 0) * 8;
+  const weeklyGross = fPayslips.reduce((s, p) => s + p.grossPay, 0);
+  const totalDeductions = fPayslips.reduce((s, p) => s + p.totalDeductions, 0);
+  const totalManHours = fPayslips.reduce((s, p) => s + p.workedDays, 0) * 8;
 
   // ---- Crew summary from real data ----
-  const grossByEmp = new Map(payslips.map((p) => [p.employeeId, p.grossPay]));
+  const grossByEmp = new Map(fPayslips.map((p) => [p.employeeId, p.grossPay]));
   const crewAgg = new Map<string, { count: number; present: number; gross: number }>();
   employees.forEach((e) => {
     const c = crewAgg.get(e.crewId) ?? { count: 0, present: 0, gross: 0 };
@@ -131,6 +148,23 @@ export default function Dashboard({ period }: Props): JSX.Element {
 
   return (
     <div className="w-full">
+      {/* Crew filter */}
+      <div className="flex gap-2 items-center flex-wrap mb-3.5">
+        <span className="text-sm text-muted">{t('att.crewSelect')}</span>
+        <select
+          value={selectedCrew}
+          onChange={(e) => setSelectedCrew(e.target.value)}
+          className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
+        >
+          <option value={ALL_CREWS}>{t('pay.allCrews')}</option>
+          {crewList.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.id} ({c.count})
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
         <div className="card">

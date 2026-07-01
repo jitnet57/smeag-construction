@@ -8,11 +8,14 @@ interface Props {
   periods: PayPeriod[];
 }
 
+const ALL_CREWS = '__ALL__';
+
 export default function Payslip({ period }: Props) {
   const { t } = useI18n();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [payslip, setPayslip] = useState<PayslipResult | null>(null);
+  const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
 
   useEffect(() => {
     api.getEmployees().then((data) => {
@@ -22,6 +25,28 @@ export default function Payslip({ period }: Props) {
       }
     });
   }, []);
+
+  // Crew list for the filter dropdown.
+  const crewCounts = new Map<string, number>();
+  employees.forEach((e) => crewCounts.set(e.crewId, (crewCounts.get(e.crewId) ?? 0) + 1));
+  const crewList = Array.from(crewCounts.entries())
+    .map(([id, count]) => ({ id, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Employees shown in the picker, narrowed by the selected crew.
+  const visibleEmployees =
+    selectedCrew === ALL_CREWS
+      ? employees
+      : employees.filter((e) => e.crewId === selectedCrew);
+
+  // Keep the selected worker consistent with the crew filter.
+  useEffect(() => {
+    if (selectedCrew === ALL_CREWS) return;
+    if (selectedEmployee && selectedEmployee.crewId !== selectedCrew) {
+      const first = employees.find((e) => e.crewId === selectedCrew);
+      if (first) setSelectedEmployee(first);
+    }
+  }, [selectedCrew, selectedEmployee, employees]);
 
   useEffect(() => {
     if (selectedEmployee && period) {
@@ -68,6 +93,19 @@ export default function Payslip({ period }: Props) {
       {/* Toolbar */}
       <div className="flex gap-2 items-center flex-wrap mb-3.5">
         <select
+          value={selectedCrew}
+          onChange={(e) => setSelectedCrew(e.target.value)}
+          className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
+        >
+          <option value={ALL_CREWS}>{t('pay.allCrews')}</option>
+          {crewList.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.id} ({c.count})
+            </option>
+          ))}
+        </select>
+
+        <select
           value={selectedEmployee?.id ?? ''}
           onChange={(e) => {
             const emp = employees.find((x) => x.id === e.target.value);
@@ -75,7 +113,7 @@ export default function Payslip({ period }: Props) {
           }}
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         >
-          {employees.map((e) => (
+          {visibleEmployees.map((e) => (
             <option key={e.id} value={e.id}>
               {t('slip.worker')} {e.name}
             </option>
