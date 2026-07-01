@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { PayPeriod, PayslipResult } from '@brightem/shared';
+import type { PayPeriod, PayslipResult, Employee } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 
@@ -8,9 +8,17 @@ interface Props {
   periods: PayPeriod[];
 }
 
+const ALL_CREWS = '__ALL__';
+
 export default function Payroll({ period }: Props) {
   const { t } = useI18n();
   const [payslips, setPayslips] = useState<PayslipResult[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
+
+  useEffect(() => {
+    api.getEmployees().then(setEmployees);
+  }, []);
 
   useEffect(() => {
     if (!period) return;
@@ -21,8 +29,24 @@ export default function Payroll({ period }: Props) {
       });
   }, [period]);
 
-  // Calculate totals
-  const totals = payslips.reduce(
+  // Map employeeId -> employee for name/position/crew lookups
+  const empMap = new Map(employees.map((e) => [e.id, e]));
+
+  // Crew list with head counts, derived from real employee data
+  const crewCounts = new Map<string, number>();
+  employees.forEach((e) => crewCounts.set(e.crewId, (crewCounts.get(e.crewId) ?? 0) + 1));
+  const crewList = Array.from(crewCounts.entries())
+    .map(([id, count]) => ({ id, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Apply the crew filter to the payslips actually shown
+  const filteredSlips =
+    selectedCrew === ALL_CREWS
+      ? payslips
+      : payslips.filter((p) => empMap.get(p.employeeId)?.crewId === selectedCrew);
+
+  // Calculate totals (over the filtered set so they match the visible rows)
+  const totals = filteredSlips.reduce(
     (acc, p) => ({
       employees: acc.employees + 1,
       workedDays: acc.workedDays + p.workedDays,
@@ -48,7 +72,7 @@ export default function Payroll({ period }: Props) {
   // Mock data if empty
   const displayData =
     payslips.length > 0
-      ? payslips
+      ? filteredSlips
       : [
           {
             employeeId: 'emp-001',
@@ -84,10 +108,17 @@ export default function Payroll({ period }: Props) {
           {t('pay.periodLabel')} {period?.startDate} ~ {period?.endDate}
         </div>
 
-        <select className="border border-line rounded-lg px-3 py-2 text-sm bg-white">
-          <option>{t('pay.allCrews')}</option>
-          <option>ANTHONY</option>
-          <option>FOREMAN</option>
+        <select
+          value={selectedCrew}
+          onChange={(e) => setSelectedCrew(e.target.value)}
+          className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
+        >
+          <option value={ALL_CREWS}>{t('pay.allCrews')}</option>
+          {crewList.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.id} ({c.count})
+            </option>
+          ))}
         </select>
 
         <div className="flex-1" />
@@ -125,8 +156,8 @@ export default function Payroll({ period }: Props) {
             <tbody>
               {displayData.map((slip) => (
                 <tr key={slip.employeeId}>
-                  <td>{slip.employeeId}</td>
-                  <td>SKILLED</td>
+                  <td>{empMap.get(slip.employeeId)?.name ?? slip.employeeId}</td>
+                  <td>{empMap.get(slip.employeeId)?.position ?? 'SKILLED'}</td>
                   <td className="text-center">{slip.workedDays}</td>
                   <td className="text-right">
                     {(slip.earnings.find((e) => e.key === 'basic')?.amount ?? 0).toLocaleString()}

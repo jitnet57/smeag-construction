@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import type { PayPeriod, Employee, AttendanceRecord, PayslipResult } from '@brightem/shared';
+import { api } from '../api';
 import { useI18n } from '../i18n';
+
+interface Props {
+  period: PayPeriod | null;
+}
 
 interface CrewStat {
   crewId: string;
-  crewName: string;
   count: number;
   avgAttendance: number;
   attendanceRate: number;
@@ -19,88 +24,84 @@ interface DayBar {
   pct: number;
 }
 
-export default function Dashboard(): JSX.Element {
+const DOW_KEYS = ['dow.sun', 'dow.mon', 'dow.tue', 'dow.wed', 'dow.thu', 'dow.fri', 'dow.sat'];
+
+export default function Dashboard({ period }: Props): JSX.Element {
   const { t } = useI18n();
-  const [totalEmployees] = useState(143);
-  const [avgAttendance] = useState(110.5);
-  const [totalManHours] = useState(5246);
-  const [weeklyGross] = useState(486720);
-  const [totalDeductions] = useState(62410);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [payslips, setPayslips] = useState<PayslipResult[]>([]);
 
-  const [dayBars] = useState<DayBar[]>([
-    { md: '6/19', dowKey: 'dow.fri', date: '2026-06-19', count: 116, pct: 1.0 },
-    { md: '6/20', dowKey: 'dow.sat', date: '2026-06-20', count: 109, pct: 0.86 },
-    { md: '6/22', dowKey: 'dow.mon', date: '2026-06-22', count: 102, pct: 0.72 },
-    { md: '6/23', dowKey: 'dow.tue', date: '2026-06-23', count: 111, pct: 0.9 },
-    { md: '6/24', dowKey: 'dow.wed', date: '2026-06-24', count: 114, pct: 0.96 },
-    { md: '6/25', dowKey: 'dow.thu', date: '2026-06-25', count: 111, pct: 0.9 },
-  ]);
+  useEffect(() => {
+    api.getEmployees().then(setEmployees);
+  }, []);
 
-  const [crewStats] = useState<CrewStat[]>([
-    {
-      crewId: 'ANTHONY',
-      crewName: 'ANTHONY',
-      count: 44,
-      avgAttendance: 36.8,
-      attendanceRate: 83.7,
-      weeklyGross: 162900,
-      status: 'ok',
-    },
-    {
-      crewId: 'FOREMAN',
-      crewName: 'FOREMAN',
-      count: 25,
-      avgAttendance: 19.5,
-      attendanceRate: 78.0,
-      weeklyGross: 85900,
-      status: 'ok',
-    },
-    {
-      crewId: 'HANZ',
-      crewName: 'HANZ',
-      count: 24,
-      avgAttendance: 17.7,
-      attendanceRate: 73.6,
-      weeklyGross: 78100,
-      status: 'half',
-    },
-    {
-      crewId: 'JERRY',
-      crewName: 'JERRY',
-      count: 14,
-      avgAttendance: 11.8,
-      attendanceRate: 84.5,
-      weeklyGross: 51000,
-      status: 'ok',
-    },
-    {
-      crewId: 'NANTE',
-      crewName: 'NANTE',
-      count: 14,
-      avgAttendance: 10.8,
-      attendanceRate: 77.4,
-      weeklyGross: 47400,
-      status: 'ok',
-    },
-    {
-      crewId: 'RICO',
-      crewName: 'RICO',
-      count: 13,
-      avgAttendance: 10.7,
-      attendanceRate: 82.1,
-      weeklyGross: 47500,
-      status: 'ok',
-    },
-    {
-      crewId: 'JASON',
-      crewName: 'JASON',
-      count: 6,
-      avgAttendance: 3.2,
-      attendanceRate: 52.8,
-      weeklyGross: 13920,
-      status: 'abs',
-    },
-  ]);
+  useEffect(() => {
+    if (!period) return;
+    api.getAttendance(period.id).then(setAttendance);
+    api.getPayroll(period.id).then(setPayslips);
+  }, [period]);
+
+  // ---- Derive KPIs and charts from real data ----
+  const totalEmployees = employees.length;
+
+  // Present = any status other than "absent" (full or half day counts as present).
+  const dates = Array.from(new Set(attendance.map((a) => a.date))).sort();
+  const numDays = dates.length || 1;
+
+  const presentByDate = new Map<string, number>();
+  const presentByEmp = new Map<string, number>();
+  attendance.forEach((a) => {
+    if (a.status !== 'absent') {
+      presentByDate.set(a.date, (presentByDate.get(a.date) ?? 0) + 1);
+      presentByEmp.set(a.employeeId, (presentByEmp.get(a.employeeId) ?? 0) + 1);
+    }
+  });
+
+  const maxCount = Math.max(1, ...dates.map((d) => presentByDate.get(d) ?? 0));
+  const dayBars: DayBar[] = dates.map((d) => {
+    const dt = new Date(d + 'T00:00:00');
+    const count = presentByDate.get(d) ?? 0;
+    return {
+      date: d,
+      dowKey: DOW_KEYS[dt.getDay()],
+      md: `${dt.getMonth() + 1}/${dt.getDate()}`,
+      count,
+      pct: count / maxCount,
+    };
+  });
+
+  const totalPresent = dates.reduce((s, d) => s + (presentByDate.get(d) ?? 0), 0);
+  const avgAttendance = totalPresent / numDays;
+  const attRate = totalEmployees ? (totalPresent / (totalEmployees * numDays)) * 100 : 0;
+
+  const weeklyGross = payslips.reduce((s, p) => s + p.grossPay, 0);
+  const totalDeductions = payslips.reduce((s, p) => s + p.totalDeductions, 0);
+  const totalManHours = payslips.reduce((s, p) => s + p.workedDays, 0) * 8;
+
+  // ---- Crew summary from real data ----
+  const grossByEmp = new Map(payslips.map((p) => [p.employeeId, p.grossPay]));
+  const crewAgg = new Map<string, { count: number; present: number; gross: number }>();
+  employees.forEach((e) => {
+    const c = crewAgg.get(e.crewId) ?? { count: 0, present: 0, gross: 0 };
+    c.count += 1;
+    c.present += presentByEmp.get(e.id) ?? 0;
+    c.gross += grossByEmp.get(e.id) ?? 0;
+    crewAgg.set(e.crewId, c);
+  });
+  const crewStats: CrewStat[] = Array.from(crewAgg.entries())
+    .map(([crewId, c]) => {
+      const rate = c.count ? (c.present / (c.count * numDays)) * 100 : 0;
+      return {
+        crewId,
+        count: c.count,
+        avgAttendance: Math.round((c.present / numDays) * 10) / 10,
+        attendanceRate: Math.round(rate * 10) / 10,
+        weeklyGross: Math.round(c.gross),
+        status: (rate >= 80 ? 'ok' : rate >= 70 ? 'half' : 'abs') as 'ok' | 'half' | 'abs',
+      };
+    })
+    .sort((a, b) => b.count - a.count);
 
   const getPillClass = (status: string) => {
     switch (status) {
@@ -130,10 +131,6 @@ export default function Dashboard(): JSX.Element {
 
   return (
     <div className="w-full">
-      <div className="banner">
-        📢 {t('dash.mockBanner')}
-      </div>
-
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5">
         <div className="card">
@@ -142,30 +139,36 @@ export default function Dashboard(): JSX.Element {
             {totalEmployees}
             <small className="text-base text-primary">{t('dash.unitPeople')}</small>
           </div>
-          <div className="text-xs mt-1">{t('dash.crewsRunning')}</div>
+          <div className="text-xs mt-1">
+            {crewStats.length} {t('dash.crewsRunning')}
+          </div>
         </div>
 
         <div className="card">
           <div className="text-xs text-muted">{t('dash.avgDaily')}</div>
           <div className="text-2xl font-bold text-dark mt-1">
-            {avgAttendance}
+            {avgAttendance.toFixed(1)}
             <small className="text-base text-primary">{t('dash.unitPeople')}</small>
           </div>
-          <div className="text-xs mt-1 up">{t('dash.attRate')} 78.9%</div>
+          <div className="text-xs mt-1 up">
+            {t('dash.attRate')} {attRate.toFixed(1)}%
+          </div>
         </div>
 
         <div className="card">
           <div className="text-xs text-muted">{t('dash.weeklyGross')}</div>
           <div className="text-2xl font-bold text-dark mt-1">
-            ₱ {weeklyGross.toLocaleString()}
+            ₱ {Math.round(weeklyGross).toLocaleString()}
           </div>
-          <div className="text-xs mt-1">{t('dash.workedManHr')} {totalManHours.toLocaleString()} man-hr</div>
+          <div className="text-xs mt-1">
+            {t('dash.workedManHr')} {totalManHours.toLocaleString()} man-hr
+          </div>
         </div>
 
         <div className="card">
           <div className="text-xs text-muted">{t('dash.totalDeductions')}</div>
           <div className="text-2xl font-bold text-dark mt-1">
-            ₱ {totalDeductions.toLocaleString()}
+            ₱ {Math.round(totalDeductions).toLocaleString()}
           </div>
           <div className="text-xs mt-1 down">{t('dash.deductNote')}</div>
         </div>
@@ -185,7 +188,9 @@ export default function Dashboard(): JSX.Element {
                 className="w-full bg-gradient-to-t from-primary to-blue-400 rounded-t"
                 style={{ height: `${bar.pct * 140}px` }}
               />
-              <div className="text-xs text-muted">{bar.md} {t(bar.dowKey as any)}</div>
+              <div className="text-xs text-muted">
+                {bar.md} {t(bar.dowKey as Parameters<typeof t>[0])}
+              </div>
             </div>
           ))}
         </div>
@@ -212,7 +217,7 @@ export default function Dashboard(): JSX.Element {
             <tbody>
               {crewStats.map((crew) => (
                 <tr key={crew.crewId}>
-                  <td>{crew.crewName}</td>
+                  <td>{crew.crewId}</td>
                   <td className="text-center">{crew.count}</td>
                   <td className="text-center">{crew.avgAttendance}</td>
                   <td className="text-center">{crew.attendanceRate}%</td>

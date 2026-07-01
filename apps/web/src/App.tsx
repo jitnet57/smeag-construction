@@ -61,7 +61,7 @@ export default function App() {
 
     switch (currentScreen) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard period={currentPeriod} />;
       case 'attendance':
         return <Attendance period={currentPeriod} />;
       case 'payroll':
