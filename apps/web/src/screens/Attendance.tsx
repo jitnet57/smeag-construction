@@ -7,6 +7,21 @@ interface Props {
   period: PayPeriod | null;
 }
 
+const DOW_KEYS = ['dow.sun', 'dow.mon', 'dow.tue', 'dow.wed', 'dow.thu', 'dow.fri', 'dow.sat'];
+
+// Build every calendar date from start..end (inclusive) as YYYY-MM-DD strings.
+function buildDateList(start?: string, end?: string): string[] {
+  if (!start || !end) return [];
+  const out: string[] = [];
+  const cur = new Date(start + 'T00:00:00');
+  const last = new Date(end + 'T00:00:00');
+  while (cur <= last) {
+    out.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
 interface AttendanceRow {
   employee: Employee;
   record: AttendanceRecord | null;
@@ -26,15 +41,41 @@ export default function Attendance({ period }: Props) {
   const [selectedCrew, setSelectedCrew] = useState('ANTHONY');
   const [selectedDate, setSelectedDate] = useState('2026-06-25');
   const [rows, setRows] = useState<AttendanceRow[]>([]);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [crews, setCrews] = useState<{ id: string; count: number }[]>([]);
 
   useEffect(() => {
-    // Load employees filtered by crew
+    // Load all employees once and derive crew list with head counts
     api.getEmployees().then((data) => {
-      const filtered = data.filter((e) => e.crewId === selectedCrew);
-      setEmployees(filtered.slice(0, 5)); // Show first 5 as mock
+      setAllEmployees(data);
+      const counts = new Map<string, number>();
+      data.forEach((e) => counts.set(e.crewId, (counts.get(e.crewId) ?? 0) + 1));
+      const crewList = Array.from(counts.entries())
+        .map(([id, count]) => ({ id, count }))
+        .sort((a, b) => b.count - a.count);
+      setCrews(crewList);
+      // If the current selection isn't present, default to the largest crew
+      if (crewList.length && !counts.has(selectedCrew)) {
+        setSelectedCrew(crewList[0].id);
+      }
     });
-  }, [selectedCrew]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Show every employee in the selected crew (no cap)
+    setEmployees(allEmployees.filter((e) => e.crewId === selectedCrew));
+  }, [selectedCrew, allEmployees]);
+
+  // All dates within the current pay period, defaulting selection to the last day.
+  const periodDates = buildDateList(period?.startDate, period?.endDate);
+  useEffect(() => {
+    if (periodDates.length && !periodDates.includes(selectedDate)) {
+      setSelectedDate(periodDates[periodDates.length - 1]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
   useEffect(() => {
     // Load attendance records
@@ -101,9 +142,11 @@ export default function Attendance({ period }: Props) {
           onChange={(e) => setSelectedCrew(e.target.value)}
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         >
-          <option value="ANTHONY">{t('att.crewSelect')} ANTHONY (44{t('att.people')})</option>
-          <option value="FOREMAN">FOREMAN (25{t('att.people')})</option>
-          <option value="HANZ">HANZ (24{t('att.people')})</option>
+          {crews.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.id} ({c.count}{t('att.people')})
+            </option>
+          ))}
         </select>
 
         <select
@@ -111,8 +154,14 @@ export default function Attendance({ period }: Props) {
           onChange={(e) => setSelectedDate(e.target.value)}
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         >
-          <option value="2026-06-25">{t('att.date')} 2026-06-25 ({t('dow.thu')})</option>
-          <option value="2026-06-24">2026-06-24 ({t('dow.wed')})</option>
+          {periodDates.map((d) => {
+            const dow = t(DOW_KEYS[new Date(d + 'T00:00:00').getDay()] as Parameters<typeof t>[0]);
+            return (
+              <option key={d} value={d}>
+                {t('att.date')} {d} ({dow})
+              </option>
+            );
+          })}
         </select>
 
         <div className="flex-1" />
