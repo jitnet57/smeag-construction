@@ -6,6 +6,7 @@ import type {
   EmployeeSkill,
   Task,
   TaskAssignment,
+  MaterialRequest,
   PayslipResult,
   PayrollConfig,
 } from '@brightem/shared';
@@ -238,6 +239,25 @@ const networkApi = {
       method: 'POST',
       body: JSON.stringify({ date, rows }),
     });
+  },
+
+  async getMaterialRequests(): Promise<MaterialRequest[]> {
+    try {
+      return await fetchApi<MaterialRequest[]>('/api/material-requests');
+    } catch {
+      return [];
+    }
+  },
+
+  async saveMaterialRequest(req: MaterialRequest): Promise<MaterialRequest> {
+    return await fetchApi<MaterialRequest>('/api/material-requests', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  },
+
+  async deleteMaterialRequest(id: string): Promise<void> {
+    await fetchApi(`/api/material-requests/${id}`, { method: 'DELETE' });
   },
 };
 

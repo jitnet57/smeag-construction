@@ -211,6 +211,38 @@ export interface TaskAssignment {
   workDate: string;
 }
 
+// ---- Material purchase request --------------------------------------------
+
+export type MaterialReqStatus = "requested" | "approved" | "rejected";
+
+/** A single material line inside a purchase request. */
+export interface MaterialItem {
+  name: string;      // material name, e.g. "Portland cement"
+  spec: string;      // spec/grade, e.g. "40kg"
+  quantity: number;
+  unit: string;      // ea, bag, m, kg, ...
+  unitPrice: number; // ₱ estimate per unit (0 if unknown)
+  supplier: string;  // preferred supplier / vendor
+}
+
+/**
+ * A material purchase request document: a header plus one or more material
+ * line items. Optionally linked to a planned Task. Approval is a 3-state
+ * flow: requested → approved / rejected.
+ */
+export interface MaterialRequest {
+  id: string;
+  requestNo: string;    // human reference no. (optional)
+  requestDate: string;  // YYYY-MM-DD
+  requester: string;
+  site: string;         // site / area
+  neededBy: string;     // YYYY-MM-DD needed-by date
+  taskId?: string;      // optional FK -> Task.id
+  status: MaterialReqStatus;
+  note: string;
+  items: MaterialItem[];
+}
+
 // ---- API contract ----------------------------------------------------------
 
 export interface ApiError {

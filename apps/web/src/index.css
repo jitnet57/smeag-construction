@@ -54,6 +54,18 @@ html, body, #root {
     @apply bg-gray-100 text-gray-600;
   }
 
+  .btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .inp {
+    @apply border border-line rounded-md px-2 py-1.5 text-sm bg-white;
+  }
+
+  .inp:focus {
+    @apply outline-none border-primary;
+  }
+
   .pill {
     @apply text-xs px-2.5 py-0.5 rounded-full font-bold;
   }

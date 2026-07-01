@@ -22,6 +22,8 @@ import type {
   EmployeeSkill,
   Task,
   TaskAssignment,
+  MaterialRequest,
+  MaterialItem,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -138,6 +140,32 @@ function toTask(r: any): Task {
     requiredManday: Number(r.required_manday) || 0,
     requiredHeadcount: Number(r.required_headcount) || 0,
     status: r.status,
+  };
+}
+
+function toMaterialItem(r: any): MaterialItem {
+  return {
+    name: r?.name ?? '',
+    spec: r?.spec ?? '',
+    quantity: Number(r?.quantity) || 0,
+    unit: r?.unit ?? '',
+    unitPrice: Number(r?.unitPrice) || 0,
+    supplier: r?.supplier ?? '',
+  };
+}
+
+function toMaterialRequest(r: any): MaterialRequest {
+  return {
+    id: r.id,
+    requestNo: r.request_no ?? '',
+    requestDate: r.request_date ?? '',
+    requester: r.requester ?? '',
+    site: r.site ?? '',
+    neededBy: r.needed_by ?? '',
+    taskId: r.task_id ?? undefined,
+    status: r.status ?? 'requested',
+    note: r.note ?? '',
+    items: Array.isArray(r.items) ? r.items.map(toMaterialItem) : [],
   };
 }
 
@@ -402,6 +430,43 @@ export const supabaseApi = {
       work_date: r.workDate,
     }));
     const { error } = await sb().from('task_assignments').insert(insert);
+    if (error) throw error;
+  },
+
+  async getMaterialRequests(): Promise<MaterialRequest[]> {
+    const { data, error } = await sb()
+      .from('material_requests')
+      .select('*')
+      .order('request_date', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(toMaterialRequest);
+  },
+
+  async saveMaterialRequest(req: MaterialRequest): Promise<MaterialRequest> {
+    const row: any = {
+      request_no: req.requestNo || null,
+      request_date: req.requestDate || null,
+      requester: req.requester || null,
+      site: req.site || null,
+      needed_by: req.neededBy || null,
+      task_id: req.taskId || null,
+      status: req.status,
+      note: req.note || null,
+      items: req.items ?? [],
+    };
+    if (req.id) row.id = req.id;
+    const { data, error } = await sb()
+      .from('material_requests')
+      .upsert(row)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return toMaterialRequest(data);
+  },
+
+  async deleteMaterialRequest(id: string): Promise<void> {
+    const { error } = await sb().from('material_requests').delete().eq('id', id);
     if (error) throw error;
   },
 };

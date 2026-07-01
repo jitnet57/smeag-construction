@@ -17,6 +17,7 @@ import type {
   EmployeeSkill,
   Task,
   TaskAssignment,
+  MaterialRequest,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -146,6 +147,8 @@ const skills = new Map<string, EmployeeSkill>(); // key: `${employeeId}::${skill
 const tasks = new Map<string, Task>(); // key: task.id
 let assignments: TaskAssignment[] = [];
 let taskSeq = 1;
+const materialRequests = new Map<string, MaterialRequest>(); // key: id
+let materialSeq = 1;
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // --- query helpers ----------------------------------------------------------
@@ -281,6 +284,24 @@ export const localApi = {
   async saveAssignments(date: string, rows: TaskAssignment[]): Promise<void> {
     assignments = assignments.filter((a) => a.workDate !== date);
     assignments.push(...rows.map((r) => ({ ...r })));
+  },
+  async getMaterialRequests(): Promise<MaterialRequest[]> {
+    return Array.from(materialRequests.values()).sort((a, b) =>
+      (b.requestDate || '').localeCompare(a.requestDate || '')
+    );
+  },
+  async saveMaterialRequest(req: MaterialRequest): Promise<MaterialRequest> {
+    const id = req.id || `mat-${materialSeq++}`;
+    const saved: MaterialRequest = {
+      ...req,
+      id,
+      items: req.items.map((it) => ({ ...it })),
+    };
+    materialRequests.set(id, saved);
+    return saved;
+  },
+  async deleteMaterialRequest(id: string): Promise<void> {
+    materialRequests.delete(id);
   },
 };
 

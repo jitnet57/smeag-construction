@@ -10,6 +10,7 @@ import Payslip from './screens/Payslip';
 import Employees from './screens/Employees';
 import Skills from './screens/Skills';
 import TaskAssign from './screens/TaskAssign';
+import Materials from './screens/Materials';
 import Settings from './screens/Settings';
 
 type ScreenKey =
@@ -20,6 +21,7 @@ type ScreenKey =
   | 'employees'
   | 'skills'
   | 'tasks'
+  | 'materials'
   | 'settings';
 
 interface NavItem {
@@ -36,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'employees', icon: '👷', labelKey: 'nav.employees' },
   { key: 'skills', icon: '🛠', labelKey: 'nav.skills' },
   { key: 'tasks', icon: '📋', labelKey: 'nav.tasks' },
+  { key: 'materials', icon: '📦', labelKey: 'nav.materials' },
   { key: 'settings', icon: '⚙', labelKey: 'nav.settings' },
 ];
 
@@ -47,6 +50,7 @@ const SCREEN_TITLES: Record<ScreenKey, TKey> = {
   employees: 'nav.employees',
   skills: 'nav.skills',
   tasks: 'nav.tasks',
+  materials: 'nav.materials',
   settings: 'nav.settings',
 };
 
@@ -74,7 +78,8 @@ export default function App() {
       currentScreen !== 'settings' &&
       currentScreen !== 'employees' &&
       currentScreen !== 'skills' &&
-      currentScreen !== 'tasks'
+      currentScreen !== 'tasks' &&
+      currentScreen !== 'materials'
     ) {
       return <div className="p-6 text-center text-gray-500">{t('app.loading')}</div>;
     }
@@ -94,6 +99,8 @@ export default function App() {
         return <Skills />;
       case 'tasks':
         return <TaskAssign period={currentPeriod} />;
+      case 'materials':
+        return <Materials />;
       case 'settings':
         return <Settings />;
       default:
