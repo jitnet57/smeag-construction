@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { PayPeriod, PayslipResult, Employee } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+import { downloadCsv } from '../lib/csv';
 
 interface Props {
   period: PayPeriod | null;
@@ -15,19 +16,26 @@ export default function Payroll({ period }: Props) {
   const [payslips, setPayslips] = useState<PayslipResult[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     api.getEmployees().then(setEmployees);
   }, []);
 
-  useEffect(() => {
+  const loadPayroll = useCallback(async () => {
     if (!period) return;
-    api
-      .getPayroll(period.id)
-      .then((data) => {
-        setPayslips(data);
-      });
+    setBusy(true);
+    try {
+      const data = await api.getPayroll(period.id);
+      setPayslips(data);
+    } finally {
+      setBusy(false);
+    }
   }, [period]);
+
+  useEffect(() => {
+    loadPayroll();
+  }, [loadPayroll]);
 
   // Map employeeId -> employee for name/position/crew lookups
   const empMap = new Map(employees.map((e) => [e.id, e]));
@@ -91,6 +99,81 @@ export default function Payroll({ period }: Props) {
           } as PayslipResult,
         ];
 
+  // --- Actions --------------------------------------------------------------
+  const amt = (slip: PayslipResult, kind: 'e' | 'd', key: string) =>
+    (kind === 'e'
+      ? slip.earnings.find((x) => x.key === key)?.amount
+      : slip.deductions.find((x) => x.key === key)?.amount) ?? 0;
+
+  const handleExport = () => {
+    const header = [
+      t('pay.thName'),
+      t('pay.thPosition'),
+      'Crew',
+      t('pay.thWorkDays'),
+      t('pay.thBasic'),
+      'OT',
+      'Night',
+      'Holiday',
+      'Incentive',
+      'Gross',
+      'SSS',
+      'PhilHealth',
+      'Pag-IBIG',
+      'Net',
+    ];
+    const body = displayData.map((slip) => {
+      const e = empMap.get(slip.employeeId);
+      return [
+        e?.name ?? slip.employeeId,
+        e?.position ?? 'SKILLED',
+        e?.crewId ?? '',
+        slip.workedDays,
+        amt(slip, 'e', 'basic'),
+        amt(slip, 'e', 'ot'),
+        amt(slip, 'e', 'night'),
+        amt(slip, 'e', 'holiday'),
+        amt(slip, 'e', 'incentive'),
+        slip.grossPay,
+        amt(slip, 'd', 'sss'),
+        amt(slip, 'd', 'philhealth'),
+        amt(slip, 'd', 'pagibig'),
+        slip.netPay,
+      ];
+    });
+    const totalRow = [
+      `${t('pay.total')} (${totals.employees}${t('pay.totalUnit')})`,
+      '',
+      '',
+      totals.workedDays,
+      '',
+      '',
+      '',
+      '',
+      '',
+      totals.grossPay,
+      totals.sss,
+      totals.phil,
+      totals.pagibig,
+      totals.netPay,
+    ];
+    const crewTag = selectedCrew === ALL_CREWS ? 'all' : selectedCrew;
+    const fname = `payroll_${period?.startDate ?? ''}_${crewTag}.csv`;
+    downloadCsv(fname, [header, ...body, totalRow]);
+  };
+
+  const handleRecalc = () => {
+    loadPayroll();
+  };
+
+  const handleApproval = () => {
+    if (!period) return;
+    const ok = window.confirm(
+      `${t('pay.approvalConfirm')}\n\n${t('pay.periodLabel')} ${period.startDate} ~ ${period.endDate}\n${totals.employees}${t('pay.totalUnit')} · ₱ ${Math.round(totals.netPay).toLocaleString()}`
+    );
+    if (ok) alert(t('pay.approvalRequested'));
+  };
+
   return (
     <div className="w-full">
       {/* Steps */}
@@ -123,9 +206,15 @@ export default function Payroll({ period }: Props) {
 
         <div className="flex-1" />
 
-        <button className="btn gray">{t('pay.excelExport')}</button>
-        <button className="btn ghost">{t('pay.recalc')}</button>
-        <button className="btn">{t('pay.requestApproval')}</button>
+        <button className="btn gray" onClick={handleExport}>
+          {t('pay.excelExport')}
+        </button>
+        <button className="btn ghost" onClick={handleRecalc} disabled={busy}>
+          {busy ? t('pay.recalcBusy') : t('pay.recalc')}
+        </button>
+        <button className="btn" onClick={handleApproval}>
+          {t('pay.requestApproval')}
+        </button>
       </div>
 
       {/* Table */}

@@ -78,6 +78,13 @@ const DICT = {
   'att.stAbsent': { en: 'Absent', ko: '결근' },
   'att.saved': { en: 'Attendance record saved.', ko: '출퇴근 기록이 저장되었습니다.' },
   'att.saveError': { en: 'An error occurred while saving.', ko: '저장 중 오류가 발생했습니다.' },
+  'att.imported': { en: 'Imported rows:', ko: '가져온 인원:' },
+  'att.importEmpty': { en: 'The file has no data rows.', ko: '파일에 데이터 행이 없습니다.' },
+  'att.importNoName': {
+    en: 'Could not find a "Name" column in the file.',
+    ko: '파일에서 "Name(성명)" 열을 찾을 수 없습니다.',
+  },
+  'att.importError': { en: 'Failed to read the file.', ko: '파일을 읽지 못했습니다.' },
   'att.note': {
     en: '※ Enter times in 24-hour format (e.g. 7 = 07:00, 13 = 13:00). On save, worked hours, tardiness, OT and night differential are auto-aggregated into payroll.',
     ko: '※ 시각은 24시간제로 입력(예: 7 = 오전 7시, 13 = 오후 1시). 저장 시 근무시간·지각·OT·야간이 자동 집계되어 급여 계산에 반영됩니다.',
@@ -93,7 +100,16 @@ const DICT = {
   'pay.allCrews': { en: 'All Crews', ko: '전체 조' },
   'pay.excelExport': { en: 'Export Excel', ko: '엑셀 내보내기' },
   'pay.recalc': { en: 'Recalculate', ko: '재계산' },
+  'pay.recalcBusy': { en: 'Calculating…', ko: '계산 중…' },
   'pay.requestApproval': { en: 'Request Approval', ko: '승인 요청' },
+  'pay.approvalConfirm': {
+    en: 'Send this payroll for approval?',
+    ko: '이 급여 내역을 승인 요청하시겠습니까?',
+  },
+  'pay.approvalRequested': {
+    en: 'Approval request sent.',
+    ko: '승인 요청이 전송되었습니다.',
+  },
   'pay.title': {
     en: 'Payroll Sheet — sample at ₱540/day',
     ko: '급여표 (Payroll Sheet) — 단가 ₱540/일 기준 예시',

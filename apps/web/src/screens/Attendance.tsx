@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { PayPeriod, AttendanceRecord, Employee } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+import { parseCsv } from '../lib/csv';
 
 interface Props {
   period: PayPeriod | null;
@@ -106,6 +107,8 @@ export default function Attendance({ period }: Props) {
     }
   }, [employees, period, selectedDate, t]);
 
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const handleInputChange = (index: number, field: string, value: string) => {
     const newRows = [...rows];
     newRows[index] = { ...newRows[index], [field]: value };
@@ -130,6 +133,69 @@ export default function Attendance({ period }: Props) {
       alert(t('att.saved'));
     } catch {
       alert(t('att.saveError'));
+    }
+  };
+
+  // ---- Excel / CSV import --------------------------------------------------
+  // Expected columns (header row, case-insensitive): Name, AM IN, AM OUT,
+  // PM IN, PM OUT, OT IN, OT OUT. Rows are matched to workers by name.
+  const handleImportClick = () => fileRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const table = parseCsv(text).filter((r) => r.some((c) => c.trim() !== ''));
+      if (table.length < 2) {
+        alert(t('att.importEmpty'));
+        return;
+      }
+      const header = table[0].map((h) => h.trim().toLowerCase());
+      const col = (...names: string[]) =>
+        header.findIndex((h) => names.includes(h));
+      const iName = col('name', '성명', '이름');
+      const iAmIn = col('am in', 'amin');
+      const iAmOut = col('am out', 'amout');
+      const iPmIn = col('pm in', 'pmin');
+      const iPmOut = col('pm out', 'pmout');
+      const iOtIn = col('ot in', 'otin');
+      const iOtOut = col('ot out', 'otout');
+      if (iName < 0) {
+        alert(t('att.importNoName'));
+        return;
+      }
+      const at = (r: string[], i: number) => (i >= 0 ? (r[i] ?? '').trim() : '');
+      const byName = new Map(rows.map((row, idx) => [row.employee.name.trim().toLowerCase(), idx]));
+      const next = [...rows];
+      let matched = 0;
+      for (const r of table.slice(1)) {
+        const key = at(r, iName).toLowerCase();
+        const idx = byName.get(key);
+        if (idx === undefined) continue;
+        matched++;
+        const amIn = at(r, iAmIn) || next[idx].amIn;
+        const amOut = at(r, iAmOut) || next[idx].amOut;
+        const pmIn = at(r, iPmIn) || next[idx].pmIn;
+        const pmOut = at(r, iPmOut) || next[idx].pmOut;
+        const otIn = at(r, iOtIn);
+        const otOut = at(r, iOtOut);
+        next[idx] = {
+          ...next[idx],
+          amIn,
+          amOut,
+          pmIn,
+          pmOut,
+          otIn: otIn || next[idx].otIn,
+          otOut: otOut || next[idx].otOut,
+          workedHours: otIn ? 10.0 : 8.0,
+        };
+      }
+      setRows(next);
+      alert(`${t('att.imported')} ${matched} / ${table.length - 1}`);
+    } catch {
+      alert(t('att.importError'));
     }
   };
 
@@ -166,8 +232,19 @@ export default function Attendance({ period }: Props) {
 
         <div className="flex-1" />
 
-        <button className="btn gray">{t('att.excelImport')}</button>
-        <button className="btn ghost">{t('att.saveDraft')}</button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={handleImportFile}
+        />
+        <button className="btn gray" onClick={handleImportClick}>
+          {t('att.excelImport')}
+        </button>
+        <button className="btn ghost" onClick={handleSave}>
+          {t('att.saveDraft')}
+        </button>
         <button onClick={handleSave} className="btn">
           {t('att.confirm')}
         </button>
