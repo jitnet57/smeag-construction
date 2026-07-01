@@ -228,3 +228,27 @@ input.in:focus {
   color: #fff;
   font-weight: bold;
 }
+
+/* Print: show only the payslip card (used by "Print Payslip PDF") */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .slip,
+  .slip * {
+    visibility: visible;
+  }
+  .slip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+  aside {
+    display: none !important;
+  }
+  @page {
+    margin: 12mm;
+  }
+}

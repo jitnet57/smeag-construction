@@ -104,7 +104,7 @@ export default function Employees(): JSX.Element {
                   </td>
                 </tr>
               )}
-              {filtered.slice(0, 50).map((emp, idx) => (
+              {filtered.map((emp, idx) => (
                 <tr key={emp.id}>
                   <td>{String(idx + 1).padStart(3, '0')}</td>
                   <td>{emp.name}</td>
@@ -121,11 +121,9 @@ export default function Employees(): JSX.Element {
             </tbody>
           </table>
         </div>
-        {filtered.length > 50 && (
-          <div className="note">
-            {filtered.length} {t('emp.showingCount')} — {t('emp.showingNote')}
-          </div>
-        )}
+        <div className="note">
+          {filtered.length} {t('emp.showingCount')}
+        </div>
       </div>
     </div>
   );

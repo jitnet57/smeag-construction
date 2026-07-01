@@ -75,8 +75,8 @@ export default function Payslip({ period }: Props) {
           }}
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         >
-          {employees.slice(0, 10).map((e) => (
-            <option key={e.id}>
+          {employees.map((e) => (
+            <option key={e.id} value={e.id}>
               {t('slip.worker')} {e.name}
             </option>
           ))}
@@ -84,8 +84,8 @@ export default function Payslip({ period }: Props) {
 
         <div className="flex-1" />
 
-        <button className="btn gray">{t('slip.batchPdf')}</button>
-        <button className="btn">{t('slip.printPdf')}</button>
+        <button className="btn gray" onClick={() => window.print()}>{t('slip.batchPdf')}</button>
+        <button className="btn" onClick={() => window.print()}>{t('slip.printPdf')}</button>
       </div>
 
       {/* Payslip Card */}
