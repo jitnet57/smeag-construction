@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm install --workspace @brightem/web --include-workspace-root",
-  "buildCommand": "VITE_USE_SUPABASE=1 VITE_SUPABASE_URL=\"https://igpninthqdhqkuwwtngw.supabase.co\" VITE_SUPABASE_ANON_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlncG5pbnRocWRocWt1d3d0bmd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MDI0MzQsImV4cCI6MjA5ODQ3ODQzNH0.fTa4goq26k19r5lN9Ali0wj6Q5B5Vm5HfmsoG6f7R9w\" npm --workspace @brightem/web run build",
+  "buildCommand": "npm --workspace @brightem/web run build",
   "outputDirectory": "apps/web/dist",
   "cleanUrls": true,
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
