@@ -96,6 +96,14 @@ const DICT = {
     en: '※ Man-day (인·일) = total person-days of work. Auto-match fills each task up to its headcount using present workers, choosing the highest skill score for the task\'s trade first.',
     ko: '※ 공수(인·일) = 총 투입 person-day. 자동 매칭은 당일 출근자 중 해당 직종 스킬 점수가 높은 사람부터 필요인원만큼 각 작업에 배치합니다.',
   },
+  'task.assignTarget': { en: 'Assign clicked worker to:', ko: '클릭한 인부를 배정할 작업:' },
+  'task.clickHint': { en: '(click a standby worker below to place them here)', ko: '(아래 대기 인부를 클릭하면 이 작업에 배정됩니다)' },
+  'task.clickToAssign': { en: 'Click to assign to the selected task', ko: '클릭하면 선택된 작업에 배정' },
+  'task.clickToRemove': { en: 'Click to send back to standby', ko: '클릭하면 대기로 되돌리기' },
+  'task.manualNote': {
+    en: '※ You can also assign manually: pick a target task above, then click any standby worker to place them. Click an assigned worker to remove them.',
+    ko: '※ 수동 배정도 가능합니다: 위에서 대상 작업을 선택한 뒤 대기 인부를 클릭하면 배정되고, 배정된 인부를 클릭하면 대기로 돌아갑니다.',
+  },
 
   // --- Material purchase request --------------------------------------------
   'mat.title': {
@@ -178,6 +186,14 @@ const DICT = {
   'dash.stOk': { en: 'Complete', ko: '집계완료' },
   'dash.stHalf': { en: 'Reviewing', ko: '검토중' },
   'dash.stAbs': { en: 'Short-staffed', ko: '인력부족' },
+  'dash.crewClickHint': {
+    en: '▸ Click a crew row to see its workers and their attendance / pay.',
+    ko: '▸ 조를 클릭하면 소속 인부와 출근·급여 내역을 볼 수 있습니다.',
+  },
+  'dash.detName': { en: 'Name', ko: '성명' },
+  'dash.detPosition': { en: 'Position', ko: '직급' },
+  'dash.detPresent': { en: 'Days Present', ko: '출근일수' },
+  'dash.detGross': { en: 'Gross', ko: '총지급' },
   'dow.mon': { en: 'Mon', ko: '월' },
   'dow.tue': { en: 'Tue', ko: '화' },
   'dow.wed': { en: 'Wed', ko: '수' },

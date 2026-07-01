@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import type { PayPeriod, Employee, AttendanceRecord, PayslipResult } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
@@ -33,6 +33,7 @@ export default function Dashboard({ period }: Props): JSX.Element {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [payslips, setPayslips] = useState<PayslipResult[]>([]);
   const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
+  const [expandedCrew, setExpandedCrew] = useState<string | null>(null);
 
   useEffect(() => {
     api.getEmployees().then(setAllEmployees);
@@ -133,6 +134,19 @@ export default function Dashboard({ period }: Props): JSX.Element {
     }
   };
 
+  // Per-worker detail for a crew (shown when a crew row is expanded).
+  const crewMembers = (crewId: string) =>
+    employees
+      .filter((e) => e.crewId === crewId)
+      .map((e) => ({
+        id: e.id,
+        name: e.name,
+        position: e.position,
+        present: presentByEmp.get(e.id) ?? 0,
+        gross: Math.round(grossByEmp.get(e.id) ?? 0),
+      }))
+      .sort((a, b) => b.present - a.present || b.gross - a.gross);
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'ok':
@@ -232,10 +246,11 @@ export default function Dashboard({ period }: Props): JSX.Element {
 
       {/* Crew Summary Table */}
       <div className="panel">
-        <h3 className="text-sm font-bold text-dark mb-3">
+        <h3 className="text-sm font-bold text-dark mb-1">
           <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
           {t('dash.crewStatus')}
         </h3>
+        <p className="text-xs text-muted mb-3">{t('dash.crewClickHint')}</p>
         <div className="overflow-x-auto">
           <table>
             <thead>
@@ -249,20 +264,83 @@ export default function Dashboard({ period }: Props): JSX.Element {
               </tr>
             </thead>
             <tbody>
-              {crewStats.map((crew) => (
-                <tr key={crew.crewId}>
-                  <td>{crew.crewId}</td>
-                  <td className="text-center">{crew.count}</td>
-                  <td className="text-center">{crew.avgAttendance}</td>
-                  <td className="text-center">{crew.attendanceRate}%</td>
-                  <td className="text-right">₱ {crew.weeklyGross.toLocaleString()}</td>
-                  <td className="text-center">
-                    <span className={getPillClass(crew.status)}>
-                      {getStatusLabel(crew.status)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {crewStats.map((crew) => {
+                const open = expandedCrew === crew.crewId;
+                return (
+                  <Fragment key={crew.crewId}>
+                    <tr
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setExpandedCrew(open ? null : crew.crewId)
+                      }
+                    >
+                      <td className="font-medium">
+                        <span className="inline-block w-4 text-primary">
+                          {open ? '▾' : '▸'}
+                        </span>
+                        {crew.crewId}
+                      </td>
+                      <td className="text-center">{crew.count}</td>
+                      <td className="text-center">{crew.avgAttendance}</td>
+                      <td className="text-center">{crew.attendanceRate}%</td>
+                      <td className="text-right">
+                        ₱ {crew.weeklyGross.toLocaleString()}
+                      </td>
+                      <td className="text-center">
+                        <span className={getPillClass(crew.status)}>
+                          {getStatusLabel(crew.status)}
+                        </span>
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr>
+                        <td colSpan={6} className="bg-blue-50/50 p-0">
+                          <div className="p-3">
+                            <table className="text-sm">
+                              <thead>
+                                <tr>
+                                  <th>{t('dash.detName')}</th>
+                                  <th>{t('dash.detPosition')}</th>
+                                  <th className="text-center">
+                                    {t('dash.detPresent')}
+                                  </th>
+                                  <th className="text-right">
+                                    {t('dash.detGross')}
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {crewMembers(crew.crewId).map((m) => (
+                                  <tr key={m.id}>
+                                    <td>{m.name}</td>
+                                    <td>{m.position}</td>
+                                    <td className="text-center">
+                                      {m.present} / {numDays}
+                                    </td>
+                                    <td className="text-right">
+                                      ₱ {m.gross.toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))}
+                                {crewMembers(crew.crewId).length === 0 && (
+                                  <tr>
+                                    <td
+                                      colSpan={4}
+                                      className="text-center text-muted py-2"
+                                    >
+                                      —
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

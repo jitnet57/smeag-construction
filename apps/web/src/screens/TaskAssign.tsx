@@ -38,7 +38,8 @@ export default function TaskAssign({ period }: Props) {
   const [assignMap, setAssignMap] = useState<Record<string, string[]>>({});
   const [assignDirty, setAssignDirty] = useState(false);
   const [savingAssign, setSavingAssign] = useState(false);
-  const [matched, setMatched] = useState(false);
+  // Which task a clicked standby worker gets assigned to (manual placement).
+  const [targetTaskId, setTargetTaskId] = useState('');
 
   // --- load master data once ------------------------------------------------
   useEffect(() => {
@@ -74,7 +75,6 @@ export default function TaskAssign({ period }: Props) {
     setAssignMap(m);
     setTasksDirty(false);
     setAssignDirty(false);
-    setMatched(asg.length > 0);
   }, []);
 
   useEffect(() => {
@@ -97,6 +97,47 @@ export default function TaskAssign({ period }: Props) {
       .map((r) => r.employeeId)
       .filter((id) => empById.has(id));
   }, [attendance, workDate, empById]);
+
+  // Tasks that can receive workers (have a headcount requirement).
+  const activeTasks = useMemo(
+    () => tasks.filter((tk) => tk.requiredHeadcount > 0),
+    [tasks]
+  );
+
+  // Keep the manual-assign target on a valid task.
+  useEffect(() => {
+    if (activeTasks.length === 0) {
+      if (targetTaskId) setTargetTaskId('');
+      return;
+    }
+    if (!activeTasks.some((tk) => tk.id === targetTaskId)) {
+      setTargetTaskId(activeTasks[0].id);
+    }
+  }, [activeTasks, targetTaskId]);
+
+  // Manually place a clicked standby worker onto the target task.
+  const assignWorker = (empId: string, taskId = targetTaskId) => {
+    if (!taskId) return;
+    setAssignMap((prev) => {
+      const next: Record<string, string[]> = {};
+      // Remove the worker from any current task, then add to the target.
+      for (const [tid, ids] of Object.entries(prev)) {
+        next[tid] = ids.filter((id) => id !== empId);
+      }
+      next[taskId] = [...(next[taskId] ?? []), empId];
+      return next;
+    });
+    setAssignDirty(true);
+  };
+
+  // Send an assigned worker back to standby.
+  const unassignWorker = (taskId: string, empId: string) => {
+    setAssignMap((prev) => ({
+      ...prev,
+      [taskId]: (prev[taskId] ?? []).filter((id) => id !== empId),
+    }));
+    setAssignDirty(true);
+  };
 
   // --- task editing ---------------------------------------------------------
   const updateTask = (id: string, patch: Partial<Task>) => {
@@ -204,7 +245,6 @@ export default function TaskAssign({ period }: Props) {
     }
 
     setAssignMap(result);
-    setMatched(true);
     setAssignDirty(true);
   };
 
@@ -401,52 +441,86 @@ export default function TaskAssign({ period }: Props) {
 
         {presentIds.length === 0 ? (
           <p className="text-sm text-muted py-4 text-center">{t('task.noPresent')}</p>
-        ) : !matched ? (
-          <p className="text-sm text-muted py-4 text-center">{t('task.needMatch')}</p>
+        ) : activeTasks.length === 0 ? (
+          <p className="text-sm text-muted py-4 text-center">{t('task.noTasks')}</p>
         ) : (
           <div className="space-y-4">
-            {tasks
-              .filter((tk) => tk.requiredHeadcount > 0)
-              .map((tk) => {
-                const ids = assignMap[tk.id] ?? [];
-                return (
-                  <div key={tk.id} className="border border-line rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-bold text-dark">
-                        {tk.name || t('task.newTaskName')}{' '}
-                        <span className="text-xs font-normal text-muted">
-                          ({tradeLabel(tk.skillKey)})
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted">
-                        {ids.length}/{tk.requiredHeadcount} {t('task.filled')}
-                      </div>
-                    </div>
-                    {ids.length === 0 ? (
-                      <div className="text-xs text-muted">—</div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {ids.map((id) => {
-                          const emp = empById.get(id);
-                          return (
-                            <span
-                              key={id}
-                              className="text-xs bg-blue-50 text-blue-900 rounded-full px-2.5 py-1"
-                            >
-                              {emp?.name ?? id}
-                              <span className="text-blue-500 ml-1">
-                                {skillOf(id, tk.skillKey)}
-                              </span>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {/* Manual-assign target: clicked standby workers go to this task. */}
+            <div className="flex items-center gap-2 flex-wrap bg-blue-50/60 border border-line rounded-lg px-3 py-2">
+              <span className="text-xs text-muted">{t('task.assignTarget')}</span>
+              <select
+                value={targetTaskId}
+                onChange={(e) => setTargetTaskId(e.target.value)}
+                className="border border-line rounded px-2 py-1 text-sm bg-white"
+              >
+                {activeTasks.map((tk) => (
+                  <option key={tk.id} value={tk.id}>
+                    {(tk.name || t('task.newTaskName')) + ' — ' + tradeLabel(tk.skillKey)}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted">{t('task.clickHint')}</span>
+            </div>
 
-            {/* Standby (present but unassigned) */}
+            {activeTasks.map((tk) => {
+              const ids = assignMap[tk.id] ?? [];
+              const isTarget = tk.id === targetTaskId;
+              return (
+                <div
+                  key={tk.id}
+                  className={`border rounded-lg p-3 ${
+                    isTarget ? 'border-primary bg-blue-50/40' : 'border-line'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <button
+                      className="text-sm font-bold text-dark text-left hover:text-primary"
+                      onClick={() => setTargetTaskId(tk.id)}
+                      title={t('task.assignTarget')}
+                    >
+                      {tk.name || t('task.newTaskName')}{' '}
+                      <span className="text-xs font-normal text-muted">
+                        ({tradeLabel(tk.skillKey)})
+                      </span>
+                    </button>
+                    <div
+                      className={`text-xs ${
+                        ids.length >= tk.requiredHeadcount
+                          ? 'text-green-700 font-medium'
+                          : 'text-muted'
+                      }`}
+                    >
+                      {ids.length}/{tk.requiredHeadcount} {t('task.filled')}
+                    </div>
+                  </div>
+                  {ids.length === 0 ? (
+                    <div className="text-xs text-muted">—</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {ids.map((id) => {
+                        const emp = empById.get(id);
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => unassignWorker(tk.id, id)}
+                            title={t('task.clickToRemove')}
+                            className="text-xs bg-blue-50 text-blue-900 rounded-full px-2.5 py-1 hover:bg-red-50 hover:text-red-700 cursor-pointer"
+                          >
+                            {emp?.name ?? id}
+                            <span className="text-blue-500 ml-1">
+                              {skillOf(id, tk.skillKey)}
+                            </span>
+                            <span className="ml-1 opacity-60">✕</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Standby (present but unassigned) — click to assign to target task */}
             <div className="border border-dashed border-line rounded-lg p-3">
               <div className="text-sm font-bold text-muted mb-2">
                 {t('task.unassigned')} ({standby.length})
@@ -455,14 +529,25 @@ export default function TaskAssign({ period }: Props) {
                 <div className="text-xs text-muted">—</div>
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {standby.map((id) => (
-                    <span
-                      key={id}
-                      className="text-xs bg-gray-100 text-gray-600 rounded-full px-2.5 py-1"
-                    >
-                      {empById.get(id)?.name ?? id}
-                    </span>
-                  ))}
+                  {standby.map((id) => {
+                    const targetTask = activeTasks.find((tk) => tk.id === targetTaskId);
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => assignWorker(id)}
+                        title={t('task.clickToAssign')}
+                        className="text-xs bg-gray-100 text-gray-700 rounded-full px-2.5 py-1 hover:bg-blue-100 hover:text-blue-800 cursor-pointer"
+                      >
+                        <span className="opacity-60 mr-1">＋</span>
+                        {empById.get(id)?.name ?? id}
+                        {targetTask && (
+                          <span className="text-blue-500 ml-1">
+                            {skillOf(id, targetTask.skillKey)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -470,6 +555,7 @@ export default function TaskAssign({ period }: Props) {
         )}
 
         <p className="text-xs text-muted mt-3">{t('task.note')}</p>
+        <p className="text-xs text-muted mt-1">{t('task.manualNote')}</p>
       </div>
     </div>
   );
