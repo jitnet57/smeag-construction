@@ -288,22 +288,22 @@ export default function UnitProgress() {
             </div>
 
             {/* Status legend */}
-            <div className="flex items-center gap-4 text-[11px] text-muted mb-1">
-              <span className="flex items-center gap-1">
-                <i className={`w-3 h-3 rounded-sm ${DOT.pending}`} />
+            <div className="flex items-center gap-4 text-[22px] text-muted mb-1">
+              <span className="flex items-center gap-1.5">
+                <i className={`w-6 h-6 rounded-sm ${DOT.pending}`} />
                 {stLabel('pending')}
               </span>
-              <span className="flex items-center gap-1">
-                <i className={`w-3 h-3 rounded-sm ${DOT.in_progress}`} />
+              <span className="flex items-center gap-1.5">
+                <i className={`w-6 h-6 rounded-sm ${DOT.in_progress}`} />
                 {stLabel('in_progress')}
               </span>
-              <span className="flex items-center gap-1">
-                <i className={`w-3 h-3 rounded-sm ${DOT.done}`} />
+              <span className="flex items-center gap-1.5">
+                <i className={`w-6 h-6 rounded-sm ${DOT.done}`} />
                 {stLabel('done')}
               </span>
             </div>
             {/* Work-item order legend (matches the 3×3 grid, row by row) */}
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted">
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[22px] text-muted">
               {UNIT_WORK_ITEMS.map((item, i) => (
                 <span key={item}>
                   {i + 1}. {wiLabel(item)}
