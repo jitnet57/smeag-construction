@@ -302,12 +302,20 @@ export type MaterialStage = (typeof MATERIAL_STAGES)[number];
  * Readiness of one material (same catalog as UNIT_WORK_ITEMS) for one floor.
  * Only touched (non-pending) rows need to be stored; absent defaults to pending.
  */
+/** Per-room delivery detail: how many pieces were delivered + a free memo. */
+export interface RoomDelivery {
+  room: number;   // room offset 1..26 (not the full number)
+  pieces: number; // how many pieces delivered to that room
+  memo?: string;  // free note for that room
+}
+
 export interface MaterialReadiness {
   floor: number;        // 4..11
   material: UnitWorkItem;
   stage: MaterialStage;
   note?: string;        // free memo, e.g. delivered-room count during "delivering"
   deliveredRooms?: number[]; // room offsets (1..26) delivered during "delivering"/"delivered"
+  roomDetails?: RoomDelivery[]; // per-room pieces + memo captured during delivery
 }
 
 // ---- Room photos ------------------------------------------------------------

@@ -508,7 +508,7 @@ export const supabaseApi = {
   async getMaterialReadiness(floor: number): Promise<MaterialReadiness[]> {
     const { data, error } = await sb()
       .from('material_readiness')
-      .select('floor, material, stage, note, delivered_rooms')
+      .select('floor, material, stage, note, delivered_rooms, room_details')
       .eq('floor', floor);
     if (error) throw error;
     return (data ?? []).map((r: any) => ({
@@ -517,6 +517,11 @@ export const supabaseApi = {
       stage: r.stage,
       note: r.note ?? '',
       deliveredRooms: (r.delivered_rooms ?? []).map((n: any) => Number(n)),
+      roomDetails: (r.room_details ?? []).map((d: any) => ({
+        room: Number(d.room),
+        pieces: Number(d.pieces) || 0,
+        memo: d.memo ?? undefined,
+      })),
     }));
   },
 
@@ -530,6 +535,7 @@ export const supabaseApi = {
           stage: entry.stage,
           note: entry.note ?? null,
           delivered_rooms: entry.deliveredRooms ?? [],
+          room_details: entry.roomDetails ?? [],
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'floor,material' }

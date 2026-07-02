@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { UNIT_WORK_ITEMS, MATERIAL_STAGES } from '@brightem/shared';
-import type { UnitWorkItem, MaterialStage } from '@brightem/shared';
+import type { UnitWorkItem, MaterialStage, RoomDelivery } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
@@ -51,6 +51,8 @@ export default function MaterialReadiness() {
   const { t } = useI18n();
   const [stages, setStages] = useState<Record<string, MaterialStage>>({});
   const [rooms, setRooms] = useState<Record<string, number[]>>({});
+  // Per-room pieces + memo details, keyed the same as stages/rooms.
+  const [details, setDetails] = useState<Record<string, RoomDelivery[]>>({});
   // Key of the cell whose per-room delivery panel is open, or null.
   const [openCell, setOpenCell] = useState<{ floor: number; material: UnitWorkItem } | null>(null);
   // Room whose photo gallery modal is open (null = closed).
@@ -61,13 +63,17 @@ export default function MaterialReadiness() {
     Promise.all(FLOORS.map((f) => api.getMaterialReadiness(f))).then((lists) => {
       const m: Record<string, MaterialStage> = {};
       const r: Record<string, number[]> = {};
+      const d: Record<string, RoomDelivery[]> = {};
       lists.flat().forEach((row) => {
         m[key(row.floor, row.material)] = row.stage;
         if (row.deliveredRooms && row.deliveredRooms.length)
           r[key(row.floor, row.material)] = [...row.deliveredRooms];
+        if (row.roomDetails && row.roomDetails.length)
+          d[key(row.floor, row.material)] = row.roomDetails.map((x) => ({ ...x }));
       });
       setStages(m);
       setRooms(r);
+      setDetails(d);
     });
   }, []);
 
@@ -77,24 +83,68 @@ export default function MaterialReadiness() {
   const roomsOf = (floor: number, material: UnitWorkItem): number[] =>
     rooms[key(floor, material)] ?? [];
 
+  const detailsOf = (floor: number, material: UnitWorkItem): RoomDelivery[] =>
+    details[key(floor, material)] ?? [];
+
   const save = (
     floor: number,
     material: UnitWorkItem,
     stage: MaterialStage,
-    deliveredRooms: number[]
+    deliveredRooms: number[],
+    roomDetails: RoomDelivery[]
   ) => {
-    api.saveMaterialReadiness({ floor, material, stage, deliveredRooms }).catch(() => {
-      alert(t('matr.saveError'));
-    });
+    api
+      .saveMaterialReadiness({ floor, material, stage, deliveredRooms, roomDetails })
+      .catch(() => {
+        alert(t('matr.saveError'));
+      });
+  };
+
+  // Set/replace one room's pieces + memo, and save. Entering pieces>0 also
+  // marks the room delivered so it counts in the delivered total.
+  const setRoomDetail = (
+    floor: number,
+    material: UnitWorkItem,
+    off: number,
+    pieces: number,
+    memo: string
+  ) => {
+    const k = key(floor, material);
+    const cur = detailsOf(floor, material).filter((d) => d.room !== off);
+    const hasData = pieces > 0 || memo.trim().length > 0;
+    const nextDetails = hasData
+      ? [...cur, { room: off, pieces, memo: memo.trim() || undefined }].sort(
+          (a, b) => a.room - b.room
+        )
+      : cur;
+
+    // Keep delivered set in sync: pieces>0 => delivered.
+    const curRooms = roomsOf(floor, material);
+    const nextRooms =
+      pieces > 0
+        ? curRooms.includes(off)
+          ? curRooms
+          : [...curRooms, off].sort((a, b) => a - b)
+        : curRooms;
+    const stage: MaterialStage =
+      nextRooms.length === ROOMS_PER_FLOOR ? 'delivered' : 'delivering';
+
+    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
+    setRooms((prev) => ({ ...prev, [k]: nextRooms }));
+    setStages((prev) => ({ ...prev, [k]: stage }));
+    save(floor, material, stage, nextRooms, nextDetails);
   };
 
   const setStage = (floor: number, material: UnitWorkItem, stage: MaterialStage) => {
     const k = key(floor, material);
-    // Leaving the delivery phase clears the room checklist.
-    const nextRooms = isDelivery(stage) ? roomsOf(floor, material) : [];
+    // Leaving the delivery phase clears the room checklist and details.
+    const inDelivery = isDelivery(stage);
+    const nextRooms = inDelivery ? roomsOf(floor, material) : [];
+    const nextDetails = inDelivery ? detailsOf(floor, material) : [];
     setStages((prev) => ({ ...prev, [k]: stage }));
     setRooms((prev) => ({ ...prev, [k]: nextRooms }));
-    save(floor, material, stage, nextRooms);
+    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
+    save(floor, material, stage, nextRooms, nextDetails);
   };
 
   // Tap a cell: pre-delivery stages advance one step; delivery stages open the
@@ -118,18 +168,25 @@ export default function MaterialReadiness() {
       ? cur.filter((x) => x !== off)
       : [...cur, off].sort((a, b) => a - b);
     const stage: MaterialStage = next.length === ROOMS_PER_FLOOR ? 'delivered' : 'delivering';
+    // Removing a room's delivered flag also drops its pieces/memo detail.
+    const nextDetails = next.includes(off)
+      ? detailsOf(floor, material)
+      : detailsOf(floor, material).filter((d) => d.room !== off);
     setRooms((prev) => ({ ...prev, [k]: next }));
+    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
     setStages((prev) => ({ ...prev, [k]: stage }));
-    save(floor, material, stage, next);
+    save(floor, material, stage, next, nextDetails);
   };
 
   const setAllRooms = (floor: number, material: UnitWorkItem, all: boolean) => {
     const k = key(floor, material);
     const next = all ? [...ROOM_OFFSETS] : [];
     const stage: MaterialStage = all ? 'delivered' : 'delivering';
+    const nextDetails = all ? detailsOf(floor, material) : [];
     setRooms((prev) => ({ ...prev, [k]: next }));
+    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
     setStages((prev) => ({ ...prev, [k]: stage }));
-    save(floor, material, stage, next);
+    save(floor, material, stage, next, nextDetails);
   };
 
   const matLabel = (m: UnitWorkItem) => t(`unit.wi.${m}` as TKey);
@@ -265,8 +322,12 @@ export default function MaterialReadiness() {
           material={openCell.material}
           matLabel={matLabel(openCell.material)}
           delivered={roomsOf(openCell.floor, openCell.material)}
+          details={detailsOf(openCell.floor, openCell.material)}
           onToggle={(off) => toggleRoom(openCell.floor, openCell.material, off)}
           onAll={(all) => setAllRooms(openCell.floor, openCell.material, all)}
+          onDetail={(off, pieces, memo) =>
+            setRoomDetail(openCell.floor, openCell.material, off, pieces, memo)
+          }
           onPhoto={(off) => setPhotoRoom(openCell.floor * 100 + off)}
           onBack={() => {
             setStage(openCell.floor, openCell.material, 'shipping');
@@ -292,15 +353,38 @@ function RoomPanel(props: {
   material: UnitWorkItem;
   matLabel: string;
   delivered: number[];
+  details: RoomDelivery[];
   onToggle: (off: number) => void;
   onAll: (all: boolean) => void;
+  onDetail: (off: number, pieces: number, memo: string) => void;
   onPhoto: (off: number) => void;
   onBack: () => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { floor, matLabel, delivered, onToggle, onAll, onPhoto, onBack, onClose } = props;
+  const { floor, matLabel, delivered, details, onToggle, onAll, onDetail, onPhoto, onBack, onClose } =
+    props;
   const done = delivered.length;
+  const totalPieces = details.reduce((n, d) => n + (d.pieces || 0), 0);
+
+  // Room currently open in the pieces/memo editor.
+  const [sel, setSel] = useState<number | null>(null);
+  const detailOf = (off: number) => details.find((d) => d.room === off);
+  const [pieceInput, setPieceInput] = useState('');
+  const [memoInput, setMemoInput] = useState('');
+
+  // Load the editor fields whenever the selected room changes.
+  useEffect(() => {
+    if (sel === null) return;
+    const d = details.find((x) => x.room === sel);
+    setPieceInput(d && d.pieces ? String(d.pieces) : '');
+    setMemoInput(d?.memo ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel]);
+
+  const commit = (off: number, pieces: string, memo: string) => {
+    onDetail(off, Math.max(0, Math.floor(Number(pieces) || 0)), memo);
+  };
 
   return (
     <div
@@ -320,6 +404,11 @@ function RoomPanel(props: {
             </div>
             <div className="text-xs text-muted mt-0.5">
               {done}/{ROOMS_PER_FLOOR} {t('matr.roomsDelivered')}
+              {totalPieces > 0 && (
+                <span className="ml-2 text-green-700 font-semibold">
+                  · {totalPieces} {t('matr.piecesUnit')}
+                </span>
+              )}
             </div>
           </div>
           <button
@@ -337,17 +426,26 @@ function RoomPanel(props: {
           <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-7">
             {ROOM_OFFSETS.map((off) => {
               const on = delivered.includes(off);
+              const d = detailOf(off);
+              const isSel = sel === off;
               return (
                 <div key={off} className="relative">
                   <button
-                    onClick={() => onToggle(off)}
+                    onClick={() => setSel(isSel ? null : off)}
                     className={`w-full rounded border py-2 text-xs font-semibold transition-colors ${
+                      isSel ? 'ring-2 ring-primary ' : ''
+                    }${
                       on
                         ? 'border-green-500 bg-green-500 text-white'
                         : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     {floor * 100 + off}
+                    {d && d.pieces > 0 && (
+                      <span className="mt-0.5 block rounded bg-white/80 px-1 text-[10px] font-bold leading-tight text-green-700">
+                        ×{d.pieces}
+                      </span>
+                    )}
                   </button>
                   <button
                     onClick={(e) => {
@@ -364,6 +462,53 @@ function RoomPanel(props: {
               );
             })}
           </div>
+
+          {/* Per-room pieces + memo editor */}
+          {sel !== null && (
+            <div className="mt-4 rounded-lg border border-line bg-gray-50 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-sm font-semibold text-dark">
+                  {t('matr.room')} {floor * 100 + sel}
+                </span>
+                <button
+                  onClick={() => onToggle(sel)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
+                    delivered.includes(sel)
+                      ? 'border-green-500 bg-green-500 text-white'
+                      : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {delivered.includes(sel) ? `✓ ${t('matr.delivered')}` : t('matr.markDelivered')}
+                </button>
+              </div>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex flex-col text-xs text-muted">
+                  {t('matr.pieces')}
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={pieceInput}
+                    onChange={(e) => setPieceInput(e.target.value)}
+                    onBlur={() => commit(sel, pieceInput, memoInput)}
+                    className="mt-1 w-24 rounded border border-line px-2 py-1.5 text-sm text-dark"
+                    placeholder="0"
+                  />
+                </label>
+                <label className="flex flex-1 flex-col text-xs text-muted">
+                  {t('matr.memo')}
+                  <input
+                    type="text"
+                    value={memoInput}
+                    onChange={(e) => setMemoInput(e.target.value)}
+                    onBlur={() => commit(sel, pieceInput, memoInput)}
+                    className="mt-1 w-full rounded border border-line px-2 py-1.5 text-sm text-dark"
+                    placeholder={t('matr.memoPlaceholder')}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer actions */}
