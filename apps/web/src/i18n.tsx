@@ -234,14 +234,16 @@ const DICT = {
     ko: '각 자재를 구매부터 방 배달까지 추적합니다. 칸을 누르면 단계가 넘어갑니다.',
   },
   'matr.hint': {
-    en: 'Tap a cell to cycle: Not ordered → Ordered → Shipping → Delivered → Not ordered.',
-    ko: '칸을 누르면 순환합니다: 미구매 → 구매 → 배송중 → 방 배달 → 미구매.',
+    en: 'Tap a cell to cycle: Not ordered → Ordered → Shipping → Out for delivery → Delivered → Not ordered.',
+    ko: '칸을 누르면 순환합니다: 미구매 → 구매 → 배송중 → 배달중 → 방 배달 → 미구매.',
   },
   'matr.material': { en: 'Material', ko: '자재' },
+  'matr.countPlaceholder': { en: 'qty / memo', ko: '개수/메모' },
   'matr.saveError': { en: 'Failed to save.', ko: '저장에 실패했습니다.' },
   'matr.stage.pending': { en: 'Not ordered', ko: '미구매' },
   'matr.stage.ordered': { en: 'Ordered', ko: '구매' },
   'matr.stage.shipping': { en: 'Shipping', ko: '배송중' },
+  'matr.stage.delivering': { en: 'Out for delivery', ko: '배달중' },
   'matr.stage.delivered': { en: 'Delivered', ko: '방 배달' },
 
   // --- Dashboard ------------------------------------------------------------

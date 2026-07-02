@@ -288,12 +288,13 @@ export interface UnitProgress {
 
 /**
  * Supply pipeline stage for a material on a floor:
- *   pending   → not ordered yet
- *   ordered   → purchased (구매)
- *   shipping  → in transit (배송)
- *   delivered → delivered to the rooms (각 방 배달)
+ *   pending    → not ordered yet
+ *   ordered    → purchased (구매)
+ *   shipping   → in transit (배송)
+ *   delivering → out for delivery to the rooms (배달중)
+ *   delivered  → delivered to the rooms (각 방 배달)
  */
-export const MATERIAL_STAGES = ["pending", "ordered", "shipping", "delivered"] as const;
+export const MATERIAL_STAGES = ["pending", "ordered", "shipping", "delivering", "delivered"] as const;
 export type MaterialStage = (typeof MATERIAL_STAGES)[number];
 
 /**
@@ -304,6 +305,7 @@ export interface MaterialReadiness {
   floor: number;        // 4..11
   material: UnitWorkItem;
   stage: MaterialStage;
+  note?: string;        // free memo, e.g. delivered-room count during "delivering"
 }
 
 // ---- API contract ----------------------------------------------------------

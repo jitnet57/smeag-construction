@@ -507,13 +507,14 @@ export const supabaseApi = {
   async getMaterialReadiness(floor: number): Promise<MaterialReadiness[]> {
     const { data, error } = await sb()
       .from('material_readiness')
-      .select('floor, material, stage')
+      .select('floor, material, stage, note')
       .eq('floor', floor);
     if (error) throw error;
     return (data ?? []).map((r: any) => ({
       floor: Number(r.floor),
       material: r.material,
       stage: r.stage,
+      note: r.note ?? '',
     }));
   },
 
@@ -525,6 +526,7 @@ export const supabaseApi = {
           floor: entry.floor,
           material: entry.material,
           stage: entry.stage,
+          note: entry.note ?? null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'floor,material' }

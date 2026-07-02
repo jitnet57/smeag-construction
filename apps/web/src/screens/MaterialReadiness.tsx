@@ -12,6 +12,7 @@ const CELL: Record<MaterialStage, string> = {
   pending: 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200',
   ordered: 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200',
   shipping: 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200',
+  delivering: 'bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-200',
   delivered: 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200',
 };
 
@@ -20,6 +21,7 @@ const SWATCH: Record<MaterialStage, string> = {
   pending: 'bg-gray-300',
   ordered: 'bg-blue-500',
   shipping: 'bg-amber-500',
+  delivering: 'bg-orange-500',
   delivered: 'bg-green-600',
 };
 
@@ -27,6 +29,7 @@ const STAGE_ICON: Record<MaterialStage, string> = {
   pending: '·',
   ordered: '🛒',
   shipping: '🚚',
+  delivering: '🛵',
   delivered: '📦',
 };
 
@@ -40,26 +43,42 @@ const nextStage = (s: MaterialStage): MaterialStage => {
 export default function MaterialReadiness() {
   const { t } = useI18n();
   const [stages, setStages] = useState<Record<string, MaterialStage>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   // Load readiness for ALL floors once.
   useEffect(() => {
     Promise.all(FLOORS.map((f) => api.getMaterialReadiness(f))).then((lists) => {
       const m: Record<string, MaterialStage> = {};
+      const n: Record<string, string> = {};
       lists.flat().forEach((r) => {
         m[key(r.floor, r.material)] = r.stage;
+        if (r.note) n[key(r.floor, r.material)] = r.note;
       });
       setStages(m);
+      setNotes(n);
     });
   }, []);
 
   const stageOf = (floor: number, material: UnitWorkItem): MaterialStage =>
     stages[key(floor, material)] ?? 'pending';
 
-  const setStage = (floor: number, material: UnitWorkItem, stage: MaterialStage) => {
-    setStages((prev) => ({ ...prev, [key(floor, material)]: stage }));
-    api.saveMaterialReadiness({ floor, material, stage }).catch(() => {
+  const noteOf = (floor: number, material: UnitWorkItem): string =>
+    notes[key(floor, material)] ?? '';
+
+  const save = (floor: number, material: UnitWorkItem, stage: MaterialStage, note: string) => {
+    api.saveMaterialReadiness({ floor, material, stage, note }).catch(() => {
       alert(t('matr.saveError'));
     });
+  };
+
+  const setStage = (floor: number, material: UnitWorkItem, stage: MaterialStage) => {
+    setStages((prev) => ({ ...prev, [key(floor, material)]: stage }));
+    save(floor, material, stage, noteOf(floor, material));
+  };
+
+  const setNote = (floor: number, material: UnitWorkItem, note: string) => {
+    setNotes((prev) => ({ ...prev, [key(floor, material)]: note }));
+    save(floor, material, stageOf(floor, material), note);
   };
 
   const cycle = (floor: number, material: UnitWorkItem) =>
@@ -74,6 +93,7 @@ export default function MaterialReadiness() {
       pending: 0,
       ordered: 0,
       shipping: 0,
+      delivering: 0,
       delivered: 0,
     };
     FLOORS.forEach((f) =>
@@ -138,15 +158,35 @@ export default function MaterialReadiness() {
                 {FLOORS.map((f) => {
                   const s = stageOf(f, m);
                   return (
-                    <td key={f} className="border border-line p-1">
-                      <button
+                    <td key={f} className="border border-line p-1 align-top">
+                      <div
+                        role="button"
+                        tabIndex={0}
                         onClick={() => cycle(f, m)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            cycle(f, m);
+                          }
+                        }}
                         title={`${matLabel(m)} · ${f}${t('unit.floorSuffix')} — ${stageLabel(s)}`}
-                        className={`w-full min-w-[64px] rounded border px-1 py-2 text-xs font-medium transition-colors cursor-pointer ${CELL[s]}`}
+                        className={`w-full min-w-[64px] rounded border px-1 py-2 text-xs font-medium transition-colors cursor-pointer text-center ${CELL[s]}`}
                       >
                         <span className="block text-base leading-none">{STAGE_ICON[s]}</span>
                         <span className="block mt-0.5 leading-tight">{stageLabel(s)}</span>
-                      </button>
+                        {s === 'delivering' && (
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={noteOf(f, m)}
+                            placeholder={t('matr.countPlaceholder')}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            onChange={(e) => setNote(f, m, e.target.value)}
+                            className="mt-1 w-full rounded border border-orange-300 bg-white/80 px-1 py-0.5 text-center text-[11px] text-orange-900 placeholder:text-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                          />
+                        )}
+                      </div>
                     </td>
                   );
                 })}
