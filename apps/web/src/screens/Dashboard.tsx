@@ -1,7 +1,20 @@
 import { useState, useEffect, Fragment } from 'react';
-import type { PayPeriod, Employee, AttendanceRecord, PayslipResult } from '@brightem/shared';
+import type {
+  PayPeriod,
+  Employee,
+  AttendanceRecord,
+  PayslipResult,
+  MaterialReadiness,
+  UnitProgress,
+  UnitWorkItem,
+} from '@brightem/shared';
+import { UNIT_WORK_ITEMS } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+import type { TKey } from '../i18n';
+
+const FLOORS = [4, 5, 6, 7, 8, 9, 10, 11];
+const ROOMS_PER_FLOOR = 26;
 
 interface Props {
   period: PayPeriod | null;
@@ -35,8 +48,22 @@ export default function Dashboard({ period }: Props): JSX.Element {
   const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
   const [expandedCrew, setExpandedCrew] = useState<string | null>(null);
 
+  // Building-wide material readiness + unit progress (all floors), for the
+  // material-delivery and work-progress summaries. These are floor-based, not
+  // worker-based, so the crew filter does not apply to them.
+  const [materialData, setMaterialData] = useState<MaterialReadiness[]>([]);
+  const [unitData, setUnitData] = useState<UnitProgress[]>([]);
+  const [openMat, setOpenMat] = useState<UnitWorkItem | null>(null);
+  const [openWork, setOpenWork] = useState<UnitWorkItem | null>(null);
+
   useEffect(() => {
     api.getEmployees().then(setAllEmployees);
+    Promise.all(FLOORS.map((f) => api.getMaterialReadiness(f))).then((lists) =>
+      setMaterialData(lists.flat())
+    );
+    Promise.all(FLOORS.map((f) => api.getUnitProgress(f))).then((lists) =>
+      setUnitData(lists.flat())
+    );
   }, []);
 
   useEffect(() => {
@@ -160,6 +187,49 @@ export default function Dashboard({ period }: Props): JSX.Element {
     }
   };
 
+  // ---- Material delivery summary (per material, aggregated over floors) ----
+  const roomsPerMaterial = FLOORS.length * ROOMS_PER_FLOOR; // 208
+  const matSummary = UNIT_WORK_ITEMS.map((mat) => {
+    const perFloor = FLOORS.map((f) => {
+      const row = materialData.find((m) => m.material === mat && m.floor === f);
+      return {
+        floor: f,
+        stage: row?.stage ?? 'pending',
+        delivered: row?.deliveredRooms?.length ?? 0,
+        ongoing: row?.ongoingRooms?.length ?? 0,
+      };
+    });
+    const delivered = perFloor.reduce((s, p) => s + p.delivered, 0);
+    const ongoing = perFloor.reduce((s, p) => s + p.ongoing, 0);
+    return { mat, perFloor, delivered, ongoing, total: roomsPerMaterial };
+  });
+  const matDeliveredRooms = matSummary.reduce((s, m) => s + m.delivered, 0);
+  const matTotalRooms = UNIT_WORK_ITEMS.length * roomsPerMaterial; // 1872
+  const matPct = matTotalRooms ? (matDeliveredRooms / matTotalRooms) * 100 : 0;
+
+  // ---- Work progress summary (per work item, aggregated over floors) ----
+  const workSummary = UNIT_WORK_ITEMS.map((item) => {
+    const rows = unitData.filter((u) => u.workItem === item);
+    const perFloor = FLOORS.map((f) => {
+      const fr = rows.filter((r) => r.floor === f);
+      return {
+        floor: f,
+        done: fr.filter((r) => r.status === 'done').length,
+        inProgress: fr.filter((r) => r.status === 'in_progress').length,
+      };
+    });
+    const done = rows.filter((r) => r.status === 'done').length;
+    const inProgress = rows.filter((r) => r.status === 'in_progress').length;
+    return { item, perFloor, done, inProgress, total: roomsPerMaterial };
+  });
+  const workDoneRooms = workSummary.reduce((s, w) => s + w.done, 0);
+  const workTotalRooms = UNIT_WORK_ITEMS.length * roomsPerMaterial; // 1872
+  const workPct = workTotalRooms ? (workDoneRooms / workTotalRooms) * 100 : 0;
+
+  const matLabel = (m: UnitWorkItem) => t(`unit.wi.${m}` as TKey);
+  const stageLabel = (s: string) => t(`matr.stage.${s}` as TKey);
+  const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
+
   return (
     <div className="w-full">
       {/* Crew filter */}
@@ -219,6 +289,234 @@ export default function Dashboard({ period }: Props): JSX.Element {
             ₱ {Math.round(totalDeductions).toLocaleString()}
           </div>
           <div className="text-xs mt-1 down">{t('dash.deductNote')}</div>
+        </div>
+      </div>
+
+      {/* Overall Summary: material delivery + work progress */}
+      <div className="panel">
+        <h3 className="text-sm font-bold text-dark mb-3.5">
+          <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
+          {t('dash.overviewTitle')}
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="rounded-lg border border-line p-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-muted">📦 {t('dash.matDeliveryKpi')}</span>
+              <span className="text-2xl font-bold text-dark">{matPct.toFixed(1)}%</span>
+            </div>
+            <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-green-400 to-green-600"
+                style={{ width: `${matPct}%` }}
+              />
+            </div>
+            <div className="mt-1.5 text-xs text-muted">
+              {matDeliveredRooms.toLocaleString()} / {matTotalRooms.toLocaleString()}{' '}
+              {t('dash.roomsDeliveredShort')}
+            </div>
+          </div>
+          <div className="rounded-lg border border-line p-4">
+            <div className="flex items-baseline justify-between">
+              <span className="text-xs text-muted">🏗️ {t('dash.workProgressKpi')}</span>
+              <span className="text-2xl font-bold text-dark">{workPct.toFixed(1)}%</span>
+            </div>
+            <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-primary"
+                style={{ width: `${workPct}%` }}
+              />
+            </div>
+            <div className="mt-1.5 text-xs text-muted">
+              {workDoneRooms.toLocaleString()} / {workTotalRooms.toLocaleString()}{' '}
+              {t('dash.itemsDoneShort')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Material Delivery Status (per material, expandable) */}
+      <div className="panel">
+        <h3 className="text-sm font-bold text-dark mb-1">
+          <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
+          {t('dash.matDeliveryTitle')}
+        </h3>
+        <p className="text-xs text-muted mb-3">{t('dash.clickDetailHint')}</p>
+        <div className="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>{t('dash.thItem')}</th>
+                <th className="text-center">{t('dash.thDelivered')}</th>
+                <th className="text-center">{t('dash.thOngoing')}</th>
+                <th className="text-center">{t('dash.thProgress')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matSummary.map((m) => {
+                const open = openMat === m.mat;
+                const p = pct(m.delivered, m.total);
+                return (
+                  <Fragment key={m.mat}>
+                    <tr
+                      className="cursor-pointer"
+                      onClick={() => setOpenMat(open ? null : m.mat)}
+                    >
+                      <td className="font-medium">
+                        <span className="inline-block w-4 text-primary">
+                          {open ? '▾' : '▸'}
+                        </span>
+                        {matLabel(m.mat)}
+                      </td>
+                      <td className="text-center">
+                        {m.delivered} / {m.total}
+                      </td>
+                      <td className="text-center text-amber-700">{m.ongoing || '—'}</td>
+                      <td className="text-center">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                            <div
+                              className="h-full rounded-full bg-green-500"
+                              style={{ width: `${p}%` }}
+                            />
+                          </div>
+                          <span className="w-10 text-right text-xs font-semibold">{p}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr>
+                        <td colSpan={4} className="bg-blue-50/50 p-0">
+                          <div className="p-3">
+                            <table className="text-sm">
+                              <thead>
+                                <tr>
+                                  <th>{t('dash.thFloor')}</th>
+                                  <th className="text-center">{t('dash.thStage')}</th>
+                                  <th className="text-center">{t('dash.thDelivered')}</th>
+                                  <th className="text-center">{t('dash.thOngoing')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {m.perFloor.map((pf) => (
+                                  <tr key={pf.floor}>
+                                    <td>
+                                      {pf.floor}
+                                      {t('unit.floorSuffix')}
+                                    </td>
+                                    <td className="text-center">{stageLabel(pf.stage)}</td>
+                                    <td className="text-center">
+                                      {pf.delivered} / {ROOMS_PER_FLOOR}
+                                    </td>
+                                    <td className="text-center text-amber-700">
+                                      {pf.ongoing || '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Work Progress Status (per work item, expandable) */}
+      <div className="panel">
+        <h3 className="text-sm font-bold text-dark mb-1">
+          <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
+          {t('dash.workProgressTitle')}
+        </h3>
+        <p className="text-xs text-muted mb-3">{t('dash.clickDetailHint')}</p>
+        <div className="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th>{t('dash.thItem')}</th>
+                <th className="text-center">{t('dash.thDone')}</th>
+                <th className="text-center">{t('dash.thInProgress')}</th>
+                <th className="text-center">{t('dash.thProgress')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {workSummary.map((w) => {
+                const open = openWork === w.item;
+                const p = pct(w.done, w.total);
+                return (
+                  <Fragment key={w.item}>
+                    <tr
+                      className="cursor-pointer"
+                      onClick={() => setOpenWork(open ? null : w.item)}
+                    >
+                      <td className="font-medium">
+                        <span className="inline-block w-4 text-primary">
+                          {open ? '▾' : '▸'}
+                        </span>
+                        {matLabel(w.item)}
+                      </td>
+                      <td className="text-center">
+                        {w.done} / {w.total}
+                      </td>
+                      <td className="text-center text-amber-700">{w.inProgress || '—'}</td>
+                      <td className="text-center">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${p}%` }}
+                            />
+                          </div>
+                          <span className="w-10 text-right text-xs font-semibold">{p}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr>
+                        <td colSpan={4} className="bg-blue-50/50 p-0">
+                          <div className="p-3">
+                            <table className="text-sm">
+                              <thead>
+                                <tr>
+                                  <th>{t('dash.thFloor')}</th>
+                                  <th className="text-center">{t('dash.thDone')}</th>
+                                  <th className="text-center">{t('dash.thInProgress')}</th>
+                                  <th className="text-center">{t('dash.thProgress')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {w.perFloor.map((pf) => (
+                                  <tr key={pf.floor}>
+                                    <td>
+                                      {pf.floor}
+                                      {t('unit.floorSuffix')}
+                                    </td>
+                                    <td className="text-center">
+                                      {pf.done} / {ROOMS_PER_FLOOR}
+                                    </td>
+                                    <td className="text-center text-amber-700">
+                                      {pf.inProgress || '—'}
+                                    </td>
+                                    <td className="text-center">
+                                      {pct(pf.done, ROOMS_PER_FLOOR)}%
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
