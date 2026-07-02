@@ -191,6 +191,18 @@ const DICT = {
     en: 'Click a work item to cycle: Pending → In progress → Done.',
     ko: '공정을 클릭하면 대기 → 진행중 → 완료 순으로 바뀝니다.',
   },
+  'unit.multiHint': {
+    en: 'Tap rooms to select one or many, then set work status below.',
+    ko: '방을 눌러 한 개 또는 여러 개를 선택한 뒤 아래에서 작업 상태를 반영하세요.',
+  },
+  'unit.selectedRooms': { en: 'rooms selected', ko: '개 호실 선택됨' },
+  'unit.selectAll': { en: 'Select all', ko: '전체 선택' },
+  'unit.clearSel': { en: 'Clear', ko: '선택 해제' },
+  'unit.allItems': { en: 'All work items', ko: '전체 공정' },
+  'unit.batchHint': {
+    en: 'Pick a status to apply it to every selected room.',
+    ko: '상태를 누르면 선택한 모든 호실에 일괄 적용됩니다.',
+  },
   'unit.saveError': { en: 'Failed to save progress.', ko: '진행 상태 저장에 실패했습니다.' },
   'unit.st.pending': { en: 'Pending', ko: '대기' },
   'unit.st.in_progress': { en: 'In progress', ko: '진행중' },

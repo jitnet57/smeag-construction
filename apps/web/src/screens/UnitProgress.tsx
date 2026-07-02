@@ -29,9 +29,6 @@ const CHIP: Record<TaskProgress, string> = {
   done: 'bg-green-100 text-green-800 border-green-200',
 };
 
-const nextStatus = (s: TaskProgress): TaskProgress =>
-  s === 'pending' ? 'in_progress' : s === 'in_progress' ? 'done' : 'pending';
-
 const key = (room: number, item: UnitWorkItem) => `${room}-${item}`;
 
 export default function UnitProgress() {
@@ -39,7 +36,7 @@ export default function UnitProgress() {
   // Active tab: a floor number, or 'all' for the building overview.
   const [tab, setTab] = useState<number | 'all'>(FLOORS[0]);
   const [entries, setEntries] = useState<Record<string, TaskProgress>>({});
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number[]>([]);
 
   // Load progress for ALL floors once. Room numbers are globally unique
   // (401 vs 501 …), so a single map keyed by room-item is enough.
@@ -53,10 +50,15 @@ export default function UnitProgress() {
     });
   }, []);
 
-  // Clear any open room when switching tabs.
+  // Clear selection when switching tabs.
   useEffect(() => {
-    setSelected(null);
+    setSelected([]);
   }, [tab]);
+
+  const toggleRoom = (room: number) =>
+    setSelected((prev) =>
+      prev.includes(room) ? prev.filter((r) => r !== room) : [...prev, room]
+    );
 
   const statusOf = (room: number, item: UnitWorkItem): TaskProgress =>
     entries[key(room, item)] ?? 'pending';
@@ -64,13 +66,21 @@ export default function UnitProgress() {
   const roomDone = (room: number) =>
     UNIT_WORK_ITEMS.reduce((n, it) => n + (statusOf(room, it) === 'done' ? 1 : 0), 0);
 
-  const cycle = (room: number, item: UnitWorkItem) => {
-    const floor = Math.floor(room / 100);
-    const next = nextStatus(statusOf(room, item));
-    setEntries((prev) => ({ ...prev, [key(room, item)]: next }));
-    api
-      .saveUnitProgress({ floor, room, workItem: item, status: next })
-      .catch(() => alert(t('unit.saveError')));
+  // Batch-apply a status to a work item (or all items) across many rooms.
+  const applyStatus = (rooms: number[], items: readonly UnitWorkItem[], status: TaskProgress) => {
+    setEntries((prev) => {
+      const nx = { ...prev };
+      rooms.forEach((r) => items.forEach((it) => (nx[key(r, it)] = status)));
+      return nx;
+    });
+    const saves: Promise<void>[] = [];
+    rooms.forEach((r) => {
+      const floor = Math.floor(r / 100);
+      items.forEach((it) =>
+        saves.push(api.saveUnitProgress({ floor, room: r, workItem: it, status }))
+      );
+    });
+    Promise.all(saves).catch(() => alert(t('unit.saveError')));
   };
 
   // Roll-up for one floor.
@@ -103,12 +113,12 @@ export default function UnitProgress() {
 
   const roomEl = (room: number) => {
     const done = roomDone(room);
-    const isSel = room === selected;
+    const isSel = selected.includes(room);
     const full = done === UNIT_WORK_ITEMS.length;
     return (
       <button
         key={room}
-        onClick={() => setSelected(isSel ? null : room)}
+        onClick={() => toggleRoom(room)}
         className={`w-[74px] shrink-0 border rounded-md p-1.5 text-left transition-colors ${
           isSel
             ? 'border-primary ring-2 ring-primary/30'
@@ -305,37 +315,100 @@ export default function UnitProgress() {
           {/* Floor diagram (배치도) */}
           <div className="panel mb-4 overflow-x-auto">
             {renderDiagram(tab)}
-            <p className="text-xs text-muted mt-2">{t('unit.diagramHint')}</p>
+            <p className="text-xs text-muted mt-2">{t('unit.multiHint')}</p>
           </div>
 
-          {/* Room detail: click any work item to cycle pending → in progress → done */}
-          {selected !== null && (
+          {/* Selection toolbar */}
+          <div className="panel mb-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-sm font-bold text-dark">
+                {selected.length} {t('unit.selectedRooms')}
+                {selected.length > 0 && (
+                  <span className="ml-2 text-xs font-normal text-muted">
+                    ({[...selected].sort((a, b) => a - b).join(', ')})
+                  </span>
+                )}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    setSelected(
+                      Array.from({ length: ROOMS_PER_FLOOR }, (_, i) => tab * 100 + i + 1)
+                    )
+                  }
+                  className="text-xs px-3 py-1.5 rounded-md border border-line text-muted hover:bg-bg"
+                >
+                  {t('unit.selectAll')}
+                </button>
+                <button
+                  onClick={() => setSelected([])}
+                  disabled={selected.length === 0}
+                  className="text-xs px-3 py-1.5 rounded-md border border-line text-muted hover:bg-bg disabled:opacity-40"
+                >
+                  {t('unit.clearSel')}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Batch / detail panel — apply status to all selected rooms */}
+          {selected.length > 0 && (
             <div className="panel">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-1">
                 <h3 className="text-sm font-bold text-dark">
                   <span className="inline-block w-1 h-4 bg-primary rounded mr-2 align-middle" />
-                  {t('unit.roomDetail')} — {selected}
+                  {t('unit.roomDetail')}
+                  {selected.length === 1 ? ` — ${selected[0]}` : ` — ${selected.length}`}
                 </h3>
-                <span className="text-xs text-muted">
-                  {roomDone(selected)}/{UNIT_WORK_ITEMS.length} {t('unit.st.done')}
+              </div>
+              <p className="text-xs text-muted mb-3">{t('unit.batchHint')}</p>
+
+              {/* All-items quick row */}
+              <div className="flex items-center gap-2 flex-wrap py-2 border-b border-line">
+                <span className="w-24 shrink-0 text-xs font-bold text-dark">
+                  {t('unit.allItems')}
                 </span>
+                {(['pending', 'in_progress', 'done'] as TaskProgress[]).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => applyStatus(selected, UNIT_WORK_ITEMS, st)}
+                    className={`text-xs px-3 py-1 rounded-md border ${CHIP[st]}`}
+                  >
+                    {stLabel(st)}
+                  </button>
+                ))}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {UNIT_WORK_ITEMS.map((item) => {
-                  const s = statusOf(selected, item);
-                  return (
-                    <button
-                      key={item}
-                      onClick={() => cycle(selected, item)}
-                      className={`text-xs px-3 py-1.5 rounded-md border ${CHIP[s]}`}
-                    >
-                      <span className="font-medium">{wiLabel(item)}</span>
-                      <span className="ml-1.5 opacity-80">· {stLabel(s)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted mt-3">{t('unit.cycleHint')}</p>
+
+              {/* Per-work-item rows */}
+              {UNIT_WORK_ITEMS.map((item, i) => {
+                // Shared status only when every selected room agrees.
+                const statuses = selected.map((r) => statusOf(r, item));
+                const uniform = statuses.every((s) => s === statuses[0]) ? statuses[0] : null;
+                return (
+                  <div
+                    key={item}
+                    className="flex items-center gap-2 flex-wrap py-1.5 border-b border-line last:border-0"
+                  >
+                    <span className="w-24 shrink-0 text-xs text-dark">
+                      {i + 1}. {wiLabel(item)}
+                    </span>
+                    {(['pending', 'in_progress', 'done'] as TaskProgress[]).map((st) => {
+                      const active = uniform === st;
+                      return (
+                        <button
+                          key={st}
+                          onClick={() => applyStatus(selected, [item], st)}
+                          className={`text-xs px-2.5 py-1 rounded-md border ${
+                            active ? CHIP[st] + ' ring-2 ring-primary/30' : 'border-line text-muted hover:bg-bg'
+                          }`}
+                        >
+                          {stLabel(st)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>
