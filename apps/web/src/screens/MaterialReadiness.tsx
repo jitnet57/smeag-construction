@@ -6,6 +6,8 @@ import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
 
 const FLOORS = [4, 5, 6, 7, 8, 9, 10, 11];
+const ROOMS_PER_FLOOR = 26;
+const ROOM_OFFSETS = Array.from({ length: ROOMS_PER_FLOOR }, (_, i) => i + 1);
 
 // Cell background for each supply-pipeline stage.
 const CELL: Record<MaterialStage, string> = {
@@ -35,54 +37,97 @@ const STAGE_ICON: Record<MaterialStage, string> = {
 
 const key = (floor: number, material: UnitWorkItem) => `${floor}-${material}`;
 
-const nextStage = (s: MaterialStage): MaterialStage => {
-  const i = MATERIAL_STAGES.indexOf(s);
-  return MATERIAL_STAGES[(i + 1) % MATERIAL_STAGES.length];
+// Cycle used for the pre-delivery stages: pending → ordered → shipping → delivering.
+const advance = (s: MaterialStage): MaterialStage => {
+  const order: MaterialStage[] = ['pending', 'ordered', 'shipping', 'delivering'];
+  const i = order.indexOf(s);
+  return i < 0 || i === order.length - 1 ? 'delivering' : order[i + 1];
 };
+
+const isDelivery = (s: MaterialStage) => s === 'delivering' || s === 'delivered';
 
 export default function MaterialReadiness() {
   const { t } = useI18n();
   const [stages, setStages] = useState<Record<string, MaterialStage>>({});
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [rooms, setRooms] = useState<Record<string, number[]>>({});
+  // Key of the cell whose per-room delivery panel is open, or null.
+  const [openCell, setOpenCell] = useState<{ floor: number; material: UnitWorkItem } | null>(null);
 
   // Load readiness for ALL floors once.
   useEffect(() => {
     Promise.all(FLOORS.map((f) => api.getMaterialReadiness(f))).then((lists) => {
       const m: Record<string, MaterialStage> = {};
-      const n: Record<string, string> = {};
-      lists.flat().forEach((r) => {
-        m[key(r.floor, r.material)] = r.stage;
-        if (r.note) n[key(r.floor, r.material)] = r.note;
+      const r: Record<string, number[]> = {};
+      lists.flat().forEach((row) => {
+        m[key(row.floor, row.material)] = row.stage;
+        if (row.deliveredRooms && row.deliveredRooms.length)
+          r[key(row.floor, row.material)] = [...row.deliveredRooms];
       });
       setStages(m);
-      setNotes(n);
+      setRooms(r);
     });
   }, []);
 
   const stageOf = (floor: number, material: UnitWorkItem): MaterialStage =>
     stages[key(floor, material)] ?? 'pending';
 
-  const noteOf = (floor: number, material: UnitWorkItem): string =>
-    notes[key(floor, material)] ?? '';
+  const roomsOf = (floor: number, material: UnitWorkItem): number[] =>
+    rooms[key(floor, material)] ?? [];
 
-  const save = (floor: number, material: UnitWorkItem, stage: MaterialStage, note: string) => {
-    api.saveMaterialReadiness({ floor, material, stage, note }).catch(() => {
+  const save = (
+    floor: number,
+    material: UnitWorkItem,
+    stage: MaterialStage,
+    deliveredRooms: number[]
+  ) => {
+    api.saveMaterialReadiness({ floor, material, stage, deliveredRooms }).catch(() => {
       alert(t('matr.saveError'));
     });
   };
 
   const setStage = (floor: number, material: UnitWorkItem, stage: MaterialStage) => {
-    setStages((prev) => ({ ...prev, [key(floor, material)]: stage }));
-    save(floor, material, stage, noteOf(floor, material));
+    const k = key(floor, material);
+    // Leaving the delivery phase clears the room checklist.
+    const nextRooms = isDelivery(stage) ? roomsOf(floor, material) : [];
+    setStages((prev) => ({ ...prev, [k]: stage }));
+    setRooms((prev) => ({ ...prev, [k]: nextRooms }));
+    save(floor, material, stage, nextRooms);
   };
 
-  const setNote = (floor: number, material: UnitWorkItem, note: string) => {
-    setNotes((prev) => ({ ...prev, [key(floor, material)]: note }));
-    save(floor, material, stageOf(floor, material), note);
+  // Tap a cell: pre-delivery stages advance one step; delivery stages open the
+  // per-room panel instead of cycling.
+  const onCell = (floor: number, material: UnitWorkItem) => {
+    const s = stageOf(floor, material);
+    if (isDelivery(s)) {
+      setOpenCell({ floor, material });
+    } else {
+      const next = advance(s);
+      setStage(floor, material, next);
+      if (next === 'delivering') setOpenCell({ floor, material });
+    }
   };
 
-  const cycle = (floor: number, material: UnitWorkItem) =>
-    setStage(floor, material, nextStage(stageOf(floor, material)));
+  // Toggle a single room's delivered flag; stage follows the room count.
+  const toggleRoom = (floor: number, material: UnitWorkItem, off: number) => {
+    const k = key(floor, material);
+    const cur = roomsOf(floor, material);
+    const next = cur.includes(off)
+      ? cur.filter((x) => x !== off)
+      : [...cur, off].sort((a, b) => a - b);
+    const stage: MaterialStage = next.length === ROOMS_PER_FLOOR ? 'delivered' : 'delivering';
+    setRooms((prev) => ({ ...prev, [k]: next }));
+    setStages((prev) => ({ ...prev, [k]: stage }));
+    save(floor, material, stage, next);
+  };
+
+  const setAllRooms = (floor: number, material: UnitWorkItem, all: boolean) => {
+    const k = key(floor, material);
+    const next = all ? [...ROOM_OFFSETS] : [];
+    const stage: MaterialStage = all ? 'delivered' : 'delivering';
+    setRooms((prev) => ({ ...prev, [k]: next }));
+    setStages((prev) => ({ ...prev, [k]: stage }));
+    save(floor, material, stage, next);
+  };
 
   const matLabel = (m: UnitWorkItem) => t(`unit.wi.${m}` as TKey);
   const stageLabel = (s: MaterialStage) => t(`matr.stage.${s}` as TKey);
@@ -157,16 +202,17 @@ export default function MaterialReadiness() {
                 </th>
                 {FLOORS.map((f) => {
                   const s = stageOf(f, m);
+                  const done = roomsOf(f, m).length;
                   return (
                     <td key={f} className="border border-line p-1 align-top">
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => cycle(f, m)}
+                        onClick={() => onCell(f, m)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            cycle(f, m);
+                            onCell(f, m);
                           }
                         }}
                         title={`${matLabel(m)} · ${f}${t('unit.floorSuffix')} — ${stageLabel(s)}`}
@@ -174,17 +220,10 @@ export default function MaterialReadiness() {
                       >
                         <span className="block text-base leading-none">{STAGE_ICON[s]}</span>
                         <span className="block mt-0.5 leading-tight">{stageLabel(s)}</span>
-                        {s === 'delivering' && (
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={noteOf(f, m)}
-                            placeholder={t('matr.countPlaceholder')}
-                            onClick={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
-                            onChange={(e) => setNote(f, m, e.target.value)}
-                            className="mt-1 w-full rounded border border-orange-300 bg-white/80 px-1 py-0.5 text-center text-[11px] text-orange-900 placeholder:text-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-400"
-                          />
+                        {isDelivery(s) && (
+                          <span className="mt-1 block rounded bg-white/70 px-1 text-[11px] font-semibold leading-tight">
+                            {done}/{ROOMS_PER_FLOOR}
+                          </span>
                         )}
                       </div>
                     </td>
@@ -194,6 +233,117 @@ export default function MaterialReadiness() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Per-room delivery panel (opens for delivery-stage cells) */}
+      {openCell && (
+        <RoomPanel
+          floor={openCell.floor}
+          material={openCell.material}
+          matLabel={matLabel(openCell.material)}
+          delivered={roomsOf(openCell.floor, openCell.material)}
+          onToggle={(off) => toggleRoom(openCell.floor, openCell.material, off)}
+          onAll={(all) => setAllRooms(openCell.floor, openCell.material, all)}
+          onBack={() => {
+            setStage(openCell.floor, openCell.material, 'shipping');
+            setOpenCell(null);
+          }}
+          onClose={() => setOpenCell(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function RoomPanel(props: {
+  floor: number;
+  material: UnitWorkItem;
+  matLabel: string;
+  delivered: number[];
+  onToggle: (off: number) => void;
+  onAll: (all: boolean) => void;
+  onBack: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const { floor, matLabel, delivered, onToggle, onAll, onBack, onClose } = props;
+  const done = delivered.length;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-line px-5 py-3">
+          <div>
+            <div className="text-base font-semibold text-dark">
+              🛵 {matLabel} · {floor}
+              {t('unit.floorSuffix')}
+            </div>
+            <div className="text-xs text-muted mt-0.5">
+              {done}/{ROOMS_PER_FLOOR} {t('matr.roomsDelivered')}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-xl leading-none text-muted hover:text-dark px-1"
+            aria-label={t('matr.close')}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Room grid */}
+        <div className="px-5 py-4">
+          <p className="mb-3 text-xs text-muted">{t('matr.deliverHint')}</p>
+          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-7">
+            {ROOM_OFFSETS.map((off) => {
+              const on = delivered.includes(off);
+              return (
+                <button
+                  key={off}
+                  onClick={() => onToggle(off)}
+                  className={`rounded border py-2 text-xs font-semibold transition-colors ${
+                    on
+                      ? 'border-green-500 bg-green-500 text-white'
+                      : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {floor * 100 + off}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => onAll(true)}
+              className="rounded-md border border-green-500 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100"
+            >
+              {t('matr.allRooms')}
+            </button>
+            <button
+              onClick={() => onAll(false)}
+              className="rounded-md border border-line bg-white px-3 py-1.5 text-xs font-semibold text-muted hover:bg-gray-50"
+            >
+              {t('matr.clearRooms')}
+            </button>
+          </div>
+          <button
+            onClick={onBack}
+            className="rounded-md border border-amber-400 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+          >
+            ◀ {t('matr.backToShipping')}
+          </button>
+        </div>
       </div>
     </div>
   );

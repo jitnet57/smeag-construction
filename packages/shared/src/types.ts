@@ -307,6 +307,7 @@ export interface MaterialReadiness {
   material: UnitWorkItem;
   stage: MaterialStage;
   note?: string;        // free memo, e.g. delivered-room count during "delivering"
+  deliveredRooms?: number[]; // room offsets (1..26) delivered during "delivering"/"delivered"
 }
 
 // ---- API contract ----------------------------------------------------------
