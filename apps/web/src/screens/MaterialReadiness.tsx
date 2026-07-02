@@ -152,6 +152,25 @@ export default function MaterialReadiness() {
     commit(floor, material, del.sort((a, b) => a - b), ong.sort((a, b) => a - b), det);
   };
 
+  // Batch version: apply one status to MANY rooms in a single computation and
+  // commit. Looping setRoomStatus() per room reads stale closure state each
+  // iteration and only the last change sticks, so batch edits must go here.
+  const setRoomsStatus = (
+    floor: number,
+    material: UnitWorkItem,
+    offs: number[],
+    status: RoomStatus
+  ) => {
+    const set = new Set(offs);
+    let del = roomsOf(floor, material).filter((x) => !set.has(x));
+    let ong = ongoingOf(floor, material).filter((x) => !set.has(x));
+    let det = detailsOf(floor, material);
+    if (status === 'delivered') del = [...del, ...offs];
+    else if (status === 'ongoing') ong = [...ong, ...offs];
+    else det = det.filter((d) => !set.has(d.room)); // pending clears details
+    commit(floor, material, del.sort((a, b) => a - b), ong.sort((a, b) => a - b), det);
+  };
+
   // Set/replace one room's pieces + memo. Entering data promotes a pending
   // room to "ongoing" (but never downgrades a delivered room).
   const setRoomDetail = (
@@ -173,6 +192,34 @@ export default function MaterialReadiness() {
     let ong = ongoingOf(floor, material);
     if (hasData && !del.includes(off) && !ong.includes(off))
       ong = [...ong, off].sort((a, b) => a - b);
+    commit(floor, material, del, ong, det);
+  };
+
+  // Batch version: set the same pieces + memo on MANY rooms in one commit.
+  const setRoomsDetail = (
+    floor: number,
+    material: UnitWorkItem,
+    offs: number[],
+    pieces: number,
+    memo: string
+  ) => {
+    const set = new Set(offs);
+    const cur = detailsOf(floor, material).filter((d) => !set.has(d.room));
+    const trimmed = memo.trim();
+    const hasData = pieces > 0 || trimmed.length > 0;
+    const det = hasData
+      ? [
+          ...cur,
+          ...offs.map((room) => ({ room, pieces, memo: trimmed || undefined })),
+        ].sort((a, b) => a.room - b.room)
+      : cur;
+
+    const del = roomsOf(floor, material);
+    let ong = ongoingOf(floor, material);
+    if (hasData) {
+      const add = offs.filter((o) => !del.includes(o) && !ong.includes(o));
+      if (add.length) ong = [...ong, ...add].sort((a, b) => a - b);
+    }
     commit(floor, material, del, ong, det);
   };
 
@@ -347,9 +394,15 @@ export default function MaterialReadiness() {
           onStatus={(off, status) =>
             setRoomStatus(openCell.floor, openCell.material, off, status)
           }
+          onStatusMany={(offs, status) =>
+            setRoomsStatus(openCell.floor, openCell.material, offs, status)
+          }
           onAll={(all) => setAllRooms(openCell.floor, openCell.material, all)}
           onDetail={(off, pieces, memo) =>
             setRoomDetail(openCell.floor, openCell.material, off, pieces, memo)
+          }
+          onDetailMany={(offs, pieces, memo) =>
+            setRoomsDetail(openCell.floor, openCell.material, offs, pieces, memo)
           }
           onPhoto={(off) => setPhotoRoom(openCell.floor * 100 + off)}
           onBack={() => {
@@ -379,14 +432,16 @@ function RoomPanel(props: {
   ongoing: number[];
   details: RoomDelivery[];
   onStatus: (off: number, status: 'pending' | 'ongoing' | 'delivered') => void;
+  onStatusMany: (offs: number[], status: 'pending' | 'ongoing' | 'delivered') => void;
   onAll: (all: boolean) => void;
   onDetail: (off: number, pieces: number, memo: string) => void;
+  onDetailMany: (offs: number[], pieces: number, memo: string) => void;
   onPhoto: (off: number) => void;
   onBack: () => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { floor, matLabel, delivered, ongoing, details, onStatus, onAll, onDetail, onPhoto, onBack, onClose } =
+  const { floor, matLabel, delivered, ongoing, details, onStatus, onStatusMany, onAll, onDetail, onDetailMany, onPhoto, onBack, onClose } =
     props;
   const done = delivered.length;
   const onGoing = ongoing.length;
@@ -417,15 +472,19 @@ function RoomPanel(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selKey]);
 
-  // Apply pieces/memo to every selected room.
+  // Apply pieces/memo to every selected room in one commit.
   const commit = (pieces: string, memo: string) => {
+    if (sel.length === 0) return;
     const p = Math.max(0, Math.floor(Number(pieces) || 0));
-    for (const off of sel) onDetail(off, p, memo);
+    if (sel.length === 1) onDetail(sel[0], p, memo);
+    else onDetailMany(sel, p, memo);
   };
 
-  // Apply a status to every selected room.
+  // Apply a status to every selected room in one commit.
   const applyStatus = (status: 'pending' | 'ongoing' | 'delivered') => {
-    for (const off of sel) onStatus(off, status);
+    if (sel.length === 0) return;
+    if (sel.length === 1) onStatus(sel[0], status);
+    else onStatusMany(sel, status);
   };
 
   const allDelivered = sel.length > 0 && sel.every((o) => delivered.includes(o));
