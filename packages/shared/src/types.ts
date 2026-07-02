@@ -180,6 +180,7 @@ export const SKILL_KEYS = [
   "roofing",
   "fire_protection",
   "wall_panel",
+  "fire_chase_seal",
 ] as const;
 
 export type SkillKey = (typeof SKILL_KEYS)[number];

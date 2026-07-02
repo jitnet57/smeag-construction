@@ -61,6 +61,10 @@ const DICT = {
   'skill.roofing': { en: 'Roof framing/roofing', ko: '지붕 골조/방수' },
   'skill.fire_protection': { en: 'Fire protection', ko: '소방' },
   'skill.wall_panel': { en: 'Interior wall panels', ko: '내부 벽 패널' },
+  'skill.fire_chase_seal': {
+    en: 'Fire chase sealing/concreting (restroom)',
+    ko: '화장실 소방배관구(파이어체이스) 실링/콘크리트',
+  },
 
   // --- Task assignment ------------------------------------------------------
   'task.title': {
