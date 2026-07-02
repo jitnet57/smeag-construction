@@ -54,6 +54,12 @@ const DICT = {
   'skill.paint': { en: 'Paint', ko: '페인트' },
   'skill.scaffolding': { en: 'Scaffolding', ko: '스카폴딩' },
   'skill.pipe': { en: 'Pipe', ko: '파이프' },
+  'skill.window_frame': { en: 'Window frame', ko: '창호 프레임' },
+  'skill.window_glass': { en: 'Window glass', ko: '유리' },
+  'skill.plumbing': { en: 'Plumbing (restrooms)', ko: '배관(화장실)' },
+  'skill.roofing': { en: 'Roof framing/roofing', ko: '지붕 골조/방수' },
+  'skill.fire_protection': { en: 'Fire protection', ko: '소방' },
+  'skill.wall_panel': { en: 'Interior wall panels', ko: '내부 벽 패널' },
 
   // --- Task assignment ------------------------------------------------------
   'task.title': {

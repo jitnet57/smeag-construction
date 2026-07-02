@@ -174,6 +174,12 @@ export const SKILL_KEYS = [
   "paint",
   "scaffolding",
   "pipe",
+  "window_frame",
+  "window_glass",
+  "plumbing",
+  "roofing",
+  "fire_protection",
+  "wall_panel",
 ] as const;
 
 export type SkillKey = (typeof SKILL_KEYS)[number];
@@ -276,6 +282,28 @@ export interface UnitProgress {
   room: number;         // e.g. 401
   workItem: UnitWorkItem;
   status: TaskProgress; // pending | in_progress | done
+}
+
+// ---- Material readiness (supply pipeline per floor) ------------------------
+
+/**
+ * Supply pipeline stage for a material on a floor:
+ *   pending   → not ordered yet
+ *   ordered   → purchased (구매)
+ *   shipping  → in transit (배송)
+ *   delivered → delivered to the rooms (각 방 배달)
+ */
+export const MATERIAL_STAGES = ["pending", "ordered", "shipping", "delivered"] as const;
+export type MaterialStage = (typeof MATERIAL_STAGES)[number];
+
+/**
+ * Readiness of one material (same catalog as UNIT_WORK_ITEMS) for one floor.
+ * Only touched (non-pending) rows need to be stored; absent defaults to pending.
+ */
+export interface MaterialReadiness {
+  floor: number;        // 4..11
+  material: UnitWorkItem;
+  stage: MaterialStage;
 }
 
 // ---- API contract ----------------------------------------------------------
