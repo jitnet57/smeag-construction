@@ -392,24 +392,46 @@ function RoomPanel(props: {
   const onGoing = ongoing.length;
   const totalPieces = details.reduce((n, d) => n + (d.pieces || 0), 0);
 
-  // Room currently open in the pieces/memo editor.
-  const [sel, setSel] = useState<number | null>(null);
+  // Rooms currently selected in the pieces/memo editor (multi-select).
+  const [sel, setSel] = useState<number[]>([]);
   const detailOf = (off: number) => details.find((d) => d.room === off);
   const [pieceInput, setPieceInput] = useState('');
   const [memoInput, setMemoInput] = useState('');
 
-  // Load the editor fields whenever the selected room changes.
-  useEffect(() => {
-    if (sel === null) return;
-    const d = details.find((x) => x.room === sel);
-    setPieceInput(d && d.pieces ? String(d.pieces) : '');
-    setMemoInput(d?.memo ?? '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sel]);
+  const toggleSel = (off: number) =>
+    setSel((prev) => (prev.includes(off) ? prev.filter((x) => x !== off) : [...prev, off]));
 
-  const commit = (off: number, pieces: string, memo: string) => {
-    onDetail(off, Math.max(0, Math.floor(Number(pieces) || 0)), memo);
+  const selKey = sel.join(',');
+  // Load the editor fields whenever the selection changes. When exactly one
+  // room is selected, prefill from its saved detail; for multiple rooms leave
+  // the fields blank so a batch value can be applied to all of them.
+  useEffect(() => {
+    if (sel.length === 1) {
+      const d = details.find((x) => x.room === sel[0]);
+      setPieceInput(d && d.pieces ? String(d.pieces) : '');
+      setMemoInput(d?.memo ?? '');
+    } else {
+      setPieceInput('');
+      setMemoInput('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selKey]);
+
+  // Apply pieces/memo to every selected room.
+  const commit = (pieces: string, memo: string) => {
+    const p = Math.max(0, Math.floor(Number(pieces) || 0));
+    for (const off of sel) onDetail(off, p, memo);
   };
+
+  // Apply a status to every selected room.
+  const applyStatus = (status: 'pending' | 'ongoing' | 'delivered') => {
+    for (const off of sel) onStatus(off, status);
+  };
+
+  const allDelivered = sel.length > 0 && sel.every((o) => delivered.includes(o));
+  const allOngoing = sel.length > 0 && sel.every((o) => ongoing.includes(o));
+  const allPending =
+    sel.length > 0 && sel.every((o) => !delivered.includes(o) && !ongoing.includes(o));
 
   return (
     <div
@@ -458,11 +480,11 @@ function RoomPanel(props: {
               const on = delivered.includes(off);
               const ong = ongoing.includes(off);
               const d = detailOf(off);
-              const isSel = sel === off;
+              const isSel = sel.includes(off);
               return (
                 <div key={off} className="relative">
                   <button
-                    onClick={() => setSel(isSel ? null : off)}
+                    onClick={() => toggleSel(off)}
                     className={`w-full rounded border py-2 text-xs font-semibold transition-colors ${
                       isSel ? 'ring-2 ring-primary ' : ''
                     }${
@@ -496,18 +518,26 @@ function RoomPanel(props: {
             })}
           </div>
 
-          {/* Per-room pieces + memo editor */}
-          {sel !== null && (
+          {/* Selected-room pieces + memo editor (applies to all selected) */}
+          {sel.length > 0 && (
             <div className="mt-4 rounded-lg border border-line bg-gray-50 p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-dark">
-                  {t('matr.room')} {floor * 100 + sel}
+                  {sel.length === 1
+                    ? `${t('matr.room')} ${floor * 100 + sel[0]}`
+                    : `${sel.length} ${t('matr.roomsSelected')}`}
+                  <button
+                    onClick={() => setSel([])}
+                    className="ml-2 text-[11px] font-normal text-muted underline hover:text-dark"
+                  >
+                    {t('matr.clearSelection')}
+                  </button>
                 </span>
                 <div className="flex gap-1">
                   <button
-                    onClick={() => onStatus(sel, 'pending')}
+                    onClick={() => applyStatus('pending')}
                     className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
-                      !delivered.includes(sel) && !ongoing.includes(sel)
+                      allPending
                         ? 'border-gray-400 bg-gray-200 text-gray-800'
                         : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-100'
                     }`}
@@ -515,9 +545,9 @@ function RoomPanel(props: {
                     {t('matr.notDelivered')}
                   </button>
                   <button
-                    onClick={() => onStatus(sel, 'ongoing')}
+                    onClick={() => applyStatus('ongoing')}
                     className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
-                      ongoing.includes(sel)
+                      allOngoing
                         ? 'border-amber-500 bg-amber-400 text-white'
                         : 'border-gray-300 bg-white text-gray-600 hover:bg-amber-50'
                     }`}
@@ -525,9 +555,9 @@ function RoomPanel(props: {
                     🛵 {t('matr.ongoing')}
                   </button>
                   <button
-                    onClick={() => onStatus(sel, 'delivered')}
+                    onClick={() => applyStatus('delivered')}
                     className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
-                      delivered.includes(sel)
+                      allDelivered
                         ? 'border-green-500 bg-green-500 text-white'
                         : 'border-gray-300 bg-white text-gray-600 hover:bg-green-50'
                     }`}
@@ -536,6 +566,9 @@ function RoomPanel(props: {
                   </button>
                 </div>
               </div>
+              {sel.length > 1 && (
+                <p className="mb-2 text-[11px] text-muted">{t('matr.batchHint')}</p>
+              )}
               <div className="flex flex-wrap items-end gap-3">
                 <label className="flex flex-col text-xs text-muted">
                   {t('matr.pieces')}
@@ -545,7 +578,7 @@ function RoomPanel(props: {
                     inputMode="numeric"
                     value={pieceInput}
                     onChange={(e) => setPieceInput(e.target.value)}
-                    onBlur={() => commit(sel, pieceInput, memoInput)}
+                    onBlur={() => commit(pieceInput, memoInput)}
                     className="mt-1 w-24 rounded border border-line px-2 py-1.5 text-sm text-dark"
                     placeholder="0"
                   />
@@ -556,7 +589,7 @@ function RoomPanel(props: {
                     type="text"
                     value={memoInput}
                     onChange={(e) => setMemoInput(e.target.value)}
-                    onBlur={() => commit(sel, pieceInput, memoInput)}
+                    onBlur={() => commit(pieceInput, memoInput)}
                     className="mt-1 w-full rounded border border-line px-2 py-1.5 text-sm text-dark"
                     placeholder={t('matr.memoPlaceholder')}
                   />

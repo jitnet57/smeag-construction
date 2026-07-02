@@ -247,8 +247,8 @@ const DICT = {
   'matr.roomsDelivered': { en: 'rooms delivered', ko: '개 방 배달 완료' },
   'matr.totalRoomsDelivered': { en: 'Rooms delivered', ko: '방 배달 완료' },
   'matr.deliverHint': {
-    en: 'Tap a room to enter pieces delivered and a memo. Tap 📷 on a room to add photos. All rooms delivered = Delivered.',
-    ko: '방을 누르면 배달 수량과 메모를 입력할 수 있습니다. 방의 📷 를 누르면 사진을 추가할 수 있습니다. 모든 방이 배달되면 “방 배달” 완료로 표시됩니다.',
+    en: 'Tap rooms to select (you can pick several). Set their status and enter pieces + a memo. Tap 📷 on a room to add photos. All rooms delivered = Delivered.',
+    ko: '방을 눌러 선택하세요(여러 개 선택 가능). 선택한 방의 상태를 정하고 수량과 메모를 입력하세요. 방의 📷 를 누르면 사진을 추가할 수 있습니다. 모든 방이 배달되면 완료로 표시됩니다.',
   },
   'matr.room': { en: 'Room', ko: '방' },
   'matr.pieces': { en: 'Pieces delivered', ko: '배달 수량(개)' },
@@ -259,6 +259,12 @@ const DICT = {
   'matr.delivered': { en: 'Delivered', ko: '배달완료' },
   'matr.notDelivered': { en: 'Not yet', ko: '미배달' },
   'matr.ongoing': { en: 'On the way', ko: '배달중' },
+  'matr.roomsSelected': { en: 'rooms selected', ko: '개 방 선택됨' },
+  'matr.clearSelection': { en: 'Clear selection', ko: '선택 해제' },
+  'matr.batchHint': {
+    en: 'The status and values you set apply to all selected rooms.',
+    ko: '설정한 상태와 값은 선택한 모든 방에 적용됩니다.',
+  },
   'matr.allRooms': { en: 'All rooms', ko: '전체 방' },
   'matr.clearRooms': { en: 'Clear', ko: '해제' },
   'matr.backToShipping': { en: 'Back to shipping', ko: '배송 단계로' },
