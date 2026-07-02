@@ -125,13 +125,20 @@ export default function UnitProgress() {
           </span>
         </div>
         <div className="grid grid-cols-3 gap-0.5">
-          {UNIT_WORK_ITEMS.map((item) => (
-            <span
-              key={item}
-              title={`${wiLabel(item)}: ${stLabel(statusOf(room, item))}`}
-              className={`w-full aspect-square rounded-sm ${DOT[statusOf(room, item)]}`}
-            />
-          ))}
+          {UNIT_WORK_ITEMS.map((item, i) => {
+            const s = statusOf(room, item);
+            return (
+              <span
+                key={item}
+                title={`${i + 1}. ${wiLabel(item)}: ${stLabel(s)}`}
+                className={`w-full aspect-square rounded-sm flex items-center justify-center text-[8px] font-semibold leading-none ${
+                  DOT[s]
+                } ${s === 'pending' ? 'text-gray-500' : 'text-white'}`}
+              >
+                {i + 1}
+              </span>
+            );
+          })}
         </div>
       </button>
     );
