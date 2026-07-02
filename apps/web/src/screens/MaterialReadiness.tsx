@@ -482,11 +482,11 @@ function RoomPanel(props: {
               const d = detailOf(off);
               const isSel = sel.includes(off);
               return (
-                <div key={off} className="relative">
+                <div key={off} className={`relative ${isSel ? 'z-10' : ''}`}>
                   <button
                     onClick={() => toggleSel(off)}
-                    className={`w-full rounded border py-2 text-xs font-semibold transition-colors ${
-                      isSel ? 'ring-2 ring-primary ' : ''
+                    className={`w-full rounded border py-2 text-xs font-semibold outline-none transition-colors ${
+                      isSel ? 'ring-2 ring-offset-2 ring-blue-600 border-blue-600 ' : ''
                     }${
                       on
                         ? 'border-green-500 bg-green-500 text-white'
@@ -502,6 +502,11 @@ function RoomPanel(props: {
                       </span>
                     )}
                   </button>
+                  {isSel && (
+                    <span className="pointer-events-none absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold leading-none text-white shadow">
+                      ✓
+                    </span>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

@@ -263,8 +263,8 @@ const DICT = {
   'matr.roomsDelivered': { en: 'rooms delivered', ko: '개 방 배달 완료' },
   'matr.totalRoomsDelivered': { en: 'Rooms delivered', ko: '방 배달 완료' },
   'matr.deliverHint': {
-    en: 'Tap rooms to select (you can pick several). Set their status and enter pieces + a memo. Tap 📷 on a room to add photos. All rooms delivered = Delivered.',
-    ko: '방을 눌러 선택하세요(여러 개 선택 가능). 선택한 방의 상태를 정하고 수량과 메모를 입력하세요. 방의 📷 를 누르면 사진을 추가할 수 있습니다. 모든 방이 배달되면 완료로 표시됩니다.',
+    en: 'Tap rooms to select (several at once); tap again to deselect. Set their status and enter pieces + a memo. Tap 📷 on a room to add photos. All rooms delivered = Delivered.',
+    ko: '방을 눌러 선택하세요(여러 개 동시 선택 가능). 다시 누르면 선택 해제됩니다. 선택한 방의 상태를 정하고 수량과 메모를 입력하세요. 방의 📷 를 누르면 사진을 추가할 수 있습니다. 모든 방이 배달되면 완료로 표시됩니다.',
   },
   'matr.room': { en: 'Room', ko: '방' },
   'matr.pieces': { en: 'Pieces delivered', ko: '배달 수량(개)' },
