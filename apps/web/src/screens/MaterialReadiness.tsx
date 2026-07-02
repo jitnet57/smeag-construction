@@ -151,6 +151,18 @@ export default function MaterialReadiness() {
 
   const cellCount = FLOORS.length * UNIT_WORK_ITEMS.length;
 
+  // Building-wide room-delivery totals (how many individual rooms delivered).
+  const roomsDelivered = useMemo(() => {
+    let n = 0;
+    FLOORS.forEach((f) =>
+      UNIT_WORK_ITEMS.forEach((m) => {
+        n += (rooms[key(f, m)] ?? []).length;
+      })
+    );
+    return n;
+  }, [rooms]);
+  const totalRooms = cellCount * ROOMS_PER_FLOOR;
+
   return (
     <div className="space-y-4">
       <div>
@@ -171,6 +183,14 @@ export default function MaterialReadiness() {
             </span>
           </div>
         ))}
+        {/* Building-wide room-delivery total */}
+        <div className="ml-auto flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-1 text-sm">
+          <span>🛵</span>
+          <span className="font-semibold text-green-800">{t('matr.totalRoomsDelivered')}</span>
+          <span className="font-bold text-green-700">
+            {roomsDelivered}/{totalRooms}
+          </span>
+        </div>
       </div>
 
       <p className="text-xs text-muted">{t('matr.hint')}</p>

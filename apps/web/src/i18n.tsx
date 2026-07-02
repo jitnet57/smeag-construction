@@ -245,6 +245,7 @@ const DICT = {
   'matr.countPlaceholder': { en: 'qty / memo', ko: '개수/메모' },
   'matr.saveError': { en: 'Failed to save.', ko: '저장에 실패했습니다.' },
   'matr.roomsDelivered': { en: 'rooms delivered', ko: '개 방 배달 완료' },
+  'matr.totalRoomsDelivered': { en: 'Rooms delivered', ko: '방 배달 완료' },
   'matr.deliverHint': {
     en: 'Tap each room to mark it delivered. All rooms delivered = Delivered.',
     ko: '배달된 방을 눌러 표시하세요. 모든 방이 배달되면 “방 배달” 완료로 표시됩니다.',
