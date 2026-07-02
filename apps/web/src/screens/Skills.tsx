@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { SKILL_KEYS } from '@brightem/shared';
 import type { Employee, EmployeeSkill } from '@brightem/shared';
 import { api } from '../api';
@@ -31,6 +31,13 @@ export default function Skills() {
   const [sortCol, setSortCol] = useState<SortCol>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
+  // Editable ID info (age / id number) and photo URLs, keyed by employee id.
+  const [ages, setAges] = useState<Record<string, string>>({});
+  const [idNos, setIdNos] = useState<Record<string, string>>({});
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [uploadFor, setUploadFor] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     let alive = true;
     Promise.all([api.getEmployees(), api.getEmployeeSkills()]).then(([emps, skills]) => {
@@ -41,11 +48,48 @@ export default function Skills() {
         map[keyOf(s.employeeId, s.skillKey)] = s.level;
       });
       setLevels(map);
+      const a: Record<string, string> = {};
+      const n: Record<string, string> = {};
+      const p: Record<string, string> = {};
+      emps.forEach((e) => {
+        if (e.age != null) a[e.id] = String(e.age);
+        if (e.idNo) n[e.id] = e.idNo;
+        if (e.photoUrl) p[e.id] = e.photoUrl;
+      });
+      setAges(a);
+      setIdNos(n);
+      setPhotos(p);
     });
     return () => {
       alive = false;
     };
   }, []);
+
+  // Persist age/id changes for one employee (called on blur).
+  const saveInfo = (empId: string, patch: { age?: number | null; idNo?: string | null }) => {
+    api.updateEmployeeInfo(empId, patch).catch(() => alert(t('skill.saveError')));
+  };
+
+  // Trigger the hidden file picker for a given worker's photo.
+  const pickPhoto = (empId: string) => {
+    setUploadFor(empId);
+    fileRef.current?.click();
+  };
+
+  const onPhotoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !uploadFor) return;
+    const empId = uploadFor;
+    try {
+      const url = await api.uploadEmployeePhoto(empId, file);
+      setPhotos((prev) => ({ ...prev, [empId]: url }));
+    } catch {
+      alert(t('skill.photoError'));
+    } finally {
+      setUploadFor(null);
+    }
+  };
 
   const getLevel = (empId: string, skill: string) => levels[keyOf(empId, skill)] ?? 0;
 
@@ -144,6 +188,110 @@ export default function Skills() {
     downloadCsv(`skills_${crewTag}.csv`, [header, ...body]);
   };
 
+  // Build a printable A4-landscape sign-up sheet (one page per crew) with each
+  // worker's photo, name, age and ID, plus blank skill columns to fill by hand.
+  const handlePrint = () => {
+    const esc = (s: string) =>
+      String(s).replace(
+        /[&<>"']/g,
+        (c) =>
+          (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }) as Record<
+            string,
+            string
+          >)[c]
+      );
+
+    const groups = new Map<string, Employee[]>();
+    sorted.forEach((e) => {
+      const arr = groups.get(e.crewId) ?? [];
+      arr.push(e);
+      groups.set(e.crewId, arr);
+    });
+
+    const skillHead = SKILL_KEYS.map(
+      (k) => `<th class="sk">${esc(t(`skill.${k}` as TKey))}</th>`
+    ).join('');
+
+    const pages = Array.from(groups.entries())
+      .map(([crew, list]) => {
+        const rows = list
+          .map((e, i) => {
+            const photo = photos[e.id];
+            const cell = photo
+              ? `<img class="ph" src="${esc(photo)}" />`
+              : `<div class="ph ph-empty"></div>`;
+            return `<tr>
+              <td class="num">${i + 1}</td>
+              <td class="pht">${cell}</td>
+              <td class="nm">${esc(e.name)}</td>
+              <td class="age">${esc(ages[e.id] ?? '')}</td>
+              <td class="idn">${esc(idNos[e.id] ?? '')}</td>
+              ${SKILL_KEYS.map(() => '<td class="sk"></td>').join('')}
+            </tr>`;
+          })
+          .join('');
+        return `<section class="page">
+          <h1>${esc(t('skill.thCrew'))}: ${esc(crew)} <span class="cnt">(${list.length})</span></h1>
+          <table>
+            <thead><tr>
+              <th class="num">#</th>
+              <th class="pht">${esc(t('skill.thPhoto'))}</th>
+              <th class="nm">${esc(t('skill.thName'))}</th>
+              <th class="age">${esc(t('skill.thAge'))}</th>
+              <th class="idn">${esc(t('skill.thId'))}</th>
+              ${skillHead}
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </section>`;
+      })
+      .join('');
+
+    const html = `<!doctype html><html><head><meta charset="utf-8" />
+      <title>${esc(t('skill.signupTitle'))}</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; color: #15304e; }
+        .bar { padding: 10px 14px; display: flex; gap: 12px; align-items: center; background: #f1f5f9; }
+        .bar button { background: #2E75B6; color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+        .bar span { font-size: 12px; color: #475569; }
+        .page { background: #fff; padding: 6mm 8mm; }
+        h1 { font-size: 15px; margin: 0 0 6px; }
+        h1 .cnt { font-size: 12px; color: #64748b; font-weight: 400; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #94a3b8; padding: 2px 4px; font-size: 10px; text-align: center; }
+        th { background: #e2e8f0; }
+        td.nm, th.nm { text-align: left; white-space: nowrap; }
+        .num { width: 22px; }
+        .pht { width: 44px; }
+        .age { width: 34px; }
+        .idn { width: 90px; }
+        .sk { width: 26px; }
+        img.ph { width: 34px; height: 42px; object-fit: cover; display: block; margin: 0 auto; }
+        .ph-empty { width: 34px; height: 42px; margin: 0 auto; background: repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 4px,#e2e8f0 4px,#e2e8f0 8px); }
+        @media print {
+          .no-print { display: none; }
+          .page { page-break-after: always; padding: 0; }
+          .page:last-child { page-break-after: auto; }
+          @page { size: A4 landscape; margin: 8mm; }
+        }
+      </style></head><body>
+      <div class="bar no-print">
+        <button onclick="window.print()">🖨️ ${esc(t('skill.printBtn'))}</button>
+        <span>${esc(t('skill.printHint'))}</span>
+      </div>
+      ${pages}
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) {
+      alert(t('skill.popupBlocked'));
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <div className="w-full">
       {/* Toolbar */}
@@ -176,6 +324,9 @@ export default function Skills() {
             {dirty.size} {t('skill.unsaved')}
           </span>
         )}
+        <button className="btn gray" onClick={handlePrint}>
+          {t('skill.printSignup')}
+        </button>
         <button className="btn gray" onClick={handleExport}>
           {t('skill.export')}
         </button>
@@ -183,6 +334,16 @@ export default function Skills() {
           {saving ? t('skill.saving') : t('skill.save')}
         </button>
       </div>
+
+      {/* Hidden picker used for uploading a worker's ID photo. */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={onPhotoFile}
+      />
 
       <div className="panel">
         <h3 className="text-sm font-bold text-dark mb-3">
@@ -194,6 +355,7 @@ export default function Skills() {
           <table className="text-sm">
             <thead>
               <tr>
+                <th className="text-center whitespace-nowrap">{t('skill.thPhoto')}</th>
                 <th
                   onClick={() => toggleSort('name')}
                   className="text-left sticky left-0 bg-white cursor-pointer select-none whitespace-nowrap hover:text-primary"
@@ -201,6 +363,8 @@ export default function Skills() {
                   {t('skill.thName')}
                   {arrow('name')}
                 </th>
+                <th className="text-center whitespace-nowrap">{t('skill.thAge')}</th>
+                <th className="text-center whitespace-nowrap">{t('skill.thId')}</th>
                 <th
                   onClick={() => toggleSort('crew')}
                   className="text-center cursor-pointer select-none whitespace-nowrap hover:text-primary"
@@ -230,7 +394,54 @@ export default function Skills() {
             <tbody>
               {sorted.map((e) => (
                 <tr key={e.id}>
+                  <td className="text-center p-1">
+                    <button
+                      onClick={() => pickPhoto(e.id)}
+                      title={t('skill.photoTitle')}
+                      className="mx-auto block h-11 w-9 overflow-hidden rounded border border-line bg-gray-50 hover:ring-2 hover:ring-primary"
+                    >
+                      {photos[e.id] ? (
+                        <img
+                          src={photos[e.id]}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-base leading-none text-muted">＋</span>
+                      )}
+                    </button>
+                  </td>
                   <td className="whitespace-nowrap sticky left-0 bg-white">{e.name}</td>
+                  <td className="text-center p-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={ages[e.id] ?? ''}
+                      onChange={(ev) =>
+                        setAges((prev) => ({ ...prev, [e.id]: ev.target.value }))
+                      }
+                      onBlur={() =>
+                        saveInfo(e.id, {
+                          age: ages[e.id] ? Math.max(0, Math.floor(Number(ages[e.id]))) : null,
+                        })
+                      }
+                      className="w-12 rounded border border-line bg-white px-1 py-1 text-center text-sm"
+                      placeholder="—"
+                    />
+                  </td>
+                  <td className="text-center p-0.5">
+                    <input
+                      type="text"
+                      value={idNos[e.id] ?? ''}
+                      onChange={(ev) =>
+                        setIdNos((prev) => ({ ...prev, [e.id]: ev.target.value }))
+                      }
+                      onBlur={() => saveInfo(e.id, { idNo: idNos[e.id]?.trim() || null })}
+                      className="w-24 rounded border border-line bg-white px-1 py-1 text-center text-sm"
+                      placeholder="—"
+                    />
+                  </td>
                   <td className="text-center text-muted">{e.crewId}</td>
                   {SKILL_KEYS.map((k) => {
                     const lvl = getLevel(e.id, k);

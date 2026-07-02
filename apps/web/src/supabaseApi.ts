@@ -68,6 +68,9 @@ function toEmployee(r: any): Employee {
     incentiveDailyRate:
       r.incentive_daily_rate == null ? undefined : Number(r.incentive_daily_rate),
     active: !!r.active,
+    age: r.age == null ? undefined : Number(r.age),
+    idNo: r.id_no ?? undefined,
+    photoUrl: r.photo_url ?? undefined,
   };
 }
 
@@ -603,6 +606,39 @@ export const supabaseApi = {
     }
     const del = await client.from('room_photos').delete().eq('id', id);
     if (del.error) throw del.error;
+  },
+
+  // --- Employee ID info (age / id number / photo) ---------------------------
+  async updateEmployeeInfo(
+    employeeId: string,
+    patch: { age?: number | null; idNo?: string | null }
+  ): Promise<void> {
+    const row: any = {};
+    if ('age' in patch) row.age = patch.age ?? null;
+    if ('idNo' in patch) row.id_no = patch.idNo ?? null;
+    if (!Object.keys(row).length) return;
+    const { error } = await sb().from('employees').update(row).eq('id', employeeId);
+    if (error) throw error;
+  },
+
+  async uploadEmployeePhoto(employeeId: string, file: File): Promise<string> {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `employees/${employeeId}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}.${ext}`;
+    const bucket = sb().storage.from('room-photos');
+    const up = await bucket.upload(path, file, {
+      contentType: file.type || 'image/jpeg',
+      upsert: false,
+    });
+    if (up.error) throw up.error;
+    const url = bucket.getPublicUrl(path).data.publicUrl;
+    const { error } = await sb()
+      .from('employees')
+      .update({ photo_url: url })
+      .eq('id', employeeId);
+    if (error) throw error;
+    return url;
   },
 };
 

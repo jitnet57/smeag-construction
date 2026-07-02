@@ -45,6 +45,22 @@ const DICT = {
   'skill.thName': { en: 'Name', ko: '성명' },
   'skill.thCrew': { en: 'Crew', ko: '조' },
   'skill.thAvg': { en: 'Avg', ko: '평균' },
+  'skill.thPhoto': { en: 'Photo', ko: '사진' },
+  'skill.thAge': { en: 'Age', ko: '나이' },
+  'skill.thId': { en: 'ID', ko: '아이디' },
+  'skill.photoTitle': { en: 'Upload / take ID photo', ko: '증명사진 업로드 / 촬영' },
+  'skill.photoError': { en: 'Failed to upload photo.', ko: '사진 업로드에 실패했습니다.' },
+  'skill.printSignup': { en: 'Print sign-up sheet', ko: '사인업 시트 인쇄' },
+  'skill.signupTitle': { en: 'BRIGHTEM — Skill Sign-up Sheet', ko: 'BRIGHTEM — 스킬 사인업 시트' },
+  'skill.printBtn': { en: 'Print', ko: '인쇄' },
+  'skill.printHint': {
+    en: 'One page per crew · photo + age + ID · fill skills 0–10 by hand · A4 landscape',
+    ko: '조별 한 장 · 사진＋나이＋아이디 · 스킬 0–10 손으로 기입 · A4 가로',
+  },
+  'skill.popupBlocked': {
+    en: 'Popup blocked. Please allow popups to print.',
+    ko: '팝업이 차단되었습니다. 인쇄하려면 팝업을 허용해 주세요.',
+  },
   'skill.note': {
     en: '※ 0 = not rated, 1–10 = proficiency. Edits are saved to the database. Trades can be added later.',
     ko: '※ 0 = 미평가, 1~10 = 숙련도. 수정 내용은 데이터베이스에 저장됩니다. 직종은 추후 추가할 수 있습니다.',

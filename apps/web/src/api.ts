@@ -320,10 +320,29 @@ const networkApi = {
     const i = _photos.findIndex((p) => p.id === id);
     if (i >= 0) _photos.splice(i, 1);
   },
+  async updateEmployeeInfo(
+    employeeId: string,
+    patch: { age?: number | null; idNo?: string | null }
+  ): Promise<void> {
+    await fetchApi(`/api/employees/${encodeURIComponent(employeeId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+  },
+  async uploadEmployeePhoto(employeeId: string, file: File): Promise<string> {
+    const url: string = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(file);
+    });
+    _employeePhotos[employeeId] = url;
+    return url;
+  },
 };
 
 const _photos: RoomPhoto[] = [];
 let _photoSeq = 1;
+const _employeePhotos: Record<string, string> = {};
 
 // Pick the data source at build time. Supabase (Vercel deploy) and local
 // (fully static/offline) both run the pure engine in the browser; otherwise

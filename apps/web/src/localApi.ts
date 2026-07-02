@@ -349,6 +349,25 @@ export const localApi = {
   async deleteRoomPhoto(id: string): Promise<void> {
     roomPhotos.delete(id);
   },
+  async updateEmployeeInfo(
+    employeeId: string,
+    patch: { age?: number | null; idNo?: string | null }
+  ): Promise<void> {
+    const emp = employees.find((e) => e.id === employeeId);
+    if (!emp) return;
+    if ('age' in patch) emp.age = patch.age == null ? undefined : Number(patch.age);
+    if ('idNo' in patch) emp.idNo = patch.idNo == null ? undefined : patch.idNo;
+  },
+  async uploadEmployeePhoto(employeeId: string, file: File): Promise<string> {
+    const url: string = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(file);
+    });
+    const emp = employees.find((e) => e.id === employeeId);
+    if (emp) emp.photoUrl = url;
+    return url;
+  },
 };
 
 export type LocalApi = typeof localApi;

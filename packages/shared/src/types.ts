@@ -28,6 +28,9 @@ export interface Employee {
   ratePerDay: number;  // ₱ per day (e.g. 540)
   incentiveDailyRate?: number; // ₱ per day PRESENT; per-employee (sheet col AS: 82/49/65...). Falls back to config.incentiveDailyRate when unset.
   active: boolean;
+  age?: number;        // worker age (나이)
+  idNo?: string;       // ID number / worker id (아이디)
+  photoUrl?: string;   // ID photo public URL (사진)
 }
 
 // ---- Attendance ------------------------------------------------------------
