@@ -9,6 +9,7 @@ import type {
   MaterialRequest,
   UnitProgress,
   MaterialReadiness,
+  RoomPhoto,
   PayslipResult,
   PayrollConfig,
 } from '@brightem/shared';
@@ -291,7 +292,38 @@ const networkApi = {
       body: JSON.stringify(entry),
     });
   },
+
+  // Room photos — held in memory (this network layer is a mock fallback; the
+  // production Supabase layer persists them to storage).
+  async getRoomPhotos(floor: number, room: number): Promise<RoomPhoto[]> {
+    return _photos
+      .filter((p) => p.floor === floor && p.room === room)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  },
+  async addRoomPhoto(floor: number, room: number, file: File): Promise<RoomPhoto> {
+    const url: string = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(file);
+    });
+    const photo: RoomPhoto = {
+      id: `photo-${_photoSeq++}`,
+      floor,
+      room,
+      url,
+      createdAt: new Date().toISOString(),
+    };
+    _photos.push(photo);
+    return photo;
+  },
+  async deleteRoomPhoto(id: string): Promise<void> {
+    const i = _photos.findIndex((p) => p.id === id);
+    if (i >= 0) _photos.splice(i, 1);
+  },
 };
+
+const _photos: RoomPhoto[] = [];
+let _photoSeq = 1;
 
 // Pick the data source at build time. Supabase (Vercel deploy) and local
 // (fully static/offline) both run the pure engine in the browser; otherwise

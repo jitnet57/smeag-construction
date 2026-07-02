@@ -4,6 +4,7 @@ import type { UnitWorkItem, TaskProgress } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
+import RoomPhotoModal from '../components/RoomPhotoModal';
 
 const FLOORS = [4, 5, 6, 7, 8, 9, 10, 11];
 const ROOMS_PER_FLOOR = 26;
@@ -37,6 +38,8 @@ export default function UnitProgress() {
   const [tab, setTab] = useState<number | 'all'>(FLOORS[0]);
   const [entries, setEntries] = useState<Record<string, TaskProgress>>({});
   const [selected, setSelected] = useState<number[]>([]);
+  // Room whose photo gallery modal is open (null = closed).
+  const [photoRoom, setPhotoRoom] = useState<number | null>(null);
 
   // Load progress for ALL floors once. Room numbers are globally unique
   // (401 vs 501 …), so a single map keyed by room-item is enough.
@@ -360,6 +363,14 @@ export default function UnitProgress() {
                   {t('unit.roomDetail')}
                   {selected.length === 1 ? ` — ${selected[0]}` : ` — ${selected.length}`}
                 </h3>
+                {selected.length === 1 && (
+                  <button
+                    onClick={() => setPhotoRoom(selected[0])}
+                    className="rounded-md border border-primary bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20"
+                  >
+                    📷 {t('photo.title')}
+                  </button>
+                )}
               </div>
               <p className="text-xs text-muted mb-3">{t('unit.batchHint')}</p>
 
@@ -412,6 +423,14 @@ export default function UnitProgress() {
             </div>
           )}
         </>
+      )}
+
+      {photoRoom !== null && (
+        <RoomPhotoModal
+          floor={Math.floor(photoRoom / 100)}
+          room={photoRoom}
+          onClose={() => setPhotoRoom(null)}
+        />
       )}
     </div>
   );

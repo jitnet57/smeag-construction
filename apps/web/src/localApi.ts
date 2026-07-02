@@ -20,6 +20,7 @@ import type {
   MaterialRequest,
   UnitProgress,
   MaterialReadiness,
+  RoomPhoto,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -156,6 +157,8 @@ const unitProgress = new Map<string, UnitProgress>();
 
 // key: `${floor}-${material}` -> MaterialReadiness
 const materialReadiness = new Map<string, MaterialReadiness>();
+const roomPhotos = new Map<string, RoomPhoto>();
+let roomPhotoSeq = 1;
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // --- query helpers ----------------------------------------------------------
@@ -321,6 +324,30 @@ export const localApi = {
   },
   async saveMaterialReadiness(entry: MaterialReadiness): Promise<void> {
     materialReadiness.set(`${entry.floor}-${entry.material}`, { ...entry });
+  },
+  async getRoomPhotos(floor: number, room: number): Promise<RoomPhoto[]> {
+    return Array.from(roomPhotos.values())
+      .filter((p) => p.floor === floor && p.room === room)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  },
+  async addRoomPhoto(floor: number, room: number, file: File): Promise<RoomPhoto> {
+    const url: string = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(file);
+    });
+    const photo: RoomPhoto = {
+      id: `photo-${roomPhotoSeq++}`,
+      floor,
+      room,
+      url,
+      createdAt: new Date().toISOString(),
+    };
+    roomPhotos.set(photo.id, photo);
+    return photo;
+  },
+  async deleteRoomPhoto(id: string): Promise<void> {
+    roomPhotos.delete(id);
   },
 };
 

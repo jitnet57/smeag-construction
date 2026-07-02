@@ -310,6 +310,22 @@ export interface MaterialReadiness {
   deliveredRooms?: number[]; // room offsets (1..26) delivered during "delivering"/"delivered"
 }
 
+// ---- Room photos ------------------------------------------------------------
+
+/**
+ * A single photo attached to a physical room (floor + room number). Photos are
+ * shared across screens (Unit Progress, Material Readiness): any screen that
+ * shows a room can display and add its photos.
+ */
+export interface RoomPhoto {
+  id: string;
+  floor: number;     // 4..11
+  room: number;      // e.g. 501
+  url: string;       // public URL (or data URL for local/mock backends)
+  caption?: string;  // optional short note
+  createdAt: string; // ISO timestamp
+}
+
 // ---- API contract ----------------------------------------------------------
 
 export interface ApiError {

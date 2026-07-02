@@ -26,6 +26,7 @@ import type {
   MaterialItem,
   UnitProgress,
   MaterialReadiness,
+  RoomPhoto,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -534,6 +535,66 @@ export const supabaseApi = {
         { onConflict: 'floor,material' }
       );
     if (error) throw error;
+  },
+
+  // --- Room photos (stored in the 'room-photos' storage bucket) -------------
+  async getRoomPhotos(floor: number, room: number): Promise<RoomPhoto[]> {
+    const { data, error } = await sb()
+      .from('room_photos')
+      .select('id, floor, room, path, caption, created_at')
+      .eq('floor', floor)
+      .eq('room', room)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const bucket = sb().storage.from('room-photos');
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      floor: Number(r.floor),
+      room: Number(r.room),
+      url: bucket.getPublicUrl(r.path).data.publicUrl,
+      caption: r.caption ?? undefined,
+      createdAt: r.created_at,
+    }));
+  },
+
+  async addRoomPhoto(floor: number, room: number, file: File): Promise<RoomPhoto> {
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${floor}/${room}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const bucket = sb().storage.from('room-photos');
+    const up = await bucket.upload(path, file, {
+      contentType: file.type || 'image/jpeg',
+      upsert: false,
+    });
+    if (up.error) throw up.error;
+    const { data, error } = await sb()
+      .from('room_photos')
+      .insert({ floor, room, path })
+      .select('id, floor, room, path, caption, created_at')
+      .single();
+    if (error) throw error;
+    return {
+      id: data.id,
+      floor: Number(data.floor),
+      room: Number(data.room),
+      url: bucket.getPublicUrl(data.path).data.publicUrl,
+      caption: data.caption ?? undefined,
+      createdAt: data.created_at,
+    };
+  },
+
+  async deleteRoomPhoto(id: string): Promise<void> {
+    const client = sb();
+    const { data, error } = await client
+      .from('room_photos')
+      .select('path')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    if (data?.path) {
+      await client.storage.from('room-photos').remove([data.path]);
+    }
+    const del = await client.from('room_photos').delete().eq('id', id);
+    if (del.error) throw del.error;
   },
 };
 

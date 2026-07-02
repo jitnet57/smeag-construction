@@ -4,6 +4,7 @@ import type { UnitWorkItem, MaterialStage } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
+import RoomPhotoModal from '../components/RoomPhotoModal';
 
 const FLOORS = [4, 5, 6, 7, 8, 9, 10, 11];
 const ROOMS_PER_FLOOR = 26;
@@ -52,6 +53,8 @@ export default function MaterialReadiness() {
   const [rooms, setRooms] = useState<Record<string, number[]>>({});
   // Key of the cell whose per-room delivery panel is open, or null.
   const [openCell, setOpenCell] = useState<{ floor: number; material: UnitWorkItem } | null>(null);
+  // Room whose photo gallery modal is open (null = closed).
+  const [photoRoom, setPhotoRoom] = useState<number | null>(null);
 
   // Load readiness for ALL floors once.
   useEffect(() => {
@@ -264,11 +267,20 @@ export default function MaterialReadiness() {
           delivered={roomsOf(openCell.floor, openCell.material)}
           onToggle={(off) => toggleRoom(openCell.floor, openCell.material, off)}
           onAll={(all) => setAllRooms(openCell.floor, openCell.material, all)}
+          onPhoto={(off) => setPhotoRoom(openCell.floor * 100 + off)}
           onBack={() => {
             setStage(openCell.floor, openCell.material, 'shipping');
             setOpenCell(null);
           }}
           onClose={() => setOpenCell(null)}
+        />
+      )}
+
+      {photoRoom !== null && (
+        <RoomPhotoModal
+          floor={Math.floor(photoRoom / 100)}
+          room={photoRoom}
+          onClose={() => setPhotoRoom(null)}
         />
       )}
     </div>
@@ -282,11 +294,12 @@ function RoomPanel(props: {
   delivered: number[];
   onToggle: (off: number) => void;
   onAll: (all: boolean) => void;
+  onPhoto: (off: number) => void;
   onBack: () => void;
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { floor, matLabel, delivered, onToggle, onAll, onBack, onClose } = props;
+  const { floor, matLabel, delivered, onToggle, onAll, onPhoto, onBack, onClose } = props;
   const done = delivered.length;
 
   return (
@@ -325,17 +338,29 @@ function RoomPanel(props: {
             {ROOM_OFFSETS.map((off) => {
               const on = delivered.includes(off);
               return (
-                <button
-                  key={off}
-                  onClick={() => onToggle(off)}
-                  className={`rounded border py-2 text-xs font-semibold transition-colors ${
-                    on
-                      ? 'border-green-500 bg-green-500 text-white'
-                      : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {floor * 100 + off}
-                </button>
+                <div key={off} className="relative">
+                  <button
+                    onClick={() => onToggle(off)}
+                    className={`w-full rounded border py-2 text-xs font-semibold transition-colors ${
+                      on
+                        ? 'border-green-500 bg-green-500 text-white'
+                        : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {floor * 100 + off}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPhoto(off);
+                    }}
+                    title={t('photo.title')}
+                    aria-label={t('photo.title')}
+                    className="absolute -right-1 -top-1 rounded-full bg-white border border-line px-1 text-[10px] leading-tight shadow-sm hover:bg-gray-100"
+                  >
+                    📷
+                  </button>
+                </div>
               );
             })}
           </div>

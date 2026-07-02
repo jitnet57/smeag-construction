@@ -247,8 +247,8 @@ const DICT = {
   'matr.roomsDelivered': { en: 'rooms delivered', ko: '개 방 배달 완료' },
   'matr.totalRoomsDelivered': { en: 'Rooms delivered', ko: '방 배달 완료' },
   'matr.deliverHint': {
-    en: 'Tap each room to mark it delivered. All rooms delivered = Delivered.',
-    ko: '배달된 방을 눌러 표시하세요. 모든 방이 배달되면 “방 배달” 완료로 표시됩니다.',
+    en: 'Tap each room to mark it delivered. Tap 📷 on a room to add photos. All rooms delivered = Delivered.',
+    ko: '배달된 방을 눌러 표시하세요. 방의 📷 를 누르면 사진을 추가할 수 있습니다. 모든 방이 배달되면 “방 배달” 완료로 표시됩니다.',
   },
   'matr.allRooms': { en: 'All rooms', ko: '전체 방' },
   'matr.clearRooms': { en: 'Clear', ko: '해제' },
@@ -259,6 +259,19 @@ const DICT = {
   'matr.stage.shipping': { en: 'Shipping', ko: '배송중' },
   'matr.stage.delivering': { en: 'Out for delivery', ko: '배달중' },
   'matr.stage.delivered': { en: 'Delivered', ko: '방 배달' },
+
+  // --- Room photos ----------------------------------------------------------
+  'photo.title': { en: 'Photos', ko: '사진' },
+  'photo.add': { en: 'Add photo', ko: '사진 추가' },
+  'photo.uploading': { en: 'Uploading…', ko: '업로드 중…' },
+  'photo.loading': { en: 'Loading…', ko: '불러오는 중…' },
+  'photo.empty': { en: 'No photos yet. Add one below.', ko: '아직 사진이 없습니다. 아래에서 추가하세요.' },
+  'photo.count': { en: 'photo(s)', ko: '장' },
+  'photo.close': { en: 'Close', ko: '닫기' },
+  'photo.delete': { en: 'Delete', ko: '삭제' },
+  'photo.deleteConfirm': { en: 'Delete this photo?', ko: '이 사진을 삭제할까요?' },
+  'photo.deleteError': { en: 'Failed to delete photo.', ko: '사진 삭제에 실패했습니다.' },
+  'photo.uploadError': { en: 'Failed to upload photo.', ko: '사진 업로드에 실패했습니다.' },
 
   // --- Dashboard ------------------------------------------------------------
   'dash.mockBanner': {
