@@ -27,6 +27,7 @@ const DICT = {
   'nav.tasks': { en: 'Task Assign', ko: '작업 배정' },
   'nav.units': { en: 'Unit Progress', ko: '층별 공정' },
   'nav.materials': { en: 'Materials', ko: '자재 구매' },
+  'nav.matReady': { en: 'Material Readiness', ko: '자재 준비 현황' },
   'nav.settings': { en: 'Settings', ko: '규칙 설정' },
 
   // --- Skills matrix --------------------------------------------------------
@@ -222,6 +223,26 @@ const DICT = {
   'unit.wi.window': { en: 'Windows', ko: '창호' },
   'unit.wi.wallpaper': { en: 'Wallpaper', ko: '도배' },
   'unit.wi.door': { en: 'Door', ko: '문' },
+
+  // --- Material readiness (supply pipeline per floor) -----------------------
+  'matr.title': {
+    en: 'Material Readiness — supply pipeline by material and floor',
+    ko: '자재 준비 현황 — 자재별 × 층별 공급 단계',
+  },
+  'matr.intro': {
+    en: 'Track each material from purchase to delivery. Tap a cell to advance the stage.',
+    ko: '각 자재를 구매부터 방 배달까지 추적합니다. 칸을 누르면 단계가 넘어갑니다.',
+  },
+  'matr.hint': {
+    en: 'Tap a cell to cycle: Not ordered → Ordered → Shipping → Delivered → Not ordered.',
+    ko: '칸을 누르면 순환합니다: 미구매 → 구매 → 배송중 → 방 배달 → 미구매.',
+  },
+  'matr.material': { en: 'Material', ko: '자재' },
+  'matr.saveError': { en: 'Failed to save.', ko: '저장에 실패했습니다.' },
+  'matr.stage.pending': { en: 'Not ordered', ko: '미구매' },
+  'matr.stage.ordered': { en: 'Ordered', ko: '구매' },
+  'matr.stage.shipping': { en: 'Shipping', ko: '배송중' },
+  'matr.stage.delivered': { en: 'Delivered', ko: '방 배달' },
 
   // --- Dashboard ------------------------------------------------------------
   'dash.mockBanner': {

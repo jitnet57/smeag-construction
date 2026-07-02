@@ -19,6 +19,7 @@ import type {
   TaskAssignment,
   MaterialRequest,
   UnitProgress,
+  MaterialReadiness,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -152,6 +153,9 @@ const materialRequests = new Map<string, MaterialRequest>(); // key: id
 let materialSeq = 1;
 // key: `${floor}-${room}-${workItem}` -> UnitProgress
 const unitProgress = new Map<string, UnitProgress>();
+
+// key: `${floor}-${material}` -> MaterialReadiness
+const materialReadiness = new Map<string, MaterialReadiness>();
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // --- query helpers ----------------------------------------------------------
@@ -311,6 +315,12 @@ export const localApi = {
   },
   async saveUnitProgress(entry: UnitProgress): Promise<void> {
     unitProgress.set(`${entry.floor}-${entry.room}-${entry.workItem}`, { ...entry });
+  },
+  async getMaterialReadiness(floor: number): Promise<MaterialReadiness[]> {
+    return Array.from(materialReadiness.values()).filter((m) => m.floor === floor);
+  },
+  async saveMaterialReadiness(entry: MaterialReadiness): Promise<void> {
+    materialReadiness.set(`${entry.floor}-${entry.material}`, { ...entry });
   },
 };
 

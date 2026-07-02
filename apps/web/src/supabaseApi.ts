@@ -25,6 +25,7 @@ import type {
   MaterialRequest,
   MaterialItem,
   UnitProgress,
+  MaterialReadiness,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -499,6 +500,34 @@ export const supabaseApi = {
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'floor,room,work_item' }
+      );
+    if (error) throw error;
+  },
+
+  async getMaterialReadiness(floor: number): Promise<MaterialReadiness[]> {
+    const { data, error } = await sb()
+      .from('material_readiness')
+      .select('floor, material, stage')
+      .eq('floor', floor);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      floor: Number(r.floor),
+      material: r.material,
+      stage: r.stage,
+    }));
+  },
+
+  async saveMaterialReadiness(entry: MaterialReadiness): Promise<void> {
+    const { error } = await sb()
+      .from('material_readiness')
+      .upsert(
+        {
+          floor: entry.floor,
+          material: entry.material,
+          stage: entry.stage,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'floor,material' }
       );
     if (error) throw error;
   },

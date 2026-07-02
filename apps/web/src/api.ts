@@ -8,6 +8,7 @@ import type {
   TaskAssignment,
   MaterialRequest,
   UnitProgress,
+  MaterialReadiness,
   PayslipResult,
   PayrollConfig,
 } from '@brightem/shared';
@@ -271,6 +272,21 @@ const networkApi = {
 
   async saveUnitProgress(entry: UnitProgress): Promise<void> {
     await fetchApi('/api/unit-progress', {
+      method: 'POST',
+      body: JSON.stringify(entry),
+    });
+  },
+
+  async getMaterialReadiness(floor: number): Promise<MaterialReadiness[]> {
+    try {
+      return await fetchApi<MaterialReadiness[]>(`/api/material-readiness?floor=${floor}`);
+    } catch {
+      return [];
+    }
+  },
+
+  async saveMaterialReadiness(entry: MaterialReadiness): Promise<void> {
+    await fetchApi('/api/material-readiness', {
       method: 'POST',
       body: JSON.stringify(entry),
     });

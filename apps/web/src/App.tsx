@@ -12,6 +12,7 @@ import Skills from './screens/Skills';
 import TaskAssign from './screens/TaskAssign';
 import UnitProgress from './screens/UnitProgress';
 import Materials from './screens/Materials';
+import MaterialReadiness from './screens/MaterialReadiness';
 import Settings from './screens/Settings';
 
 type ScreenKey =
@@ -24,6 +25,7 @@ type ScreenKey =
   | 'tasks'
   | 'units'
   | 'materials'
+  | 'matready'
   | 'settings';
 
 interface NavItem {
@@ -42,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'tasks', icon: '📋', labelKey: 'nav.tasks' },
   { key: 'units', icon: '🏢', labelKey: 'nav.units' },
   { key: 'materials', icon: '📦', labelKey: 'nav.materials' },
+  { key: 'matready', icon: '🚚', labelKey: 'nav.matReady' },
   { key: 'settings', icon: '⚙', labelKey: 'nav.settings' },
 ];
 
@@ -55,6 +58,7 @@ const SCREEN_TITLES: Record<ScreenKey, TKey> = {
   tasks: 'nav.tasks',
   units: 'nav.units',
   materials: 'nav.materials',
+  matready: 'nav.matReady',
   settings: 'nav.settings',
 };
 
@@ -84,7 +88,8 @@ export default function App() {
       currentScreen !== 'skills' &&
       currentScreen !== 'tasks' &&
       currentScreen !== 'units' &&
-      currentScreen !== 'materials'
+      currentScreen !== 'materials' &&
+      currentScreen !== 'matready'
     ) {
       return <div className="p-6 text-center text-gray-500">{t('app.loading')}</div>;
     }
@@ -108,6 +113,8 @@ export default function App() {
         return <UnitProgress />;
       case 'materials':
         return <Materials />;
+      case 'matready':
+        return <MaterialReadiness />;
       case 'settings':
         return <Settings />;
       default:
