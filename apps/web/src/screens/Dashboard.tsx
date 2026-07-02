@@ -16,6 +16,97 @@ import type { TKey } from '../i18n';
 const FLOORS = [4, 5, 6, 7, 8, 9, 10, 11];
 const ROOMS_PER_FLOOR = 26;
 
+type Bi = { en: string; ko: string };
+
+// General industry-tendency comparison (Philippines / Korea / Overseas) used in
+// the "Construction Assessment" panel. Broad tendencies, not absolute claims.
+const COMPARE_ROWS: { dim: Bi; ph: Bi; kr: Bi; other: Bi }[] = [
+  {
+    dim: { en: 'Schedule & productivity', ko: '공기 · 생산성' },
+    ph: {
+      en: 'Labor-intensive pace; large crews absorb volume; rainy season & typhoons (Jun–Nov) add variability; low labor cost favors manual methods.',
+      ko: '노동집약적 진행, 다인력 투입으로 물량 소화. 우기·태풍(6~11월)으로 공정 변동성이 크고, 낮은 인건비로 수작업 비중이 높음.',
+    },
+    kr: {
+      en: 'Tight CPM scheduling, high mechanization/prefab, night & crash work to shorten duration; high wages push productivity metrics.',
+      ko: '촘촘한 공정관리(CPM), 기계화·프리팹 비중 높음, 야간·돌관작업으로 공기 단축. 높은 인건비로 생산성 지표를 중시.',
+    },
+    other: {
+      en: 'Strict contractual milestones/liquidated damages, BIM & scheduling software; safety/environmental rules moderate speed.',
+      ko: '계약상 공기·지체상금(LD) 엄격, BIM·공정 소프트웨어 활용. 안전·환경 규제로 속도가 제약됨.',
+    },
+  },
+  {
+    dim: { en: 'Workforce & labor', ko: '인력 · 노무' },
+    ph: {
+      en: 'Abundant labor, foreman/crew-based teams, daily-wage common, wide skill variance — multiskilling & crew balancing matter.',
+      ko: '풍부한 노동력, 포먼·조(crew) 중심 편성, 일당제 비중 큼, 숙련도 편차가 커 멀티스킬·조 편성 관리가 관건.',
+    },
+    kr: {
+      en: 'Aging/short skilled trades, rising migrant labor, mix of direct & subcontract; strong statutory rules (insurance, 52-hr week).',
+      ko: '숙련공 고령화·부족, 외국인력 의존 증가, 직영·전문 하도급 혼재. 4대보험·주 52시간 등 제도 관리가 강함.',
+    },
+    other: {
+      en: 'Union/trade influence, license-based assignment, strong wage & benefit regulation.',
+      ko: '노조·직능단체 영향, 자격·면허 기반 배치, 임금·복지 규제가 강함.',
+    },
+  },
+  {
+    dim: { en: 'Quality & methods', ko: '품질 · 시공' },
+    ph: {
+      en: 'Manual inspection & field discretion; finishing consistency is the key challenge; material lead-times vary.',
+      ko: '수기 검측·현장 재량 비중이 큼. 마감 편차 관리가 핵심 과제이며, 자재 수급 리드타임 변동이 있음.',
+    },
+    kr: {
+      en: 'Standardized specs & inspection, model units + QC gates, strict material grading/certification.',
+      ko: '표준시방·검측 체계화, 견본세대·품질검사 단계 강화, 자재 규격·인증이 엄격.',
+    },
+    other: {
+      en: 'Third-party supervision/certification (ISO), performance-based specs, heavy documentation.',
+      ko: '제3자 감리·인증(ISO 등), 성능기반 시방, 문서화가 강함.',
+    },
+  },
+  {
+    dim: { en: 'Safety & compliance', ko: '안전 · 법규' },
+    ph: {
+      en: 'DOLE safety rules & building-permit regime; site safety/PPE adoption varies; enforcement is tightening.',
+      ko: 'DOLE(노동고용부) 안전규정·건축 인허가 체계. 현장 안전문화·PPE 정착도 편차가 있으나 감독이 강화되는 추세.',
+    },
+    kr: {
+      en: 'OSH Act & Serious Accidents Punishment Act raise accountability; mandatory risk assessment & paperwork.',
+      ko: '산업안전보건법·중대재해처벌법으로 안전 책임 강화. 사전 위험성평가·서류 의무가 큼.',
+    },
+    other: {
+      en: 'Strong regimes (US OSHA, UK CDM); safety is a core cost & schedule driver.',
+      ko: '강력한 규제(미국 OSHA, 영국 CDM 등). 안전이 공기·비용의 핵심 변수.',
+    },
+  },
+];
+
+// Practical takeaways for this Philippine finishing-works site.
+const ASSESS_NOTES: Bi[] = [
+  {
+    en: 'Keep a schedule buffer for the rainy season & typhoons (a Philippine-specific risk).',
+    ko: '우기·태풍에 대비한 공정 버퍼를 확보하세요 (필리핀 특유의 리스크).',
+  },
+  {
+    en: 'Crew/foreman productivity varies widely — use the Multi-Skill matrix to optimize assignments.',
+    ko: '조·포먼 단위 생산성 편차가 큽니다 — 멀티스킬 매트릭스로 배치를 최적화하세요.',
+  },
+  {
+    en: 'Material lead-times fluctuate — manage ordering & delivery in real time (see the Material Delivery panel).',
+    ko: '자재 리드타임 변동이 큽니다 — 발주·배달 현황을 실시간 관리하세요(위 자재 배달 현황 활용).',
+  },
+  {
+    en: 'Control floor-by-floor finishing variance with per-room inspection and photo records.',
+    ko: '층별 마감 편차는 방별 검측·사진 기록으로 관리하세요.',
+  },
+  {
+    en: 'Align Korean HQ standards with local practice up front — agree on inspection criteria & documentation early.',
+    ko: '한국 본사 기준과 현지 관행 차이는 검측 기준·서류를 사전에 합의해 두세요.',
+  },
+];
+
 interface Props {
   period: PayPeriod | null;
 }
@@ -41,7 +132,7 @@ const DOW_KEYS = ['dow.sun', 'dow.mon', 'dow.tue', 'dow.wed', 'dow.thu', 'dow.fr
 const ALL_CREWS = '__ALL__';
 
 export default function Dashboard({ period }: Props): JSX.Element {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [payslips, setPayslips] = useState<PayslipResult[]>([]);
@@ -55,6 +146,7 @@ export default function Dashboard({ period }: Props): JSX.Element {
   const [unitData, setUnitData] = useState<UnitProgress[]>([]);
   const [openMat, setOpenMat] = useState<UnitWorkItem | null>(null);
   const [openWork, setOpenWork] = useState<UnitWorkItem | null>(null);
+  const [showCompare, setShowCompare] = useState(false);
 
   useEffect(() => {
     api.getEmployees().then(setAllEmployees);
@@ -229,6 +321,51 @@ export default function Dashboard({ period }: Props): JSX.Element {
   const matLabel = (m: UnitWorkItem) => t(`unit.wi.${m}` as TKey);
   const stageLabel = (s: string) => t(`matr.stage.${s}` as TKey);
   const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
+  const L = (b: Bi) => b[lang];
+
+  // ---- Auto diagnosis from this site's live metrics ----
+  type Tone = 'ok' | 'warn' | 'bad';
+  const band = (p: number): Tone => (p >= 80 ? 'ok' : p >= 50 ? 'warn' : 'bad');
+  const diagnosis: { tone: Tone; text: Bi }[] = [];
+
+  const mp = matPct.toFixed(0);
+  diagnosis.push(
+    band(matPct) === 'ok'
+      ? { tone: 'ok', text: { en: `Material delivery is on track at ${mp}%.`, ko: `자재 배달이 ${mp}%로 순조롭게 진행되고 있습니다.` } }
+      : band(matPct) === 'warn'
+        ? { tone: 'warn', text: { en: `Material delivery is mid-way at ${mp}% — keep watching order & delivery lead times.`, ko: `자재 배달이 ${mp}%로 진행 중입니다. 발주·배달 리드타임을 계속 점검하세요.` } }
+        : { tone: 'bad', text: { en: `Material delivery is still early at ${mp}% — accelerate ordering to avoid delays.`, ko: `자재 배달이 ${mp}%로 초기 단계입니다. 공정 지연을 막으려면 발주를 서두르세요.` } }
+  );
+
+  const wp = workPct.toFixed(0);
+  diagnosis.push(
+    band(workPct) === 'ok'
+      ? { tone: 'ok', text: { en: `Finishing work is well advanced at ${wp}%.`, ko: `마감 작업이 ${wp}%로 상당히 진척됐습니다.` } }
+      : band(workPct) === 'warn'
+        ? { tone: 'warn', text: { en: `Finishing work is in progress at ${wp}%.`, ko: `마감 작업이 ${wp}%로 진행 중입니다.` } }
+        : { tone: 'bad', text: { en: `Finishing work is at an early stage (${wp}%).`, ko: `마감 작업이 초기 단계입니다(${wp}%).` } }
+  );
+
+  const ar = attRate.toFixed(0);
+  diagnosis.push(
+    attRate >= 90
+      ? { tone: 'ok', text: { en: `Attendance is strong at ${ar}%.`, ko: `출근율이 ${ar}%로 양호합니다.` } }
+      : attRate >= 80
+        ? { tone: 'warn', text: { en: `Attendance is ${ar}% — watch crews trending low.`, ko: `출근율이 ${ar}%입니다. 출근이 낮은 조를 주시하세요.` } }
+        : { tone: 'bad', text: { en: `Attendance is low at ${ar}% — this may bottleneck progress.`, ko: `출근율이 ${ar}%로 낮습니다. 공정 병목이 될 수 있습니다.` } }
+  );
+
+  const gap = matPct - workPct;
+  diagnosis.push(
+    gap >= 20
+      ? { tone: 'warn', text: { en: 'Materials are ahead of installation — add crews so work catches up to delivered materials.', ko: '자재는 준비됐으나 작업이 뒤따르지 못하고 있습니다. 인력을 보강해 작업을 자재에 맞추세요.' } }
+      : gap <= -20
+        ? { tone: 'warn', text: { en: 'Work is outpacing material supply — prioritize ordering to avoid a material bottleneck.', ko: '작업이 자재 공급을 앞서고 있어 자재 병목이 우려됩니다. 발주를 우선하세요.' } }
+        : { tone: 'ok', text: { en: 'Material supply and installation are well balanced.', ko: '자재 공급과 작업 진행이 균형을 이루고 있습니다.' } }
+  );
+
+  const toneDot = (tone: Tone) =>
+    tone === 'ok' ? 'bg-green-500' : tone === 'warn' ? 'bg-amber-500' : 'bg-red-500';
 
   return (
     <div className="w-full">
@@ -332,6 +469,81 @@ export default function Dashboard({ period }: Props): JSX.Element {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Construction Assessment · Cross-country comparison */}
+      <div className="panel">
+        <h3 className="text-sm font-bold text-dark mb-3">
+          <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
+          {t('dash.assessTitle')}
+        </h3>
+
+        {/* Auto diagnosis from live metrics */}
+        <div className="rounded-lg border border-line bg-gray-50 p-4">
+          <div className="text-xs font-bold text-dark mb-2">🩺 {t('dash.assessDiagnosis')}</div>
+          <ul className="space-y-1.5">
+            {diagnosis.map((d, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-dark">
+                <span
+                  className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${toneDot(d.tone)}`}
+                />
+                <span>{L(d.text)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <button
+          onClick={() => setShowCompare((v) => !v)}
+          className="mt-3 rounded-md border border-line bg-white px-3 py-1.5 text-xs font-semibold text-primary hover:bg-gray-50"
+        >
+          {showCompare ? `▾ ${t('dash.assessLess')}` : `▸ ${t('dash.assessMore')}`}
+        </button>
+
+        {showCompare && (
+          <div className="mt-3">
+            <div className="text-xs font-bold text-dark mb-1">🌏 {t('dash.assessCompare')}</div>
+            <p className="text-[11px] text-muted mb-2">{t('dash.assessDisclaimer')}</p>
+            <div className="overflow-x-auto">
+              <table className="text-sm">
+                <thead>
+                  <tr>
+                    <th className="whitespace-nowrap">{t('dash.colDim')}</th>
+                    <th>🇵🇭 {t('dash.colPh')}</th>
+                    <th>🇰🇷 {t('dash.colKr')}</th>
+                    <th>🌐 {t('dash.colOther')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARE_ROWS.map((row, i) => (
+                    <tr key={i} className="align-top">
+                      <td className="whitespace-nowrap font-semibold text-dark">
+                        {L(row.dim)}
+                      </td>
+                      <td className="min-w-[180px] text-xs leading-relaxed">{L(row.ph)}</td>
+                      <td className="min-w-[180px] text-xs leading-relaxed">{L(row.kr)}</td>
+                      <td className="min-w-[180px] text-xs leading-relaxed">{L(row.other)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="text-xs font-bold text-amber-900 mb-2">
+                📌 {t('dash.assessNotes')}
+              </div>
+              <ul className="space-y-1.5">
+                {ASSESS_NOTES.map((n, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-dark">
+                    <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500" />
+                    <span>{L(n)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Material Delivery Status (per material, expandable) */}
