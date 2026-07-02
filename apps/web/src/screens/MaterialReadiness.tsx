@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { UNIT_WORK_ITEMS, MATERIAL_STAGES } from '@brightem/shared';
 import type { UnitWorkItem, MaterialStage, RoomDelivery } from '@brightem/shared';
 import { api } from '../api';
@@ -453,8 +453,51 @@ function RoomPanel(props: {
   const [pieceInput, setPieceInput] = useState('');
   const [memoInput, setMemoInput] = useState('');
 
-  const toggleSel = (off: number) =>
-    setSel((prev) => (prev.includes(off) ? prev.filter((x) => x !== off) : [...prev, off]));
+  // Drag-to-select: pressing a room starts a drag whose mode (select vs
+  // deselect) is decided by that first room's current state; sliding the
+  // finger/mouse over more rooms applies the same mode to each. A plain tap is
+  // just a one-room drag, so it still toggles.
+  const dragging = useRef(false);
+  const dragMode = useRef<'select' | 'deselect'>('select');
+
+  const applyDrag = (off: number) => {
+    setSel((prev) => {
+      const has = prev.includes(off);
+      if (dragMode.current === 'select')
+        return has ? prev : [...prev, off].sort((a, b) => a - b);
+      return has ? prev.filter((x) => x !== off) : prev;
+    });
+  };
+
+  const startDrag = (off: number) => {
+    dragMode.current = sel.includes(off) ? 'deselect' : 'select';
+    dragging.current = true;
+    applyDrag(off);
+  };
+
+  // End the drag on any pointer release anywhere on the page.
+  useEffect(() => {
+    const end = () => {
+      dragging.current = false;
+    };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    };
+  }, []);
+
+  // While dragging, resolve whichever room tile is under the pointer (works for
+  // both mouse and touch, since touch keeps pointer capture on the origin tile).
+  const onGridPointerMove = (e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const host = el?.closest('[data-off]') as HTMLElement | null;
+    if (!host) return;
+    const off = Number(host.dataset.off);
+    if (!Number.isNaN(off)) applyDrag(off);
+  };
 
   const selKey = sel.join(',');
   // Load the editor fields whenever the selection changes. When exactly one
@@ -533,17 +576,39 @@ function RoomPanel(props: {
 
         {/* Room grid */}
         <div className="px-5 py-4">
-          <p className="mb-3 text-xs text-muted">{t('matr.deliverHint')}</p>
-          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-7">
+          <p className="mb-2 text-xs text-muted">{t('matr.deliverHint')}</p>
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              onClick={() => setSel([...ROOM_OFFSETS])}
+              className="rounded-md border border-blue-500 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-100"
+            >
+              {t('matr.selectAll')}
+            </button>
+            <button
+              onClick={() => setSel([])}
+              className="rounded-md border border-line bg-white px-2.5 py-1 text-[11px] font-semibold text-muted hover:bg-gray-50"
+            >
+              {t('matr.deselectAll')}
+            </button>
+            {sel.length > 0 && (
+              <span className="text-[11px] font-semibold text-blue-700">
+                {sel.length} {t('matr.selectedCount')}
+              </span>
+            )}
+          </div>
+          <div
+            className="grid touch-none select-none grid-cols-6 gap-1.5 sm:grid-cols-7"
+            onPointerMove={onGridPointerMove}
+          >
             {ROOM_OFFSETS.map((off) => {
               const on = delivered.includes(off);
               const ong = ongoing.includes(off);
               const d = detailOf(off);
               const isSel = sel.includes(off);
               return (
-                <div key={off} className={`relative ${isSel ? 'z-10' : ''}`}>
+                <div key={off} data-off={off} className={`relative ${isSel ? 'z-10' : ''}`}>
                   <button
-                    onClick={() => toggleSel(off)}
+                    onPointerDown={() => startDrag(off)}
                     className={`w-full rounded border py-2 text-xs font-semibold outline-none transition-colors ${
                       isSel ? 'ring-2 ring-offset-2 ring-blue-600 border-blue-600 ' : ''
                     }${
