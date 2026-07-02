@@ -270,7 +270,7 @@ export const localApi = {
   },
   async saveTask(task: Task): Promise<Task> {
     const id = task.id || `task-${taskSeq++}`;
-    const saved: Task = { ...task, id };
+    const saved: Task = { ...task, id, progress: task.progress ?? 'pending' };
     tasks.set(id, saved);
     return saved;
   },

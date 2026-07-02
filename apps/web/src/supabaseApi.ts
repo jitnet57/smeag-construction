@@ -140,6 +140,7 @@ function toTask(r: any): Task {
     requiredManday: Number(r.required_manday) || 0,
     requiredHeadcount: Number(r.required_headcount) || 0,
     status: r.status,
+    progress: r.progress ?? 'pending',
   };
 }
 
@@ -390,6 +391,7 @@ export const supabaseApi = {
       required_manday: task.requiredManday,
       required_headcount: task.requiredHeadcount,
       status: task.status,
+      progress: task.progress ?? 'pending',
     };
     if (task.id) row.id = task.id;
     const { data, error } = await sb()

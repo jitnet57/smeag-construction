@@ -189,6 +189,9 @@ export interface EmployeeSkill {
 
 export type TaskStatus = "draft" | "closed";
 
+/** Work-progress state of a task (distinct from the planning status). */
+export type TaskProgress = "pending" | "in_progress" | "done";
+
 /**
  * A unit of work planned for a given work day (registered/closed the day
  * before). requiredManday is total person-days (공수); requiredHeadcount is
@@ -202,6 +205,8 @@ export interface Task {
   requiredManday: number;
   requiredHeadcount: number;
   status: TaskStatus;
+  /** How far along the actual work is: pending → in_progress → done. */
+  progress?: TaskProgress;
 }
 
 /** A worker placed on a task for a work day (auto-matched from attendance). */

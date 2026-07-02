@@ -5,6 +5,7 @@ import type {
   Employee,
   EmployeeSkill,
   Task,
+  TaskProgress,
   AttendanceRecord,
 } from '@brightem/shared';
 import { api } from '../api';
@@ -32,6 +33,13 @@ const estFinishDate = (manday: number, headcount: number, start: string) => {
   const d = new Date(`${start}T00:00:00`);
   d.setDate(d.getDate() + days - 1);
   return d.toISOString().slice(0, 10);
+};
+
+// Visual style per work-progress state.
+const PROGRESS_STYLE: Record<TaskProgress, string> = {
+  pending: 'bg-gray-100 text-gray-600',
+  in_progress: 'bg-amber-100 text-amber-800',
+  done: 'bg-green-100 text-green-800',
 };
 
 export default function TaskAssign({ period }: Props) {
@@ -169,9 +177,27 @@ export default function TaskAssign({ period }: Props) {
         requiredManday: 1,
         requiredHeadcount: 1,
         status: 'draft',
+        progress: 'pending',
       },
     ]);
     setTasksDirty(true);
+  };
+
+  // Change a task's work-progress state; persist immediately if it exists in DB.
+  const setProgress = async (task: Task, progress: TaskProgress) => {
+    setTasks((prev) =>
+      prev.map((tk) => (tk.id === task.id ? { ...tk, progress } : tk))
+    );
+    if (task.id.startsWith('new-')) {
+      // Not persisted yet — will be saved with the plan.
+      setTasksDirty(true);
+      return;
+    }
+    try {
+      await api.saveTask({ ...task, progress });
+    } catch {
+      alert(t('task.saveError'));
+    }
   };
 
   const removeTask = async (id: string) => {
@@ -284,6 +310,15 @@ export default function TaskAssign({ period }: Props) {
   }, [assignMap]);
 
   const standby = presentIds.filter((id) => !assignedIds.has(id));
+
+  // Roll-up of work-progress across the day's active tasks.
+  const progressSummary = useMemo(() => {
+    const s = { pending: 0, in_progress: 0, done: 0 };
+    activeTasks.forEach((tk) => {
+      s[(tk.progress ?? 'pending') as TaskProgress] += 1;
+    });
+    return s;
+  }, [activeTasks]);
 
   const tradeLabel = (k: string) => t(`skill.${k}` as TKey);
 
@@ -479,6 +514,25 @@ export default function TaskAssign({ period }: Props) {
           <p className="text-sm text-muted py-4 text-center">{t('task.noTasks')}</p>
         ) : (
           <div className="space-y-4">
+            {/* Work-progress roll-up across the day's tasks. */}
+            <div className="flex items-center gap-3 flex-wrap border border-line rounded-lg px-3 py-2">
+              <span className="text-xs font-bold text-dark">
+                {t('task.progressTitle')}
+              </span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${PROGRESS_STYLE.pending}`}>
+                {t('task.pgPending')} {progressSummary.pending}
+              </span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${PROGRESS_STYLE.in_progress}`}>
+                {t('task.pgInProgress')} {progressSummary.in_progress}
+              </span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${PROGRESS_STYLE.done}`}>
+                {t('task.pgDone')} {progressSummary.done}
+              </span>
+              <span className="text-xs text-muted">
+                / {t('task.pgTotal')} {activeTasks.length}
+              </span>
+            </div>
+
             {/* Manual-assign target: clicked standby workers go to this task. */}
             <div className="flex items-center gap-2 flex-wrap bg-blue-50/60 border border-line rounded-lg px-3 py-2">
               <span className="text-xs text-muted">{t('task.assignTarget')}</span>
@@ -517,15 +571,66 @@ export default function TaskAssign({ period }: Props) {
                         ({tradeLabel(tk.skillKey)})
                       </span>
                     </button>
-                    <div
-                      className={`text-xs ${
-                        ids.length >= tk.requiredHeadcount
-                          ? 'text-green-700 font-medium'
-                          : 'text-muted'
-                      }`}
-                    >
-                      {ids.length}/{tk.requiredHeadcount} {t('task.filled')}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          PROGRESS_STYLE[(tk.progress ?? 'pending') as TaskProgress]
+                        }`}
+                      >
+                        {t(`task.pg${
+                          (tk.progress ?? 'pending') === 'in_progress'
+                            ? 'InProgress'
+                            : (tk.progress ?? 'pending') === 'done'
+                            ? 'Done'
+                            : 'Pending'
+                        }` as TKey)}
+                      </span>
+                      <div
+                        className={`text-xs ${
+                          ids.length >= tk.requiredHeadcount
+                            ? 'text-green-700 font-medium'
+                            : 'text-muted'
+                        }`}
+                      >
+                        {ids.length}/{tk.requiredHeadcount} {t('task.filled')}
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Progress transition buttons: pending → in_progress → done */}
+                  <div className="flex items-center gap-2 mb-2">
+                    {(tk.progress ?? 'pending') === 'pending' && (
+                      <button
+                        className="text-xs px-2.5 py-1 rounded-md bg-amber-100 text-amber-800 hover:bg-amber-200"
+                        onClick={() => setProgress(tk, 'in_progress')}
+                      >
+                        {t('task.pgStart')}
+                      </button>
+                    )}
+                    {(tk.progress ?? 'pending') === 'in_progress' && (
+                      <>
+                        <button
+                          className="text-xs px-2.5 py-1 rounded-md bg-green-100 text-green-800 hover:bg-green-200"
+                          onClick={() => setProgress(tk, 'done')}
+                        >
+                          {t('task.pgComplete')}
+                        </button>
+                        <button
+                          className="text-xs px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          onClick={() => setProgress(tk, 'pending')}
+                        >
+                          {t('task.pgToPending')}
+                        </button>
+                      </>
+                    )}
+                    {(tk.progress ?? 'pending') === 'done' && (
+                      <button
+                        className="text-xs px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        onClick={() => setProgress(tk, 'in_progress')}
+                      >
+                        {t('task.pgReopen')}
+                      </button>
+                    )}
                   </div>
                   {ids.length === 0 ? (
                     <div className="text-xs text-muted">—</div>
