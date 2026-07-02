@@ -11,6 +11,8 @@ const LEVELS = Array.from({ length: 11 }, (_, i) => i); // 0..10
 
 const keyOf = (empId: string, skill: string) => `${empId}::${skill}`;
 
+type SortCol = 'name' | 'crew' | 'avg' | (typeof SKILL_KEYS)[number];
+
 // Cell background shading by proficiency (0 = neutral, 10 = strong blue).
 function cellStyle(level: number): React.CSSProperties {
   if (!level) return {};
@@ -26,6 +28,8 @@ export default function Skills() {
   const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [sortCol, setSortCol] = useState<SortCol>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     let alive = true;
@@ -74,6 +78,37 @@ export default function Skills() {
     );
   }, [employees, selectedCrew, query]);
 
+  // Click a column header to sort by it; click again to flip direction.
+  const toggleSort = (col: SortCol) => {
+    if (col === sortCol) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortCol(col);
+      // Names/crews read best A→Z; skill/avg columns best high→low.
+      setSortDir(col === 'name' || col === 'crew' ? 'asc' : 'desc');
+    }
+  };
+
+  const arrow = (col: SortCol) => (sortCol === col ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '');
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const val = (e: Employee): string | number => {
+      if (sortCol === 'name') return e.name.toLowerCase();
+      if (sortCol === 'crew') return e.crewId.toLowerCase();
+      if (sortCol === 'avg') return avgOf(e.id);
+      return getLevel(e.id, sortCol);
+    };
+    return [...visible].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      if (av < bv) return -dir;
+      if (av > bv) return dir;
+      return a.name.localeCompare(b.name);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, sortCol, sortDir, levels]);
+
   const handleSave = async () => {
     if (!dirty.size) return;
     const rows: EmployeeSkill[] = Array.from(dirty).map((k) => {
@@ -99,7 +134,7 @@ export default function Skills() {
       ...SKILL_KEYS.map((k) => t(`skill.${k}` as TKey)),
       t('skill.thAvg'),
     ];
-    const body = visible.map((e) => [
+    const body = sorted.map((e) => [
       e.name,
       e.crewId,
       ...SKILL_KEYS.map((k) => getLevel(e.id, k)),
@@ -159,18 +194,41 @@ export default function Skills() {
           <table className="text-sm">
             <thead>
               <tr>
-                <th className="text-left sticky left-0 bg-white">{t('skill.thName')}</th>
-                <th className="text-center">{t('skill.thCrew')}</th>
+                <th
+                  onClick={() => toggleSort('name')}
+                  className="text-left sticky left-0 bg-white cursor-pointer select-none whitespace-nowrap hover:text-primary"
+                >
+                  {t('skill.thName')}
+                  {arrow('name')}
+                </th>
+                <th
+                  onClick={() => toggleSort('crew')}
+                  className="text-center cursor-pointer select-none whitespace-nowrap hover:text-primary"
+                >
+                  {t('skill.thCrew')}
+                  {arrow('crew')}
+                </th>
                 {SKILL_KEYS.map((k) => (
-                  <th key={k} className="text-center whitespace-nowrap">
+                  <th
+                    key={k}
+                    onClick={() => toggleSort(k)}
+                    className="text-center whitespace-nowrap cursor-pointer select-none hover:text-primary"
+                  >
                     {t(`skill.${k}` as TKey)}
+                    {arrow(k)}
                   </th>
                 ))}
-                <th className="text-center">{t('skill.thAvg')}</th>
+                <th
+                  onClick={() => toggleSort('avg')}
+                  className="text-center cursor-pointer select-none whitespace-nowrap hover:text-primary"
+                >
+                  {t('skill.thAvg')}
+                  {arrow('avg')}
+                </th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((e) => (
+              {sorted.map((e) => (
                 <tr key={e.id}>
                   <td className="whitespace-nowrap sticky left-0 bg-white">{e.name}</td>
                   <td className="text-center text-muted">{e.crewId}</td>
