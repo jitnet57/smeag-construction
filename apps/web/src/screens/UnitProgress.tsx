@@ -88,8 +88,11 @@ export default function UnitProgress() {
   const wiLabel = (item: UnitWorkItem) => t(`unit.wi.${item}` as TKey);
   const stLabel = (s: TaskProgress) => t(`unit.st.${s}` as TKey);
 
-  const topRooms = rooms.slice(0, 13);
-  const bottomRooms = rooms.slice(13);
+  // U-shaped (horseshoe) plan:
+  //   top row    →  14,13,12,…,2,1   (offsets 14 down to 1, right side wraps up)
+  //   bottom row →  15,16,17,…,25,26 (offsets 15 up to 26)
+  const topRooms = Array.from({ length: 14 }, (_, i) => floor * 100 + (14 - i));
+  const bottomRooms = Array.from({ length: 12 }, (_, i) => floor * 100 + (15 + i));
 
   const renderRoom = (room: number) => {
     const done = roomDone(room);
