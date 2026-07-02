@@ -179,6 +179,9 @@ const DICT = {
   'unit.floorComplete': { en: 'Floor complete', ko: '층 완료율' },
   'unit.roomsDone': { en: 'Rooms done', ko: '완료 호실' },
   'unit.corridor': { en: 'Corridor', ko: '복도' },
+  'unit.elevator': { en: 'Elevator', ko: '엘리베이터' },
+  'unit.stairs': { en: 'Stairs', ko: '계단' },
+  'unit.allFloors': { en: 'All floors', ko: '전체 층' },
   'unit.roomDetail': { en: 'Room', ko: '호실' },
   'unit.diagramHint': {
     en: 'Each room shows a 3×3 grid — one square per work item (order in the legend above). Click a room to open it.',
