@@ -248,6 +248,36 @@ export interface MaterialRequest {
   items: MaterialItem[];
 }
 
+// ---- Unit (room) finishing-work progress ----------------------------------
+
+/** The finishing-work items tracked per room, in display order. */
+export const UNIT_WORK_ITEMS = [
+  "xps",
+  "ceiling",
+  "pipe",
+  "electrical",
+  "tile",
+  "waterproof",
+  "window",
+  "wallpaper",
+  "door",
+] as const;
+
+export type UnitWorkItem = (typeof UNIT_WORK_ITEMS)[number];
+
+/**
+ * Progress of a single finishing-work item for a single room on a floor.
+ * Rooms run floor*100+1 .. floor*100+26 (e.g. 401..426). Status reuses the
+ * task progress vocabulary: pending → in_progress → done. Only touched
+ * (non-pending) rows need to be stored; anything absent defaults to pending.
+ */
+export interface UnitProgress {
+  floor: number;        // 4..11
+  room: number;         // e.g. 401
+  workItem: UnitWorkItem;
+  status: TaskProgress; // pending | in_progress | done
+}
+
 // ---- API contract ----------------------------------------------------------
 
 export interface ApiError {

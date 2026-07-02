@@ -24,6 +24,7 @@ import type {
   TaskAssignment,
   MaterialRequest,
   MaterialItem,
+  UnitProgress,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -469,6 +470,36 @@ export const supabaseApi = {
 
   async deleteMaterialRequest(id: string): Promise<void> {
     const { error } = await sb().from('material_requests').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async getUnitProgress(floor: number): Promise<UnitProgress[]> {
+    const { data, error } = await sb()
+      .from('unit_progress')
+      .select('floor, room, work_item, status')
+      .eq('floor', floor);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      floor: Number(r.floor),
+      room: Number(r.room),
+      workItem: r.work_item,
+      status: r.status,
+    }));
+  },
+
+  async saveUnitProgress(entry: UnitProgress): Promise<void> {
+    const { error } = await sb()
+      .from('unit_progress')
+      .upsert(
+        {
+          floor: entry.floor,
+          room: entry.room,
+          work_item: entry.workItem,
+          status: entry.status,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'floor,room,work_item' }
+      );
     if (error) throw error;
   },
 };

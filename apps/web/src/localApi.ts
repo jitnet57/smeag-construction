@@ -18,6 +18,7 @@ import type {
   Task,
   TaskAssignment,
   MaterialRequest,
+  UnitProgress,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -149,6 +150,8 @@ let assignments: TaskAssignment[] = [];
 let taskSeq = 1;
 const materialRequests = new Map<string, MaterialRequest>(); // key: id
 let materialSeq = 1;
+// key: `${floor}-${room}-${workItem}` -> UnitProgress
+const unitProgress = new Map<string, UnitProgress>();
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // --- query helpers ----------------------------------------------------------
@@ -302,6 +305,12 @@ export const localApi = {
   },
   async deleteMaterialRequest(id: string): Promise<void> {
     materialRequests.delete(id);
+  },
+  async getUnitProgress(floor: number): Promise<UnitProgress[]> {
+    return Array.from(unitProgress.values()).filter((u) => u.floor === floor);
+  },
+  async saveUnitProgress(entry: UnitProgress): Promise<void> {
+    unitProgress.set(`${entry.floor}-${entry.room}-${entry.workItem}`, { ...entry });
   },
 };
 

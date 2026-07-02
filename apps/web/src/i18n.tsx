@@ -25,6 +25,7 @@ const DICT = {
   'nav.employees': { en: 'Employees', ko: '인부 관리' },
   'nav.skills': { en: 'Skills', ko: '멀티 스킬' },
   'nav.tasks': { en: 'Task Assign', ko: '작업 배정' },
+  'nav.units': { en: 'Unit Progress', ko: '층별 공정' },
   'nav.materials': { en: 'Materials', ko: '자재 구매' },
   'nav.settings': { en: 'Settings', ko: '규칙 설정' },
 
@@ -171,6 +172,35 @@ const DICT = {
     en: '※ Register materials the day before, submit for approval, then the request is Approved or Rejected. Amounts are estimates for planning; actual PO prices may differ.',
     ko: '※ 전일에 자재를 등록하고 승인 요청하면 승인 또는 반려됩니다. 금액은 계획용 예상치이며 실제 발주가와 다를 수 있습니다.',
   },
+
+  // --- Unit (room) finishing progress ---------------------------------------
+  'unit.floorSuffix': { en: 'F', ko: '층' },
+  'unit.diagramTitle': { en: 'Layout', ko: '배치도' },
+  'unit.floorComplete': { en: 'Floor complete', ko: '층 완료율' },
+  'unit.roomsDone': { en: 'Rooms done', ko: '완료 호실' },
+  'unit.corridor': { en: 'Corridor', ko: '복도' },
+  'unit.roomDetail': { en: 'Room', ko: '호실' },
+  'unit.diagramHint': {
+    en: 'Each room shows a 3×3 grid — one square per work item (order in the legend above). Click a room to open it.',
+    ko: '각 방의 3×3 격자는 공정 9종을 순서대로(위 범례 순) 나타냅니다. 방을 클릭하면 상세가 열립니다.',
+  },
+  'unit.cycleHint': {
+    en: 'Click a work item to cycle: Pending → In progress → Done.',
+    ko: '공정을 클릭하면 대기 → 진행중 → 완료 순으로 바뀝니다.',
+  },
+  'unit.saveError': { en: 'Failed to save progress.', ko: '진행 상태 저장에 실패했습니다.' },
+  'unit.st.pending': { en: 'Pending', ko: '대기' },
+  'unit.st.in_progress': { en: 'In progress', ko: '진행중' },
+  'unit.st.done': { en: 'Done', ko: '완료' },
+  'unit.wi.xps': { en: 'XPS', ko: 'XPS(단열)' },
+  'unit.wi.ceiling': { en: 'Ceiling', ko: '천장' },
+  'unit.wi.pipe': { en: 'Pipe', ko: '파이프' },
+  'unit.wi.electrical': { en: 'Electrical', ko: '전기' },
+  'unit.wi.tile': { en: 'Tile', ko: '타일' },
+  'unit.wi.waterproof': { en: 'Waterproofing', ko: '방수' },
+  'unit.wi.window': { en: 'Windows', ko: '창호' },
+  'unit.wi.wallpaper': { en: 'Wallpaper', ko: '도배' },
+  'unit.wi.door': { en: 'Door', ko: '문' },
 
   // --- Dashboard ------------------------------------------------------------
   'dash.mockBanner': {
