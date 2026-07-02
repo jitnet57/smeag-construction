@@ -21,6 +21,19 @@ const skillKeyOf = (empId: string, skill: string) => `${empId}::${skill}`;
 let localSeq = 1;
 const newLocalId = () => `new-${localSeq++}`;
 
+// Working days a task takes = ceil(man-days / headcount).
+const durationDays = (manday: number, headcount: number) =>
+  manday > 0 && headcount > 0 ? Math.ceil(manday / headcount) : 0;
+
+// Estimated finish date = start date + (duration - 1) calendar days.
+const estFinishDate = (manday: number, headcount: number, start: string) => {
+  const days = durationDays(manday, headcount);
+  if (!start || days <= 0) return '';
+  const d = new Date(`${start}T00:00:00`);
+  d.setDate(d.getDate() + days - 1);
+  return d.toISOString().slice(0, 10);
+};
+
 export default function TaskAssign({ period }: Props) {
   const { t } = useI18n();
 
@@ -320,6 +333,7 @@ export default function TaskAssign({ period }: Props) {
                 <th className="text-center">{t('task.thTrade')}</th>
                 <th className="text-center">{t('task.thManday')}</th>
                 <th className="text-center">{t('task.thHeadcount')}</th>
+                <th className="text-center">{t('task.thEndDate')}</th>
                 <th className="text-center">{t('task.thStatus')}</th>
                 <th className="text-center">{t('task.thActions')}</th>
               </tr>
@@ -327,7 +341,7 @@ export default function TaskAssign({ period }: Props) {
             <tbody>
               {tasks.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-4">
+                  <td colSpan={7} className="text-center text-muted py-4">
                     {t('task.noTasks')}
                   </td>
                 </tr>
@@ -381,6 +395,26 @@ export default function TaskAssign({ period }: Props) {
                       }
                       className="border border-line rounded px-2 py-1 text-sm w-16 text-center bg-white"
                     />
+                  </td>
+                  <td className="text-center whitespace-nowrap">
+                    {(() => {
+                      const days = durationDays(tk.requiredManday, tk.requiredHeadcount);
+                      const end = estFinishDate(
+                        tk.requiredManday,
+                        tk.requiredHeadcount,
+                        workDate
+                      );
+                      return end ? (
+                        <span className="text-sm text-dark">
+                          {end}
+                          <span className="text-xs text-muted ml-1">
+                            ({days} {t('task.durationDays')})
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted">—</span>
+                      );
+                    })()}
                   </td>
                   <td className="text-center">
                     <span
