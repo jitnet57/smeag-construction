@@ -50,7 +50,9 @@ const isDelivery = (s: MaterialStage) => s === 'delivering' || s === 'delivered'
 export default function MaterialReadiness() {
   const { t } = useI18n();
   const [stages, setStages] = useState<Record<string, MaterialStage>>({});
+  // Rooms fully delivered, and rooms currently "on going to deliver".
   const [rooms, setRooms] = useState<Record<string, number[]>>({});
+  const [ongoing, setOngoing] = useState<Record<string, number[]>>({});
   // Per-room pieces + memo details, keyed the same as stages/rooms.
   const [details, setDetails] = useState<Record<string, RoomDelivery[]>>({});
   // Key of the cell whose per-room delivery panel is open, or null.
@@ -63,16 +65,20 @@ export default function MaterialReadiness() {
     Promise.all(FLOORS.map((f) => api.getMaterialReadiness(f))).then((lists) => {
       const m: Record<string, MaterialStage> = {};
       const r: Record<string, number[]> = {};
+      const g: Record<string, number[]> = {};
       const d: Record<string, RoomDelivery[]> = {};
       lists.flat().forEach((row) => {
         m[key(row.floor, row.material)] = row.stage;
         if (row.deliveredRooms && row.deliveredRooms.length)
           r[key(row.floor, row.material)] = [...row.deliveredRooms];
+        if (row.ongoingRooms && row.ongoingRooms.length)
+          g[key(row.floor, row.material)] = [...row.ongoingRooms];
         if (row.roomDetails && row.roomDetails.length)
           d[key(row.floor, row.material)] = row.roomDetails.map((x) => ({ ...x }));
       });
       setStages(m);
       setRooms(r);
+      setOngoing(g);
       setDetails(d);
     });
   }, []);
@@ -83,6 +89,9 @@ export default function MaterialReadiness() {
   const roomsOf = (floor: number, material: UnitWorkItem): number[] =>
     rooms[key(floor, material)] ?? [];
 
+  const ongoingOf = (floor: number, material: UnitWorkItem): number[] =>
+    ongoing[key(floor, material)] ?? [];
+
   const detailsOf = (floor: number, material: UnitWorkItem): RoomDelivery[] =>
     details[key(floor, material)] ?? [];
 
@@ -91,17 +100,60 @@ export default function MaterialReadiness() {
     material: UnitWorkItem,
     stage: MaterialStage,
     deliveredRooms: number[],
+    ongoingRooms: number[],
     roomDetails: RoomDelivery[]
   ) => {
     api
-      .saveMaterialReadiness({ floor, material, stage, deliveredRooms, roomDetails })
+      .saveMaterialReadiness({
+        floor,
+        material,
+        stage,
+        deliveredRooms,
+        ongoingRooms,
+        roomDetails,
+      })
       .catch(() => {
         alert(t('matr.saveError'));
       });
   };
 
-  // Set/replace one room's pieces + memo, and save. Entering pieces>0 also
-  // marks the room delivered so it counts in the delivered total.
+  // Apply the mutation and persist. Stage is 'delivered' once every room is
+  // delivered, otherwise 'delivering' while any delivery work remains.
+  const commit = (
+    floor: number,
+    material: UnitWorkItem,
+    del: number[],
+    ong: number[],
+    det: RoomDelivery[]
+  ) => {
+    const k = key(floor, material);
+    const stage: MaterialStage = del.length === ROOMS_PER_FLOOR ? 'delivered' : 'delivering';
+    setRooms((prev) => ({ ...prev, [k]: del }));
+    setOngoing((prev) => ({ ...prev, [k]: ong }));
+    setDetails((prev) => ({ ...prev, [k]: det }));
+    setStages((prev) => ({ ...prev, [k]: stage }));
+    save(floor, material, stage, del, ong, det);
+  };
+
+  // Per-room status: 'pending' | 'ongoing' | 'delivered'.
+  type RoomStatus = 'pending' | 'ongoing' | 'delivered';
+  const setRoomStatus = (
+    floor: number,
+    material: UnitWorkItem,
+    off: number,
+    status: RoomStatus
+  ) => {
+    const del = roomsOf(floor, material).filter((x) => x !== off);
+    const ong = ongoingOf(floor, material).filter((x) => x !== off);
+    let det = detailsOf(floor, material);
+    if (status === 'delivered') del.push(off);
+    else if (status === 'ongoing') ong.push(off);
+    else det = det.filter((d) => d.room !== off); // pending clears its detail
+    commit(floor, material, del.sort((a, b) => a - b), ong.sort((a, b) => a - b), det);
+  };
+
+  // Set/replace one room's pieces + memo. Entering data promotes a pending
+  // room to "ongoing" (but never downgrades a delivered room).
   const setRoomDetail = (
     floor: number,
     material: UnitWorkItem,
@@ -109,42 +161,33 @@ export default function MaterialReadiness() {
     pieces: number,
     memo: string
   ) => {
-    const k = key(floor, material);
     const cur = detailsOf(floor, material).filter((d) => d.room !== off);
     const hasData = pieces > 0 || memo.trim().length > 0;
-    const nextDetails = hasData
+    const det = hasData
       ? [...cur, { room: off, pieces, memo: memo.trim() || undefined }].sort(
           (a, b) => a.room - b.room
         )
       : cur;
 
-    // Keep delivered set in sync: pieces>0 => delivered.
-    const curRooms = roomsOf(floor, material);
-    const nextRooms =
-      pieces > 0
-        ? curRooms.includes(off)
-          ? curRooms
-          : [...curRooms, off].sort((a, b) => a - b)
-        : curRooms;
-    const stage: MaterialStage =
-      nextRooms.length === ROOMS_PER_FLOOR ? 'delivered' : 'delivering';
-
-    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
-    setRooms((prev) => ({ ...prev, [k]: nextRooms }));
-    setStages((prev) => ({ ...prev, [k]: stage }));
-    save(floor, material, stage, nextRooms, nextDetails);
+    const del = roomsOf(floor, material);
+    let ong = ongoingOf(floor, material);
+    if (hasData && !del.includes(off) && !ong.includes(off))
+      ong = [...ong, off].sort((a, b) => a - b);
+    commit(floor, material, del, ong, det);
   };
 
   const setStage = (floor: number, material: UnitWorkItem, stage: MaterialStage) => {
     const k = key(floor, material);
-    // Leaving the delivery phase clears the room checklist and details.
+    // Leaving the delivery phase clears the room checklist, ongoing and details.
     const inDelivery = isDelivery(stage);
-    const nextRooms = inDelivery ? roomsOf(floor, material) : [];
-    const nextDetails = inDelivery ? detailsOf(floor, material) : [];
+    const del = inDelivery ? roomsOf(floor, material) : [];
+    const ong = inDelivery ? ongoingOf(floor, material) : [];
+    const det = inDelivery ? detailsOf(floor, material) : [];
     setStages((prev) => ({ ...prev, [k]: stage }));
-    setRooms((prev) => ({ ...prev, [k]: nextRooms }));
-    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
-    save(floor, material, stage, nextRooms, nextDetails);
+    setRooms((prev) => ({ ...prev, [k]: del }));
+    setOngoing((prev) => ({ ...prev, [k]: ong }));
+    setDetails((prev) => ({ ...prev, [k]: det }));
+    save(floor, material, stage, del, ong, det);
   };
 
   // Tap a cell: pre-delivery stages advance one step; delivery stages open the
@@ -160,33 +203,10 @@ export default function MaterialReadiness() {
     }
   };
 
-  // Toggle a single room's delivered flag; stage follows the room count.
-  const toggleRoom = (floor: number, material: UnitWorkItem, off: number) => {
-    const k = key(floor, material);
-    const cur = roomsOf(floor, material);
-    const next = cur.includes(off)
-      ? cur.filter((x) => x !== off)
-      : [...cur, off].sort((a, b) => a - b);
-    const stage: MaterialStage = next.length === ROOMS_PER_FLOOR ? 'delivered' : 'delivering';
-    // Removing a room's delivered flag also drops its pieces/memo detail.
-    const nextDetails = next.includes(off)
-      ? detailsOf(floor, material)
-      : detailsOf(floor, material).filter((d) => d.room !== off);
-    setRooms((prev) => ({ ...prev, [k]: next }));
-    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
-    setStages((prev) => ({ ...prev, [k]: stage }));
-    save(floor, material, stage, next, nextDetails);
-  };
-
   const setAllRooms = (floor: number, material: UnitWorkItem, all: boolean) => {
-    const k = key(floor, material);
-    const next = all ? [...ROOM_OFFSETS] : [];
-    const stage: MaterialStage = all ? 'delivered' : 'delivering';
-    const nextDetails = all ? detailsOf(floor, material) : [];
-    setRooms((prev) => ({ ...prev, [k]: next }));
-    setDetails((prev) => ({ ...prev, [k]: nextDetails }));
-    setStages((prev) => ({ ...prev, [k]: stage }));
-    save(floor, material, stage, next, nextDetails);
+    const del = all ? [...ROOM_OFFSETS] : [];
+    const det = all ? detailsOf(floor, material) : [];
+    commit(floor, material, del, [], det); // clear ongoing either way
   };
 
   const matLabel = (m: UnitWorkItem) => t(`unit.wi.${m}` as TKey);
@@ -322,8 +342,11 @@ export default function MaterialReadiness() {
           material={openCell.material}
           matLabel={matLabel(openCell.material)}
           delivered={roomsOf(openCell.floor, openCell.material)}
+          ongoing={ongoingOf(openCell.floor, openCell.material)}
           details={detailsOf(openCell.floor, openCell.material)}
-          onToggle={(off) => toggleRoom(openCell.floor, openCell.material, off)}
+          onStatus={(off, status) =>
+            setRoomStatus(openCell.floor, openCell.material, off, status)
+          }
           onAll={(all) => setAllRooms(openCell.floor, openCell.material, all)}
           onDetail={(off, pieces, memo) =>
             setRoomDetail(openCell.floor, openCell.material, off, pieces, memo)
@@ -353,8 +376,9 @@ function RoomPanel(props: {
   material: UnitWorkItem;
   matLabel: string;
   delivered: number[];
+  ongoing: number[];
   details: RoomDelivery[];
-  onToggle: (off: number) => void;
+  onStatus: (off: number, status: 'pending' | 'ongoing' | 'delivered') => void;
   onAll: (all: boolean) => void;
   onDetail: (off: number, pieces: number, memo: string) => void;
   onPhoto: (off: number) => void;
@@ -362,9 +386,10 @@ function RoomPanel(props: {
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { floor, matLabel, delivered, details, onToggle, onAll, onDetail, onPhoto, onBack, onClose } =
+  const { floor, matLabel, delivered, ongoing, details, onStatus, onAll, onDetail, onPhoto, onBack, onClose } =
     props;
   const done = delivered.length;
+  const onGoing = ongoing.length;
   const totalPieces = details.reduce((n, d) => n + (d.pieces || 0), 0);
 
   // Room currently open in the pieces/memo editor.
@@ -404,6 +429,11 @@ function RoomPanel(props: {
             </div>
             <div className="text-xs text-muted mt-0.5">
               {done}/{ROOMS_PER_FLOOR} {t('matr.roomsDelivered')}
+              {onGoing > 0 && (
+                <span className="ml-2 text-amber-700 font-semibold">
+                  · {onGoing} {t('matr.ongoing')}
+                </span>
+              )}
               {totalPieces > 0 && (
                 <span className="ml-2 text-green-700 font-semibold">
                   · {totalPieces} {t('matr.piecesUnit')}
@@ -426,6 +456,7 @@ function RoomPanel(props: {
           <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-7">
             {ROOM_OFFSETS.map((off) => {
               const on = delivered.includes(off);
+              const ong = ongoing.includes(off);
               const d = detailOf(off);
               const isSel = sel === off;
               return (
@@ -437,7 +468,9 @@ function RoomPanel(props: {
                     }${
                       on
                         ? 'border-green-500 bg-green-500 text-white'
-                        : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                        : ong
+                          ? 'border-amber-500 bg-amber-400 text-white'
+                          : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     {floor * 100 + off}
@@ -466,20 +499,42 @@ function RoomPanel(props: {
           {/* Per-room pieces + memo editor */}
           {sel !== null && (
             <div className="mt-4 rounded-lg border border-line bg-gray-50 p-3">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-dark">
                   {t('matr.room')} {floor * 100 + sel}
                 </span>
-                <button
-                  onClick={() => onToggle(sel)}
-                  className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
-                    delivered.includes(sel)
-                      ? 'border-green-500 bg-green-500 text-white'
-                      : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {delivered.includes(sel) ? `✓ ${t('matr.delivered')}` : t('matr.markDelivered')}
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => onStatus(sel, 'pending')}
+                    className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
+                      !delivered.includes(sel) && !ongoing.includes(sel)
+                        ? 'border-gray-400 bg-gray-200 text-gray-800'
+                        : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-100'
+                    }`}
+                  >
+                    {t('matr.notDelivered')}
+                  </button>
+                  <button
+                    onClick={() => onStatus(sel, 'ongoing')}
+                    className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
+                      ongoing.includes(sel)
+                        ? 'border-amber-500 bg-amber-400 text-white'
+                        : 'border-gray-300 bg-white text-gray-600 hover:bg-amber-50'
+                    }`}
+                  >
+                    🛵 {t('matr.ongoing')}
+                  </button>
+                  <button
+                    onClick={() => onStatus(sel, 'delivered')}
+                    className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${
+                      delivered.includes(sel)
+                        ? 'border-green-500 bg-green-500 text-white'
+                        : 'border-gray-300 bg-white text-gray-600 hover:bg-green-50'
+                    }`}
+                  >
+                    ✓ {t('matr.delivered')}
+                  </button>
+                </div>
               </div>
               <div className="flex flex-wrap items-end gap-3">
                 <label className="flex flex-col text-xs text-muted">

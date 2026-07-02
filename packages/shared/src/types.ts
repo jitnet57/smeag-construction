@@ -314,7 +314,8 @@ export interface MaterialReadiness {
   material: UnitWorkItem;
   stage: MaterialStage;
   note?: string;        // free memo, e.g. delivered-room count during "delivering"
-  deliveredRooms?: number[]; // room offsets (1..26) delivered during "delivering"/"delivered"
+  deliveredRooms?: number[]; // room offsets (1..26) fully delivered
+  ongoingRooms?: number[];   // room offsets (1..26) currently "on going to deliver"
   roomDetails?: RoomDelivery[]; // per-room pieces + memo captured during delivery
 }
 
