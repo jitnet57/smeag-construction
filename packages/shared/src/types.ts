@@ -31,6 +31,8 @@ export interface Employee {
   age?: number;        // worker age (나이)
   idNo?: string;       // ID number / worker id (아이디)
   photoUrl?: string;   // ID photo public URL (사진)
+  joinDate?: string;   // join / hire date, ISO yyyy-mm-dd (입사일)
+  sssNo?: string;      // SSS number (SSS 번호)
 }
 
 // ---- Attendance ------------------------------------------------------------

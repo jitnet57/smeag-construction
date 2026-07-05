@@ -515,6 +515,12 @@ const DICT = {
   'emp.crewRequired': { en: 'Please select a crew.', ko: '소속 조를 선택하세요.' },
   'emp.addError': { en: 'Could not add worker.', ko: '인부 등록에 실패했습니다.' },
   'emp.selectCrew': { en: 'Select crew…', ko: '조 선택…' },
+  'emp.editTitle': { en: 'Edit Worker', ko: '인부 정보 수정' },
+  'emp.edit': { en: 'Edit', ko: '수정' },
+  'emp.thActions': { en: 'Edit', ko: '수정' },
+  'emp.fJoinDate': { en: 'Join Date', ko: '입사일' },
+  'emp.fSssNo': { en: 'SSS No.', ko: 'SSS 번호' },
+  'emp.updateError': { en: 'Could not update worker.', ko: '수정에 실패했습니다.' },
 
   // --- Settings -------------------------------------------------------------
   'set.loading': { en: 'Loading...', ko: '로딩 중...' },

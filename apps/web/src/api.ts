@@ -328,12 +328,34 @@ const networkApi = {
     ratePerDay: number;
     age?: number | null;
     idNo?: string | null;
+    joinDate?: string | null;
+    sssNo?: string | null;
   }): Promise<Employee> {
     const created = await fetchApi<Employee>('/api/employees', {
       method: 'POST',
       body: JSON.stringify(input),
     });
     return created;
+  },
+  async updateEmployee(
+    employeeId: string,
+    patch: {
+      name?: string;
+      nickname?: string | null;
+      crewId?: string;
+      position?: Employee['position'];
+      ratePerDay?: number;
+      age?: number | null;
+      idNo?: string | null;
+      joinDate?: string | null;
+      sssNo?: string | null;
+    }
+  ): Promise<Employee> {
+    const updated = await fetchApi<Employee>(
+      `/api/employees/${encodeURIComponent(employeeId)}`,
+      { method: 'PUT', body: JSON.stringify(patch) }
+    );
+    return updated;
   },
   async updateEmployeeInfo(
     employeeId: string,

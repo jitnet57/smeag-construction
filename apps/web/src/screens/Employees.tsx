@@ -19,6 +19,8 @@ type NewWorker = {
   ratePerDay: string;
   age: string;
   idNo: string;
+  joinDate: string;
+  sssNo: string;
 };
 
 const EMPTY_WORKER: NewWorker = {
@@ -29,6 +31,8 @@ const EMPTY_WORKER: NewWorker = {
   ratePerDay: '540',
   age: '',
   idNo: '',
+  joinDate: '',
+  sssNo: '',
 };
 
 export default function Employees(): JSX.Element {
@@ -45,9 +49,10 @@ export default function Employees(): JSX.Element {
   const [uploadFor, setUploadFor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Add-worker modal state.
+  // Add/Edit-worker modal state. editingId === null => add mode.
   const [crews, setCrews] = useState<Crew[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<NewWorker>(EMPTY_WORKER);
 
@@ -78,8 +83,25 @@ export default function Employees(): JSX.Element {
   }, []);
 
   const openAdd = () => {
+    setEditingId(null);
     setForm({ ...EMPTY_WORKER, crewId: crews[0]?.id ?? '' });
-    setShowAdd(true);
+    setShowModal(true);
+  };
+
+  const openEdit = (emp: Employee) => {
+    setEditingId(emp.id);
+    setForm({
+      name: emp.name,
+      nickname: emp.nickname || '',
+      crewId: emp.crewId,
+      position: emp.position,
+      ratePerDay: String(emp.ratePerDay ?? ''),
+      age: emp.age != null ? String(emp.age) : '',
+      idNo: emp.idNo || '',
+      joinDate: emp.joinDate || '',
+      sssNo: emp.sssNo || '',
+    });
+    setShowModal(true);
   };
 
   const submitWorker = async () => {
@@ -92,21 +114,31 @@ export default function Employees(): JSX.Element {
       alert(t('emp.crewRequired'));
       return;
     }
+    const payload = {
+      name,
+      nickname: form.nickname.trim() || null,
+      crewId: form.crewId,
+      position: form.position,
+      ratePerDay: Math.max(0, Math.floor(Number(form.ratePerDay) || 0)),
+      age: form.age ? Math.max(0, Math.floor(Number(form.age))) : null,
+      idNo: form.idNo.trim() || null,
+      joinDate: form.joinDate || null,
+      sssNo: form.sssNo.trim() || null,
+    };
     setSaving(true);
     try {
-      await api.createEmployee({
-        name,
-        nickname: form.nickname.trim() || undefined,
-        crewId: form.crewId,
-        position: form.position,
-        ratePerDay: Math.max(0, Math.floor(Number(form.ratePerDay) || 0)),
-        age: form.age ? Math.max(0, Math.floor(Number(form.age))) : null,
-        idNo: form.idNo.trim() || null,
-      });
-      setShowAdd(false);
+      if (editingId) {
+        await api.updateEmployee(editingId, payload);
+      } else {
+        await api.createEmployee({
+          ...payload,
+          nickname: payload.nickname ?? undefined,
+        });
+      }
+      setShowModal(false);
       loadEmployees();
     } catch {
-      alert(t('emp.addError'));
+      alert(editingId ? t('emp.updateError') : t('emp.addError'));
     } finally {
       setSaving(false);
     }
@@ -189,18 +221,18 @@ export default function Employees(): JSX.Element {
         </button>
       </div>
 
-      {/* Add-worker modal */}
-      {showAdd && (
+      {/* Add / Edit-worker modal */}
+      {showModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => !saving && setShowAdd(false)}
+          onClick={() => !saving && setShowModal(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-4 text-base font-bold text-dark">
-              {t('emp.addTitle')}
+              {editingId ? t('emp.editTitle') : t('emp.addTitle')}
             </h3>
 
             <div className="space-y-3">
@@ -325,13 +357,45 @@ export default function Employees(): JSX.Element {
                   />
                 </label>
               </div>
+
+              <div className="flex gap-3">
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fJoinDate')}{' '}
+                    <span className="font-normal">({t('emp.fOptional')})</span>
+                  </span>
+                  <input
+                    type="date"
+                    value={form.joinDate}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, joinDate: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fSssNo')}{' '}
+                    <span className="font-normal">({t('emp.fOptional')})</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={form.sssNo}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, sssNo: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
               <button
                 className="rounded-lg border border-line px-4 py-2 text-sm"
                 disabled={saving}
-                onClick={() => setShowAdd(false)}
+                onClick={() => setShowModal(false)}
               >
                 {t('emp.cancel')}
               </button>
@@ -377,12 +441,13 @@ export default function Employees(): JSX.Element {
                 <th className="text-right">{t('emp.thDailyRate')}</th>
                 <th>{t('emp.thJoinDate')}</th>
                 <th>{t('emp.thSssNo')}</th>
+                <th className="text-center">{t('emp.thActions')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={11} className="text-center text-muted py-8">
+                  <td colSpan={12} className="text-center text-muted py-8">
                     {t('emp.noData')}
                   </td>
                 </tr>
@@ -446,8 +511,16 @@ export default function Employees(): JSX.Element {
                     <span className="crewtag">{emp.crewId}</span>
                   </td>
                   <td className="text-right">₱{emp.ratePerDay}</td>
-                  <td>2022-08-28</td>
-                  <td>34-xxxxxxx-x</td>
+                  <td>{emp.joinDate || '—'}</td>
+                  <td>{emp.sssNo || '—'}</td>
+                  <td className="text-center">
+                    <button
+                      onClick={() => openEdit(emp)}
+                      className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-primary hover:bg-gray-50"
+                    >
+                      {t('emp.edit')}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

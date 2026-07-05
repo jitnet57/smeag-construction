@@ -72,6 +72,8 @@ function toEmployee(r: any): Employee {
     age: r.age == null ? undefined : Number(r.age),
     idNo: r.id_no ?? undefined,
     photoUrl: r.photo_url ?? undefined,
+    joinDate: r.join_date ?? undefined,
+    sssNo: r.sss_no ?? undefined,
   };
 }
 
@@ -618,6 +620,8 @@ export const supabaseApi = {
     ratePerDay: number;
     age?: number | null;
     idNo?: string | null;
+    joinDate?: string | null;
+    sssNo?: string | null;
   }): Promise<Employee> {
     const base =
       input.name
@@ -636,10 +640,47 @@ export const supabaseApi = {
       active: true,
       age: input.age ?? null,
       id_no: input.idNo?.trim() || null,
+      join_date: input.joinDate || null,
+      sss_no: input.sssNo?.trim() || null,
     };
     const { data, error } = await sb()
       .from('employees')
       .insert(row)
+      .select()
+      .single();
+    if (error) throw error;
+    return toEmployee(data);
+  },
+
+  // --- Update an existing worker (all editable fields) ----------------------
+  async updateEmployee(
+    employeeId: string,
+    patch: {
+      name?: string;
+      nickname?: string | null;
+      crewId?: string;
+      position?: Position;
+      ratePerDay?: number;
+      age?: number | null;
+      idNo?: string | null;
+      joinDate?: string | null;
+      sssNo?: string | null;
+    }
+  ): Promise<Employee> {
+    const row: any = {};
+    if (patch.name !== undefined) row.name = patch.name.trim();
+    if (patch.nickname !== undefined) row.nickname = patch.nickname?.trim() || null;
+    if (patch.crewId !== undefined) row.crew_id = patch.crewId;
+    if (patch.position !== undefined) row.position = patch.position;
+    if (patch.ratePerDay !== undefined) row.rate_per_day = patch.ratePerDay;
+    if (patch.age !== undefined) row.age = patch.age ?? null;
+    if (patch.idNo !== undefined) row.id_no = patch.idNo?.trim() || null;
+    if (patch.joinDate !== undefined) row.join_date = patch.joinDate || null;
+    if (patch.sssNo !== undefined) row.sss_no = patch.sssNo?.trim() || null;
+    const { data, error } = await sb()
+      .from('employees')
+      .update(row)
+      .eq('id', employeeId)
       .select()
       .single();
     if (error) throw error;

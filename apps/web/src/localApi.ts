@@ -357,6 +357,8 @@ export const localApi = {
     ratePerDay: number;
     age?: number | null;
     idNo?: string | null;
+    joinDate?: string | null;
+    sssNo?: string | null;
   }): Promise<Employee> {
     const base = slugify(input.name) || 'worker';
     const id = `${base}-${Date.now().toString(36).slice(-4)}`;
@@ -371,8 +373,41 @@ export const localApi = {
       active: true,
       age: input.age == null ? undefined : Number(input.age),
       idNo: input.idNo?.trim() || undefined,
+      joinDate: input.joinDate || undefined,
+      sssNo: input.sssNo?.trim() || undefined,
     } as Employee;
     employees.push(emp);
+    employees.sort((a, b) => a.name.localeCompare(b.name));
+    return emp;
+  },
+  async updateEmployee(
+    employeeId: string,
+    patch: {
+      name?: string;
+      nickname?: string | null;
+      crewId?: string;
+      position?: Employee['position'];
+      ratePerDay?: number;
+      age?: number | null;
+      idNo?: string | null;
+      joinDate?: string | null;
+      sssNo?: string | null;
+    }
+  ): Promise<Employee> {
+    const emp = employees.find((e) => e.id === employeeId);
+    if (!emp) throw new Error('not found');
+    if (patch.name !== undefined) emp.name = patch.name.trim();
+    if (patch.nickname !== undefined) emp.nickname = patch.nickname?.trim() || '';
+    if (patch.crewId !== undefined) emp.crewId = patch.crewId;
+    if (patch.position !== undefined) {
+      emp.position = patch.position;
+      emp.incentiveDailyRate = incentiveByPosition[patch.position] ?? emp.incentiveDailyRate;
+    }
+    if (patch.ratePerDay !== undefined) emp.ratePerDay = patch.ratePerDay;
+    if (patch.age !== undefined) emp.age = patch.age == null ? undefined : Number(patch.age);
+    if (patch.idNo !== undefined) emp.idNo = patch.idNo?.trim() || undefined;
+    if (patch.joinDate !== undefined) emp.joinDate = patch.joinDate || undefined;
+    if (patch.sssNo !== undefined) emp.sssNo = patch.sssNo?.trim() || undefined;
     employees.sort((a, b) => a.name.localeCompare(b.name));
     return emp;
   },
