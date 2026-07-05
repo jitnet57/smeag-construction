@@ -349,6 +349,33 @@ export const localApi = {
   async deleteRoomPhoto(id: string): Promise<void> {
     roomPhotos.delete(id);
   },
+  async createEmployee(input: {
+    name: string;
+    nickname?: string;
+    crewId: string;
+    position: Employee['position'];
+    ratePerDay: number;
+    age?: number | null;
+    idNo?: string | null;
+  }): Promise<Employee> {
+    const base = slugify(input.name) || 'worker';
+    const id = `${base}-${Date.now().toString(36).slice(-4)}`;
+    const emp: Employee = {
+      id,
+      name: input.name.trim(),
+      nickname: input.nickname?.trim() || '',
+      crewId: input.crewId,
+      position: input.position,
+      ratePerDay: input.ratePerDay,
+      incentiveDailyRate: incentiveByPosition[input.position] ?? undefined,
+      active: true,
+      age: input.age == null ? undefined : Number(input.age),
+      idNo: input.idNo?.trim() || undefined,
+    } as Employee;
+    employees.push(emp);
+    employees.sort((a, b) => a.name.localeCompare(b.name));
+    return emp;
+  },
   async updateEmployeeInfo(
     employeeId: string,
     patch: { age?: number | null; idNo?: string | null }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Employee } from '@brightem/shared';
+import type { Employee, Crew } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 
@@ -10,6 +10,26 @@ const POSITIONS = [
   'HOUSEKEEPING',
   'SECURITY',
 ];
+
+type NewWorker = {
+  name: string;
+  nickname: string;
+  crewId: string;
+  position: Employee['position'];
+  ratePerDay: string;
+  age: string;
+  idNo: string;
+};
+
+const EMPTY_WORKER: NewWorker = {
+  name: '',
+  nickname: '',
+  crewId: '',
+  position: 'SKILLED',
+  ratePerDay: '540',
+  age: '',
+  idNo: '',
+};
 
 export default function Employees(): JSX.Element {
   const { t } = useI18n();
@@ -25,7 +45,13 @@ export default function Employees(): JSX.Element {
   const [uploadFor, setUploadFor] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // Add-worker modal state.
+  const [crews, setCrews] = useState<Crew[]>([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<NewWorker>(EMPTY_WORKER);
+
+  const loadEmployees = () => {
     setLoading(true);
     api
       .getEmployees()
@@ -44,7 +70,47 @@ export default function Employees(): JSX.Element {
         setPhotos(p);
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadEmployees();
+    api.getCrews().then(setCrews).catch(() => undefined);
   }, []);
+
+  const openAdd = () => {
+    setForm({ ...EMPTY_WORKER, crewId: crews[0]?.id ?? '' });
+    setShowAdd(true);
+  };
+
+  const submitWorker = async () => {
+    const name = form.name.trim();
+    if (!name) {
+      alert(t('emp.nameRequired'));
+      return;
+    }
+    if (!form.crewId) {
+      alert(t('emp.crewRequired'));
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.createEmployee({
+        name,
+        nickname: form.nickname.trim() || undefined,
+        crewId: form.crewId,
+        position: form.position,
+        ratePerDay: Math.max(0, Math.floor(Number(form.ratePerDay) || 0)),
+        age: form.age ? Math.max(0, Math.floor(Number(form.age))) : null,
+        idNo: form.idNo.trim() || null,
+      });
+      setShowAdd(false);
+      loadEmployees();
+    } catch {
+      alert(t('emp.addError'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Persist age/id changes for one employee (called on blur).
   const saveInfo = (empId: string, patch: { age?: number | null; idNo?: string | null }) => {
@@ -118,8 +184,168 @@ export default function Employees(): JSX.Element {
 
         <div className="flex-1" />
 
-        <button className="btn">{t('emp.addWorker')}</button>
+        <button className="btn" onClick={openAdd}>
+          {t('emp.addWorker')}
+        </button>
       </div>
+
+      {/* Add-worker modal */}
+      {showAdd && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => !saving && setShowAdd(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-4 text-base font-bold text-dark">
+              {t('emp.addTitle')}
+            </h3>
+
+            <div className="space-y-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-muted">
+                  {t('emp.fName')}
+                </span>
+                <input
+                  type="text"
+                  autoFocus
+                  value={form.name}
+                  placeholder={t('emp.fNamePh')}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-muted">
+                  {t('emp.fNickname')}{' '}
+                  <span className="font-normal">({t('emp.fOptional')})</span>
+                </span>
+                <input
+                  type="text"
+                  value={form.nickname}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, nickname: e.target.value }))
+                  }
+                  className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                />
+              </label>
+
+              <div className="flex gap-3">
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fCrew')}
+                  </span>
+                  <select
+                    value={form.crewId}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, crewId: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">{t('emp.selectCrew')}</option>
+                    {crews.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fPosition')}
+                  </span>
+                  <select
+                    value={form.position}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        position: e.target.value as Employee['position'],
+                      }))
+                    }
+                    className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
+                  >
+                    {POSITIONS.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fRate')}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={form.ratePerDay}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, ratePerDay: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block w-20">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fAge')}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={form.age}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, age: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fId')}{' '}
+                    <span className="font-normal">({t('emp.fOptional')})</span>
+                  </span>
+                  <input
+                    type="text"
+                    value={form.idNo}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, idNo: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                className="rounded-lg border border-line px-4 py-2 text-sm"
+                disabled={saving}
+                onClick={() => setShowAdd(false)}
+              >
+                {t('emp.cancel')}
+              </button>
+              <button
+                className="btn"
+                disabled={saving}
+                onClick={submitWorker}
+              >
+                {saving ? t('emp.saving') : t('emp.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hidden picker used for uploading a worker's ID photo. */}
       <input

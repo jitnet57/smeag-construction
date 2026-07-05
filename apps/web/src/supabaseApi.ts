@@ -15,6 +15,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_CONFIG } from '@brightem/shared';
 import type {
   Employee,
+  Position,
   Crew,
   PayPeriod,
   AttendanceRecord,
@@ -606,6 +607,43 @@ export const supabaseApi = {
     }
     const del = await client.from('room_photos').delete().eq('id', id);
     if (del.error) throw del.error;
+  },
+
+  // --- Create a new worker --------------------------------------------------
+  async createEmployee(input: {
+    name: string;
+    nickname?: string;
+    crewId: string;
+    position: Position;
+    ratePerDay: number;
+    age?: number | null;
+    idNo?: string | null;
+  }): Promise<Employee> {
+    const base =
+      input.name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'worker';
+    const id = `${base}-${Date.now().toString(36).slice(-4)}`;
+    const row = {
+      id,
+      name: input.name.trim(),
+      nickname: input.nickname?.trim() || null,
+      crew_id: input.crewId,
+      position: input.position,
+      rate_per_day: input.ratePerDay,
+      active: true,
+      age: input.age ?? null,
+      id_no: input.idNo?.trim() || null,
+    };
+    const { data, error } = await sb()
+      .from('employees')
+      .insert(row)
+      .select()
+      .single();
+    if (error) throw error;
+    return toEmployee(data);
   },
 
   // --- Employee ID info (age / id number / photo) ---------------------------

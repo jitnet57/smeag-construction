@@ -320,6 +320,21 @@ const networkApi = {
     const i = _photos.findIndex((p) => p.id === id);
     if (i >= 0) _photos.splice(i, 1);
   },
+  async createEmployee(input: {
+    name: string;
+    nickname?: string;
+    crewId: string;
+    position: Employee['position'];
+    ratePerDay: number;
+    age?: number | null;
+    idNo?: string | null;
+  }): Promise<Employee> {
+    const created = await fetchApi<Employee>('/api/employees', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return created;
+  },
   async updateEmployeeInfo(
     employeeId: string,
     patch: { age?: number | null; idNo?: string | null }
