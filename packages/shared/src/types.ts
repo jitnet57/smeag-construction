@@ -197,7 +197,6 @@ export const SKILL_KEYS = [
   "ducting",
   "roofing",
   "installer",
-  "ceiling",
   "wall_panel",
   "welding",
 ] as const;
