@@ -278,7 +278,41 @@ export default function Payroll({ period }: Props) {
         <h3 className="text-sm font-bold text-dark mb-3">
           {t('pay.title')}
         </h3>
-        <div className="overflow-x-auto">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-3">
+          <div className="rounded-xl p-3 text-white bg-gradient-to-br from-primary to-[#255e97]">
+            <div className="text-[11px] opacity-80">{t('pay.total')} ({totals.employees}{t('pay.totalUnit')})</div>
+            <div className="text-2xl font-extrabold mt-0.5">₱ {totals.netPay.toLocaleString()}</div>
+          </div>
+          {displayData.map((slip, idx) => {
+            const emp = empMap.get(slip.employeeId);
+            const deductions = Math.max(0, slip.grossPay - slip.netPay);
+            return (
+              <div key={slip.employeeId} className="bg-white border border-line rounded-xl p-3 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm text-dark truncate">
+                      {idx + 1}. {emp?.name ?? slip.employeeId}
+                    </div>
+                    <div className="text-xs text-muted truncate">{emp?.position ?? 'SKILLED'}</div>
+                  </div>
+                  <div className="text-lg font-extrabold text-dark flex-shrink-0">
+                    ₱ {slip.netPay.toLocaleString()}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-2 text-[11px]">
+                  <span className="pill">{slip.workedDays}{t('pay.totalUnit')}</span>
+                  <span className="text-muted">
+                    {t('pay.thGross')} ₱{slip.grossPay.toLocaleString()} · {t('pay.thNet')} 공제 ₱{deductions.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="overflow-x-auto hidden md:block">
           <table>
             <thead>
               <tr>

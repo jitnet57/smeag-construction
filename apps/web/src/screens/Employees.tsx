@@ -591,7 +591,55 @@ export default function Employees(): JSX.Element {
         <h3 className="text-sm font-bold text-dark mb-3">
           {t('emp.masterTitle')} ({employees.length}{t('emp.masterUnit')})
         </h3>
-        <div className="overflow-x-auto">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-3">
+          {filtered.length === 0 && !loading && (
+            <div className="text-center text-muted py-8">{t('emp.noData')}</div>
+          )}
+          {filtered.map((emp) => (
+            <div key={emp.id} className="bg-white border border-line rounded-xl p-3 shadow-sm">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => pickPhoto(emp.id)}
+                  title={t('skill.photoTitle')}
+                  className="h-12 w-10 flex-shrink-0 overflow-hidden rounded border border-line bg-gray-50 flex items-center justify-center"
+                >
+                  {photos[emp.id] ? (
+                    <img src={photos[emp.id]} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-lg leading-none text-muted">＋</span>
+                  )}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-sm text-dark truncate">
+                    {emp.name}
+                    {emp.nickname ? <span className="text-muted font-normal"> ({emp.nickname})</span> : null}
+                  </div>
+                  <div className="text-xs text-muted truncate">
+                    {emp.position} · <span className="crewtag">{emp.crewId}</span> · ₱{emp.ratePerDay}/일
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => openEdit(emp)}
+                    className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-primary hover:bg-gray-50"
+                  >
+                    {t('emp.edit')}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(emp)}
+                    className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  >
+                    {t('emp.delete')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="overflow-x-auto hidden md:block">
           <table>
             <thead>
               <tr>

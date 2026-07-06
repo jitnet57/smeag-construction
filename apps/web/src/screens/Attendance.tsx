@@ -262,7 +262,59 @@ export default function Attendance({ period }: Props) {
         <h3 className="text-sm font-bold text-dark mb-3">
           {t('att.timeEntryTitle')}
         </h3>
-        <div className="overflow-x-auto">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-3">
+          {rows.map((row, idx) => (
+            <div key={row.employee.id} className="bg-white border border-line rounded-xl p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-bold text-sm text-dark truncate">
+                    {idx + 1}. {row.employee.name}
+                  </div>
+                  <div className="text-xs text-muted truncate">{row.employee.position}</div>
+                </div>
+                <span className={`pill ${row.statusType} flex-shrink-0`}>
+                  {row.status} · {row.workedHours.toFixed(1)}h
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <label className="block">
+                  <span className="block text-[9px] text-muted mb-0.5">AM IN</span>
+                  <input className="in w-full" value={row.amIn}
+                    onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="block text-[9px] text-muted mb-0.5">AM OUT</span>
+                  <input className="in w-full" value={row.amOut}
+                    onChange={(e) => handleInputChange(idx, 'amOut', e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="block text-[9px] text-muted mb-0.5">PM IN</span>
+                  <input className="in w-full" value={row.pmIn}
+                    onChange={(e) => handleInputChange(idx, 'pmIn', e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="block text-[9px] text-muted mb-0.5">PM OUT</span>
+                  <input className="in w-full" value={row.pmOut}
+                    onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="block text-[9px] text-muted mb-0.5">OT IN</span>
+                  <input className="in w-full" value={row.otIn}
+                    onChange={(e) => handleInputChange(idx, 'otIn', e.target.value)} />
+                </label>
+                <label className="block">
+                  <span className="block text-[9px] text-muted mb-0.5">OT OUT</span>
+                  <input className="in w-full" value={row.otOut}
+                    onChange={(e) => handleInputChange(idx, 'otOut', e.target.value)} />
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="overflow-x-auto hidden md:block">
           <table>
             <thead>
               <tr>

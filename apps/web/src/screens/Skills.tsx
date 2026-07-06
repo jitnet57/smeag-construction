@@ -366,7 +366,40 @@ export default function Skills() {
           {t('skill.title')}
         </h3>
 
-        <div className="overflow-x-auto">
+        {/* Mobile card view — read-only skill chips (edit levels on desktop table) */}
+        <div className="md:hidden space-y-3">
+          {sorted.map((e) => {
+            const skills = SKILL_KEYS.map((k) => ({ k, lvl: getLevel(e.id, k) }))
+              .filter((s) => s.lvl > 0)
+              .sort((a, b) => b.lvl - a.lvl);
+            const avg = avgOf(e.id);
+            return (
+              <div key={e.id} className="bg-white border border-line rounded-xl p-3 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-bold text-sm text-dark truncate">{e.name}</div>
+                  <span className={`pill flex-shrink-0 ${avg >= 6 ? 'ok' : 'half'}`}>
+                    {t('skill.thAvg')} {avg.toFixed(1)}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {skills.length === 0 && <span className="text-xs text-muted">—</span>}
+                  {skills.map((s) => (
+                    <span
+                      key={s.k}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded"
+                      style={cellStyle(s.lvl)}
+                    >
+                      {t(`skill.${s.k}` as TKey)} {s.lvl}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="text-sm">
             <thead>
               <tr>

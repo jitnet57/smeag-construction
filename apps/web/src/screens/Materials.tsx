@@ -152,7 +152,45 @@ export default function Materials() {
           <span className="inline-block w-1 h-4 bg-primary rounded mr-2 align-middle" />
           {t('mat.listTitle')}
         </h3>
-        <div className="overflow-x-auto">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-3">
+          {requests.length === 0 && (
+            <div className="text-center text-muted py-4">{t('mat.noRequests')}</div>
+          )}
+          {requests.map((r) => (
+            <div key={r.id} className="bg-white border border-line rounded-xl p-3 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold text-sm text-dark truncate">{r.requestNo || '—'}</div>
+                <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_STYLE[r.status]}`}>
+                  {statusLabel(r.status)}
+                </span>
+              </div>
+              <div className="text-xs text-muted mt-1 truncate">
+                {r.site || '—'} · {t('mat.thRequester')} {r.requester || '—'} · {r.requestDate || '—'}
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-xs text-muted">{t('mat.thItems')} {r.items.length}</span>
+                <span className="font-bold text-sm text-dark">{php(reqTotal(r))}</span>
+              </div>
+              <div className="flex flex-wrap gap-3 pt-2 mt-2 border-t border-line">
+                {r.status !== 'approved' && (
+                  <button className="text-xs text-green-700 hover:underline" onClick={() => setStatus(r, 'approved')}>{t('mat.approve')}</button>
+                )}
+                {r.status !== 'rejected' && (
+                  <button className="text-xs text-red-600 hover:underline" onClick={() => setStatus(r, 'rejected')}>{t('mat.reject')}</button>
+                )}
+                {r.status !== 'requested' && (
+                  <button className="text-xs text-amber-700 hover:underline" onClick={() => setStatus(r, 'requested')}>{t('mat.reopen')}</button>
+                )}
+                <button className="text-xs text-blue-700 hover:underline" onClick={() => startEdit(r)}>{t('mat.edit')}</button>
+                <button className="text-xs text-red-600 hover:underline" onClick={() => handleDelete(r.id)}>{t('mat.delete')}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="text-sm w-full">
             <thead>
               <tr>

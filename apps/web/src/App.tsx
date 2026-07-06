@@ -48,6 +48,14 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'settings', icon: '⚙', labelKey: 'nav.settings' },
 ];
 
+// Primary tabs shown in the mobile bottom bar (the rest live under "More").
+const BOTTOM_TABS: NavItem[] = [
+  { key: 'dashboard', icon: '▤', labelKey: 'nav.dashboard' },
+  { key: 'attendance', icon: '🕑', labelKey: 'nav.attendance' },
+  { key: 'payroll', icon: '₱', labelKey: 'nav.payroll' },
+  { key: 'employees', icon: '👷', labelKey: 'nav.employees' },
+];
+
 const SCREEN_TITLES: Record<ScreenKey, TKey> = {
   dashboard: 'nav.dashboard',
   attendance: 'nav.attendance',
@@ -221,10 +229,36 @@ export default function App() {
           </div>
         </div>
 
-        {/* Content area */}
-        <div className="flex-1 overflow-auto p-4 sm:p-6">
+        {/* Content area — extra bottom padding on mobile so the tab bar doesn't cover content */}
+        <div className="flex-1 overflow-auto p-4 sm:p-6 pb-20 md:pb-6">
           {renderScreen()}
         </div>
+
+        {/* Bottom tab bar — mobile only. 5 primary tabs; "More" opens the drawer. */}
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-line flex justify-around items-stretch h-14 pb-[env(safe-area-inset-bottom)]">
+          {BOTTOM_TABS.map((item) => {
+            const active = currentScreen === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => goTo(item.key)}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-none ${
+                  active ? 'text-primary font-bold' : 'text-muted'
+                }`}
+              >
+                <span className="text-lg leading-none">{item.icon}</span>
+                <span>{t(item.labelKey)}</span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setNavOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] leading-none text-muted"
+          >
+            <span className="text-lg leading-none">⋯</span>
+            <span>{t('nav.more')}</span>
+          </button>
+        </nav>
       </div>
     </div>
   );

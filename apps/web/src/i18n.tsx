@@ -29,6 +29,7 @@ const DICT = {
   'nav.materials': { en: 'Materials', ko: '자재 구매' },
   'nav.matReady': { en: 'Material Readiness', ko: '자재 준비 현황' },
   'nav.settings': { en: 'Settings', ko: '규칙 설정' },
+  'nav.more': { en: 'More', ko: '더보기' },
 
   // --- Skills matrix --------------------------------------------------------
   'skill.title': {

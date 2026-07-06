@@ -360,7 +360,80 @@ export default function TaskAssign({ period }: Props) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-3">
+          {tasks.length === 0 && (
+            <div className="text-center text-muted py-4">{t('task.noTasks')}</div>
+          )}
+          {tasks.map((tk) => {
+            const days = durationDays(tk.requiredManday, tk.requiredHeadcount);
+            const end = estFinishDate(tk.requiredManday, tk.requiredHeadcount, workDate);
+            return (
+              <div key={tk.id} className="bg-white border border-line rounded-xl p-3 shadow-sm space-y-2">
+                <input
+                  type="text"
+                  value={tk.name}
+                  placeholder={t('task.newTaskName')}
+                  onChange={(e) => updateTask(tk.id, { name: e.target.value })}
+                  className="border border-line rounded px-2 py-1.5 text-sm w-full bg-white font-bold"
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="block">
+                    <span className="block text-[9px] text-muted mb-0.5">{t('task.thTrade')}</span>
+                    <select
+                      value={tk.skillKey}
+                      onChange={(e) => updateTask(tk.id, { skillKey: e.target.value })}
+                      className="border border-line rounded px-2 py-1 text-sm bg-white w-full"
+                    >
+                      {SKILL_KEYS.map((k) => (
+                        <option key={k} value={k}>{tradeLabel(k)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="block text-[9px] text-muted mb-0.5">{t('task.thManday')}</span>
+                    <input
+                      type="number" min={0} step={0.5} value={tk.requiredManday}
+                      onChange={(e) => updateTask(tk.id, { requiredManday: Number(e.target.value) })}
+                      className="border border-line rounded px-2 py-1 text-sm w-full text-center bg-white"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[9px] text-muted mb-0.5">{t('task.thHeadcount')}</span>
+                    <input
+                      type="number" min={0} step={1} value={tk.requiredHeadcount}
+                      onChange={(e) => updateTask(tk.id, { requiredHeadcount: Number(e.target.value) })}
+                      className="border border-line rounded px-2 py-1 text-sm w-full text-center bg-white"
+                    />
+                  </label>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted">
+                    {t('task.thEndDate')}: {end ? `${end} (${days} ${t('task.durationDays')})` : '—'}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full ${
+                      tk.status === 'closed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {tk.status === 'closed' ? t('task.stClosed') : t('task.stDraft')}
+                  </span>
+                </div>
+                <div className="flex gap-3 pt-1 border-t border-line">
+                  <button className="text-xs text-blue-700 hover:underline" onClick={() => toggleClose(tk.id)}>
+                    {tk.status === 'closed' ? t('task.reopen') : t('task.close')}
+                  </button>
+                  <button className="text-xs text-red-600 hover:underline" onClick={() => removeTask(tk.id)}>
+                    {t('task.delete')}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="overflow-x-auto hidden md:block">
           <table className="text-sm w-full">
             <thead>
               <tr>
