@@ -177,6 +177,9 @@ function mergeStanding(
     canteen: emp.canteenDebt ?? base.canteen,
     adjustment: emp.adjustment ?? base.adjustment,
     adjustmentDeduction: emp.adjustmentDeduction ?? base.adjustmentDeduction,
+    sssDeduction: emp.sssDeduction ?? base.sssDeduction,
+    pagibigDeduction: emp.pagibigDeduction ?? base.pagibigDeduction,
+    philhealthDeduction: emp.philhealthDeduction ?? base.philhealthDeduction,
   };
 }
 
@@ -383,6 +386,9 @@ export const localApi = {
     canteenDebt?: number | null;
     adjustment?: number | null;
     adjustmentDeduction?: number | null;
+    sssDeduction?: number | null;
+    pagibigDeduction?: number | null;
+    philhealthDeduction?: number | null;
   }): Promise<Employee> {
     const base = slugify(input.name) || 'worker';
     const id = `${base}-${Date.now().toString(36).slice(-4)}`;
@@ -404,6 +410,12 @@ export const localApi = {
       adjustment: input.adjustment == null ? undefined : Number(input.adjustment),
       adjustmentDeduction:
         input.adjustmentDeduction == null ? undefined : Number(input.adjustmentDeduction),
+      sssDeduction:
+        input.sssDeduction == null ? undefined : Number(input.sssDeduction),
+      pagibigDeduction:
+        input.pagibigDeduction == null ? undefined : Number(input.pagibigDeduction),
+      philhealthDeduction:
+        input.philhealthDeduction == null ? undefined : Number(input.philhealthDeduction),
     } as Employee;
     employees.push(emp);
     employees.sort((a, b) => a.name.localeCompare(b.name));
@@ -425,6 +437,9 @@ export const localApi = {
       canteenDebt?: number | null;
       adjustment?: number | null;
       adjustmentDeduction?: number | null;
+      sssDeduction?: number | null;
+      pagibigDeduction?: number | null;
+      philhealthDeduction?: number | null;
     }
   ): Promise<Employee> {
     const emp = employees.find((e) => e.id === employeeId);
@@ -451,6 +466,14 @@ export const localApi = {
     if (patch.adjustmentDeduction !== undefined)
       emp.adjustmentDeduction =
         patch.adjustmentDeduction == null ? undefined : Number(patch.adjustmentDeduction);
+    if (patch.sssDeduction !== undefined)
+      emp.sssDeduction = patch.sssDeduction == null ? undefined : Number(patch.sssDeduction);
+    if (patch.pagibigDeduction !== undefined)
+      emp.pagibigDeduction =
+        patch.pagibigDeduction == null ? undefined : Number(patch.pagibigDeduction);
+    if (patch.philhealthDeduction !== undefined)
+      emp.philhealthDeduction =
+        patch.philhealthDeduction == null ? undefined : Number(patch.philhealthDeduction);
     employees.sort((a, b) => a.name.localeCompare(b.name));
     return emp;
   },

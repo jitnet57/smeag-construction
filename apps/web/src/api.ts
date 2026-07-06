@@ -334,6 +334,9 @@ const networkApi = {
     canteenDebt?: number | null;
     adjustment?: number | null;
     adjustmentDeduction?: number | null;
+    sssDeduction?: number | null;
+    pagibigDeduction?: number | null;
+    philhealthDeduction?: number | null;
   }): Promise<Employee> {
     const created = await fetchApi<Employee>('/api/employees', {
       method: 'POST',
@@ -357,6 +360,9 @@ const networkApi = {
       canteenDebt?: number | null;
       adjustment?: number | null;
       adjustmentDeduction?: number | null;
+      sssDeduction?: number | null;
+      pagibigDeduction?: number | null;
+      philhealthDeduction?: number | null;
     }
   ): Promise<Employee> {
     const updated = await fetchApi<Employee>(

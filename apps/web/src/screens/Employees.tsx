@@ -25,6 +25,9 @@ type NewWorker = {
   canteenDebt: string;
   adjustment: string;
   adjustmentDeduction: string;
+  sssDeduction: string;
+  pagibigDeduction: string;
+  philhealthDeduction: string;
 };
 
 const EMPTY_WORKER: NewWorker = {
@@ -41,6 +44,9 @@ const EMPTY_WORKER: NewWorker = {
   canteenDebt: '',
   adjustment: '',
   adjustmentDeduction: '',
+  sssDeduction: '',
+  pagibigDeduction: '',
+  philhealthDeduction: '',
 };
 
 export default function Employees(): JSX.Element {
@@ -112,6 +118,9 @@ export default function Employees(): JSX.Element {
       canteenDebt: emp.canteenDebt ? String(emp.canteenDebt) : '',
       adjustment: emp.adjustment ? String(emp.adjustment) : '',
       adjustmentDeduction: emp.adjustmentDeduction ? String(emp.adjustmentDeduction) : '',
+      sssDeduction: emp.sssDeduction ? String(emp.sssDeduction) : '',
+      pagibigDeduction: emp.pagibigDeduction ? String(emp.pagibigDeduction) : '',
+      philhealthDeduction: emp.philhealthDeduction ? String(emp.philhealthDeduction) : '',
     });
     setShowModal(true);
   };
@@ -143,6 +152,13 @@ export default function Employees(): JSX.Element {
       adjustment: form.adjustment ? Math.max(0, Number(form.adjustment)) : 0,
       adjustmentDeduction: form.adjustmentDeduction
         ? Math.max(0, Number(form.adjustmentDeduction))
+        : 0,
+      sssDeduction: form.sssDeduction ? Math.max(0, Number(form.sssDeduction)) : 0,
+      pagibigDeduction: form.pagibigDeduction
+        ? Math.max(0, Number(form.pagibigDeduction))
+        : 0,
+      philhealthDeduction: form.philhealthDeduction
+        ? Math.max(0, Number(form.philhealthDeduction))
         : 0,
     };
     setSaving(true);
@@ -478,6 +494,56 @@ export default function Employees(): JSX.Element {
                   />
                 </label>
               </div>
+
+              <div className="flex gap-3">
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fSssDeduction')}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={form.sssDeduction}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, sssDeduction: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fPagibigDeduction')}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={form.pagibigDeduction}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, pagibigDeduction: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fPhilhealthDeduction')}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={form.philhealthDeduction}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, philhealthDeduction: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
@@ -532,6 +598,9 @@ export default function Employees(): JSX.Element {
                 <th className="text-right">{t('emp.thCanteenDebt')}</th>
                 <th className="text-right">{t('emp.thAdjustment')}</th>
                 <th className="text-right">{t('emp.thAdjustmentDeduction')}</th>
+                <th className="text-right">{t('emp.thSssDeduction')}</th>
+                <th className="text-right">{t('emp.thPagibigDeduction')}</th>
+                <th className="text-right">{t('emp.thPhilhealthDeduction')}</th>
                 <th>{t('emp.thJoinDate')}</th>
                 <th>{t('emp.thSssNo')}</th>
                 <th className="text-center">{t('emp.thActions')}</th>
@@ -540,7 +609,7 @@ export default function Employees(): JSX.Element {
             <tbody>
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={16} className="text-center text-muted py-8">
+                  <td colSpan={19} className="text-center text-muted py-8">
                     {t('emp.noData')}
                   </td>
                 </tr>
@@ -615,6 +684,15 @@ export default function Employees(): JSX.Element {
                   </td>
                   <td className="text-right">
                     {emp.adjustmentDeduction ? `₱${emp.adjustmentDeduction}` : '—'}
+                  </td>
+                  <td className="text-right">
+                    {emp.sssDeduction ? `₱${emp.sssDeduction}` : '—'}
+                  </td>
+                  <td className="text-right">
+                    {emp.pagibigDeduction ? `₱${emp.pagibigDeduction}` : '—'}
+                  </td>
+                  <td className="text-right">
+                    {emp.philhealthDeduction ? `₱${emp.philhealthDeduction}` : '—'}
                   </td>
                   <td>{emp.joinDate || '—'}</td>
                   <td>{emp.sssNo || '—'}</td>

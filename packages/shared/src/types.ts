@@ -36,6 +36,9 @@ export interface Employee {
   canteenDebt?: number;         // running canteen debt balance (₱), deducted each run (식당 외상)
   adjustment?: number;          // standing adjustment ADDED to pay each run (₱, +) (조정 가산)
   adjustmentDeduction?: number; // standing adjustment SUBTRACTED from pay each run (₱, +) (조정 공제)
+  sssDeduction?: number;        // standing SSS contribution deducted each run (₱, +) (SSS 공제)
+  pagibigDeduction?: number;    // standing Pag-IBIG contribution deducted each run (₱, +) (Pag-IBIG 공제)
+  philhealthDeduction?: number; // standing PhilHealth contribution deducted each run (₱, +) (PhilHealth 공제)
 }
 
 // ---- Attendance ------------------------------------------------------------
@@ -142,6 +145,9 @@ export interface EmployeeDeductions {
   adjustments?: number;             // PFF / misc adjustments (signed)
   adjustment?: number;              // standing adjustment ADDED to pay (positive credit)
   adjustmentDeduction?: number;     // standing adjustment SUBTRACTED from pay (positive deduction)
+  sssDeduction?: number;            // standing SSS contribution (positive deduction)
+  pagibigDeduction?: number;        // standing Pag-IBIG contribution (positive deduction)
+  philhealthDeduction?: number;     // standing PhilHealth contribution (positive deduction)
 }
 
 export interface PayrollCalcInput {

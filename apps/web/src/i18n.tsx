@@ -532,6 +532,12 @@ const DICT = {
   'emp.thAdjustment': { en: 'Adjustment +', ko: '조정 가산' },
   'emp.fAdjustmentDeduction': { en: 'Adjustment − (₱)', ko: '조정 공제 (₱)' },
   'emp.thAdjustmentDeduction': { en: 'Adjustment −', ko: '조정 공제' },
+  'emp.fSssDeduction': { en: 'SSS (₱)', ko: 'SSS 공제 (₱)' },
+  'emp.thSssDeduction': { en: 'SSS', ko: 'SSS' },
+  'emp.fPagibigDeduction': { en: 'Pag-IBIG (₱)', ko: 'Pag-IBIG 공제 (₱)' },
+  'emp.thPagibigDeduction': { en: 'Pag-IBIG', ko: 'Pag-IBIG' },
+  'emp.fPhilhealthDeduction': { en: 'PhilHealth (₱)', ko: 'PhilHealth 공제 (₱)' },
+  'emp.thPhilhealthDeduction': { en: 'PhilHealth', ko: 'PhilHealth' },
   'emp.updateError': { en: 'Could not update worker.', ko: '수정에 실패했습니다.' },
 
   // --- Settings -------------------------------------------------------------

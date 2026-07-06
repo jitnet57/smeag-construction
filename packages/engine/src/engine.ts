@@ -338,6 +338,31 @@ export function calcPayslip(input: PayrollCalcInput): PayslipResult {
           ? Math.abs(deductions.adjustmentDeduction)
           : undefined,
     },
+    // Standing statutory contributions entered manually per employee.
+    {
+      key: "sssDeduction",
+      label: "SSS",
+      value:
+        deductions.sssDeduction != null
+          ? Math.abs(deductions.sssDeduction)
+          : undefined,
+    },
+    {
+      key: "pagibigDeduction",
+      label: "Pag-IBIG",
+      value:
+        deductions.pagibigDeduction != null
+          ? Math.abs(deductions.pagibigDeduction)
+          : undefined,
+    },
+    {
+      key: "philhealthDeduction",
+      label: "PhilHealth",
+      value:
+        deductions.philhealthDeduction != null
+          ? Math.abs(deductions.philhealthDeduction)
+          : undefined,
+    },
   ];
 
   for (const field of manualDeductionFields) {

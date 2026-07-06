@@ -44,7 +44,13 @@ export default function Payroll({ period }: Props) {
   const empMap = new Map(employees.map((e) => [e.id, e]));
 
   // --- Inline editing of per-employee standing balances ---------------------
-  type StandingField = 'canteenDebt' | 'adjustment' | 'adjustmentDeduction';
+  type StandingField =
+    | 'canteenDebt'
+    | 'adjustment'
+    | 'adjustmentDeduction'
+    | 'sssDeduction'
+    | 'pagibigDeduction'
+    | 'philhealthDeduction';
   const dkey = (id: string, f: StandingField) => `${id}:${f}`;
   const draftVal = (emp: Employee | undefined, f: StandingField): string => {
     if (!emp) return '';
@@ -96,9 +102,9 @@ export default function Payroll({ period }: Props) {
       grossPay: acc.grossPay + p.grossPay,
       deductions: acc.deductions + p.totalDeductions,
       netPay: acc.netPay + p.netPay,
-      sss: acc.sss + (p.deductions.find((d) => d.key === 'sss')?.amount ?? 0),
-      phil: acc.phil + (p.deductions.find((d) => d.key === 'philhealth')?.amount ?? 0),
-      pagibig: acc.pagibig + (p.deductions.find((d) => d.key === 'pagibig')?.amount ?? 0),
+      sss: acc.sss + (empMap.get(p.employeeId)?.sssDeduction ?? 0),
+      phil: acc.phil + (empMap.get(p.employeeId)?.philhealthDeduction ?? 0),
+      pagibig: acc.pagibig + (empMap.get(p.employeeId)?.pagibigDeduction ?? 0),
       canteen: acc.canteen + (empMap.get(p.employeeId)?.canteenDebt ?? 0),
       adjPlus: acc.adjPlus + (empMap.get(p.employeeId)?.adjustment ?? 0),
       adjMinus: acc.adjMinus + (empMap.get(p.employeeId)?.adjustmentDeduction ?? 0),
@@ -179,9 +185,9 @@ export default function Payroll({ period }: Props) {
         amt(slip, 'e', 'holiday'),
         amt(slip, 'e', 'incentive'),
         slip.grossPay,
-        amt(slip, 'd', 'sss'),
-        amt(slip, 'd', 'philhealth'),
-        amt(slip, 'd', 'pagibig'),
+        e?.sssDeduction ?? 0,
+        e?.philhealthDeduction ?? 0,
+        e?.pagibigDeduction ?? 0,
         e?.canteenDebt ?? 0,
         e?.adjustment ?? 0,
         e?.adjustmentDeduction ?? 0,
@@ -316,14 +322,45 @@ export default function Payroll({ period }: Props) {
                     {(slip.earnings.find((e) => e.key === 'incentive')?.amount ?? 0).toLocaleString()}
                   </td>
                   <td className="text-right font-bold">₱ {slip.grossPay.toLocaleString()}</td>
-                  <td className="text-right">
-                    {(slip.deductions.find((d) => d.key === 'sss')?.amount ?? 0).toLocaleString()}
+                  <td className="text-right p-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={draftVal(empMap.get(slip.employeeId), 'sssDeduction')}
+                      onChange={(e) => onDraft(slip.employeeId, 'sssDeduction', e.target.value)}
+                      onBlur={() => commitField(slip.employeeId, 'sssDeduction')}
+                      className="w-16 rounded border border-line bg-white px-1 py-1 text-right text-sm"
+                      placeholder="0"
+                    />
                   </td>
-                  <td className="text-right">
-                    {(slip.deductions.find((d) => d.key === 'philhealth')?.amount ?? 0).toLocaleString()}
+                  <td className="text-right p-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={draftVal(empMap.get(slip.employeeId), 'philhealthDeduction')}
+                      onChange={(e) =>
+                        onDraft(slip.employeeId, 'philhealthDeduction', e.target.value)
+                      }
+                      onBlur={() => commitField(slip.employeeId, 'philhealthDeduction')}
+                      className="w-16 rounded border border-line bg-white px-1 py-1 text-right text-sm"
+                      placeholder="0"
+                    />
                   </td>
-                  <td className="text-right">
-                    {(slip.deductions.find((d) => d.key === 'pagibig')?.amount ?? 0).toLocaleString()}
+                  <td className="text-right p-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={draftVal(empMap.get(slip.employeeId), 'pagibigDeduction')}
+                      onChange={(e) =>
+                        onDraft(slip.employeeId, 'pagibigDeduction', e.target.value)
+                      }
+                      onBlur={() => commitField(slip.employeeId, 'pagibigDeduction')}
+                      className="w-16 rounded border border-line bg-white px-1 py-1 text-right text-sm"
+                      placeholder="0"
+                    />
                   </td>
                   <td className="text-right p-0.5">
                     <input

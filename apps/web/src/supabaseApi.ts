@@ -78,6 +78,11 @@ function toEmployee(r: any): Employee {
     adjustment: r.adjustment == null ? undefined : Number(r.adjustment),
     adjustmentDeduction:
       r.adjustment_deduction == null ? undefined : Number(r.adjustment_deduction),
+    sssDeduction: r.sss_deduction == null ? undefined : Number(r.sss_deduction),
+    pagibigDeduction:
+      r.pagibig_deduction == null ? undefined : Number(r.pagibig_deduction),
+    philhealthDeduction:
+      r.philhealth_deduction == null ? undefined : Number(r.philhealth_deduction),
   };
 }
 
@@ -157,6 +162,9 @@ function mergeStanding(
     canteen: emp.canteenDebt ?? base.canteen,
     adjustment: emp.adjustment ?? base.adjustment,
     adjustmentDeduction: emp.adjustmentDeduction ?? base.adjustmentDeduction,
+    sssDeduction: emp.sssDeduction ?? base.sssDeduction,
+    pagibigDeduction: emp.pagibigDeduction ?? base.pagibigDeduction,
+    philhealthDeduction: emp.philhealthDeduction ?? base.philhealthDeduction,
   };
 }
 
@@ -647,6 +655,9 @@ export const supabaseApi = {
     canteenDebt?: number | null;
     adjustment?: number | null;
     adjustmentDeduction?: number | null;
+    sssDeduction?: number | null;
+    pagibigDeduction?: number | null;
+    philhealthDeduction?: number | null;
   }): Promise<Employee> {
     const base =
       input.name
@@ -671,6 +682,9 @@ export const supabaseApi = {
       canteen_debt: input.canteenDebt ?? 0,
       adjustment: input.adjustment ?? 0,
       adjustment_deduction: input.adjustmentDeduction ?? 0,
+      sss_deduction: input.sssDeduction ?? 0,
+      pagibig_deduction: input.pagibigDeduction ?? 0,
+      philhealth_deduction: input.philhealthDeduction ?? 0,
     };
     const { data, error } = await sb()
       .from('employees')
@@ -698,6 +712,9 @@ export const supabaseApi = {
       canteenDebt?: number | null;
       adjustment?: number | null;
       adjustmentDeduction?: number | null;
+      sssDeduction?: number | null;
+      pagibigDeduction?: number | null;
+      philhealthDeduction?: number | null;
     }
   ): Promise<Employee> {
     const row: any = {};
@@ -716,6 +733,12 @@ export const supabaseApi = {
     if (patch.adjustment !== undefined) row.adjustment = patch.adjustment ?? 0;
     if (patch.adjustmentDeduction !== undefined)
       row.adjustment_deduction = patch.adjustmentDeduction ?? 0;
+    if (patch.sssDeduction !== undefined)
+      row.sss_deduction = patch.sssDeduction ?? 0;
+    if (patch.pagibigDeduction !== undefined)
+      row.pagibig_deduction = patch.pagibigDeduction ?? 0;
+    if (patch.philhealthDeduction !== undefined)
+      row.philhealth_deduction = patch.philhealthDeduction ?? 0;
     const { data, error } = await sb()
       .from('employees')
       .update(row)
