@@ -17,6 +17,9 @@ export default function Payroll({ period }: Props) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
   const [busy, setBusy] = useState(false);
+  // In-progress text for the inline-editable standing fields (canteen debt /
+  // adjustment / adjustment deduction), keyed by `${employeeId}:${field}`.
+  const [draft, setDraft] = useState<Record<string, string>>({});
 
   useEffect(() => {
     api.getEmployees().then(setEmployees);
@@ -39,6 +42,38 @@ export default function Payroll({ period }: Props) {
 
   // Map employeeId -> employee for name/position/crew lookups
   const empMap = new Map(employees.map((e) => [e.id, e]));
+
+  // --- Inline editing of per-employee standing balances ---------------------
+  type StandingField = 'canteenDebt' | 'adjustment' | 'adjustmentDeduction';
+  const dkey = (id: string, f: StandingField) => `${id}:${f}`;
+  const draftVal = (emp: Employee | undefined, f: StandingField): string => {
+    if (!emp) return '';
+    const k = dkey(emp.id, f);
+    if (k in draft) return draft[k];
+    const v = emp[f];
+    return v ? String(v) : '';
+  };
+  const onDraft = (id: string, f: StandingField, val: string) =>
+    setDraft((p) => ({ ...p, [dkey(id, f)]: val }));
+  const commitField = async (id: string, f: StandingField) => {
+    const k = dkey(id, f);
+    if (!(k in draft)) return;
+    const value = draft[k] === '' ? 0 : Math.max(0, Number(draft[k]) || 0);
+    try {
+      await api.updateEmployee(id, { [f]: value });
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === id ? ({ ...e, [f]: value } as Employee) : e))
+      );
+      setDraft((p) => {
+        const n = { ...p };
+        delete n[k];
+        return n;
+      });
+      await loadPayroll();
+    } catch {
+      alert(t('pay.saveError'));
+    }
+  };
 
   // Crew list with head counts, derived from real employee data
   const crewCounts = new Map<string, number>();
@@ -64,6 +99,9 @@ export default function Payroll({ period }: Props) {
       sss: acc.sss + (p.deductions.find((d) => d.key === 'sss')?.amount ?? 0),
       phil: acc.phil + (p.deductions.find((d) => d.key === 'philhealth')?.amount ?? 0),
       pagibig: acc.pagibig + (p.deductions.find((d) => d.key === 'pagibig')?.amount ?? 0),
+      canteen: acc.canteen + (empMap.get(p.employeeId)?.canteenDebt ?? 0),
+      adjPlus: acc.adjPlus + (empMap.get(p.employeeId)?.adjustment ?? 0),
+      adjMinus: acc.adjMinus + (empMap.get(p.employeeId)?.adjustmentDeduction ?? 0),
     }),
     {
       employees: 0,
@@ -74,6 +112,9 @@ export default function Payroll({ period }: Props) {
       sss: 0,
       phil: 0,
       pagibig: 0,
+      canteen: 0,
+      adjPlus: 0,
+      adjMinus: 0,
     }
   );
 
@@ -120,6 +161,9 @@ export default function Payroll({ period }: Props) {
       'SSS',
       'PhilHealth',
       'Pag-IBIG',
+      'Canteen',
+      'Adjustment',
+      'Adjustment Deduction',
       'Net',
     ];
     const body = displayData.map((slip) => {
@@ -138,6 +182,9 @@ export default function Payroll({ period }: Props) {
         amt(slip, 'd', 'sss'),
         amt(slip, 'd', 'philhealth'),
         amt(slip, 'd', 'pagibig'),
+        e?.canteenDebt ?? 0,
+        e?.adjustment ?? 0,
+        e?.adjustmentDeduction ?? 0,
         slip.netPay,
       ];
     });
@@ -155,6 +202,9 @@ export default function Payroll({ period }: Props) {
       totals.sss,
       totals.phil,
       totals.pagibig,
+      totals.canteen,
+      totals.adjPlus,
+      totals.adjMinus,
       totals.netPay,
     ];
     const crewTag = selectedCrew === ALL_CREWS ? 'all' : selectedCrew;
@@ -238,7 +288,9 @@ export default function Payroll({ period }: Props) {
                 <th className="text-right">SSS</th>
                 <th className="text-right">Phil</th>
                 <th className="text-right">Pag-IBIG</th>
-                <th className="text-right">{t('pay.thOtherDeduct')}</th>
+                <th className="text-right">{t('pay.thCanteen')}</th>
+                <th className="text-right">{t('pay.thAdjustment')}</th>
+                <th className="text-right">{t('pay.thAdjustmentDeduct')}</th>
                 <th className="text-right">{t('pay.thNet')}</th>
               </tr>
             </thead>
@@ -273,19 +325,58 @@ export default function Payroll({ period }: Props) {
                   <td className="text-right">
                     {(slip.deductions.find((d) => d.key === 'pagibig')?.amount ?? 0).toLocaleString()}
                   </td>
-                  <td className="text-right">0</td>
+                  <td className="text-right p-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={draftVal(empMap.get(slip.employeeId), 'canteenDebt')}
+                      onChange={(e) => onDraft(slip.employeeId, 'canteenDebt', e.target.value)}
+                      onBlur={() => commitField(slip.employeeId, 'canteenDebt')}
+                      className="w-16 rounded border border-line bg-white px-1 py-1 text-right text-sm"
+                      placeholder="0"
+                    />
+                  </td>
+                  <td className="text-right p-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={draftVal(empMap.get(slip.employeeId), 'adjustment')}
+                      onChange={(e) => onDraft(slip.employeeId, 'adjustment', e.target.value)}
+                      onBlur={() => commitField(slip.employeeId, 'adjustment')}
+                      className="w-16 rounded border border-line bg-white px-1 py-1 text-right text-sm"
+                      placeholder="0"
+                    />
+                  </td>
+                  <td className="text-right p-0.5">
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={draftVal(empMap.get(slip.employeeId), 'adjustmentDeduction')}
+                      onChange={(e) =>
+                        onDraft(slip.employeeId, 'adjustmentDeduction', e.target.value)
+                      }
+                      onBlur={() => commitField(slip.employeeId, 'adjustmentDeduction')}
+                      className="w-16 rounded border border-line bg-white px-1 py-1 text-right text-sm"
+                      placeholder="0"
+                    />
+                  </td>
                   <td className="text-right font-bold">
                     ₱ {slip.netPay.toLocaleString()}
                   </td>
                 </tr>
               ))}
               <tr className="totrow">
-                <td colSpan={7}>{t('pay.total')} ({totals.employees}{t('pay.totalUnit')})</td>
+                <td colSpan={8}>{t('pay.total')} ({totals.employees}{t('pay.totalUnit')})</td>
                 <td className="text-right">₱ {totals.grossPay.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.sss.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.phil.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.pagibig.toLocaleString()}</td>
-                <td className="text-right">0</td>
+                <td className="text-right">₱ {totals.canteen.toLocaleString()}</td>
+                <td className="text-right">₱ {totals.adjPlus.toLocaleString()}</td>
+                <td className="text-right">₱ {totals.adjMinus.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.netPay.toLocaleString()}</td>
               </tr>
             </tbody>

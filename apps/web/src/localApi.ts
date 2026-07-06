@@ -166,6 +166,20 @@ function periodById(id: string): PayPeriod | undefined {
   return periods.find((p) => p.id === id);
 }
 
+// Merge per-employee STANDING balances (canteen debt + adjustments) into the
+// per-period manual deductions fed to the engine. Employee value wins.
+function mergeStanding(
+  base: EmployeeDeductions,
+  emp: Employee
+): EmployeeDeductions {
+  return {
+    ...base,
+    canteen: emp.canteenDebt ?? base.canteen,
+    adjustment: emp.adjustment ?? base.adjustment,
+    adjustmentDeduction: emp.adjustmentDeduction ?? base.adjustmentDeduction,
+  };
+}
+
 function attendanceForPeriod(periodIdArg: string): AttendanceRecord[] {
   const p = periodById(periodIdArg);
   if (!p) return [];
@@ -226,7 +240,10 @@ export const localApi = {
         employee,
         period: p,
         attendance: employeeAttendance(employee.id, period),
-        deductions: deductionsByKey.get(`${employee.id}|${period}`) || {},
+        deductions: mergeStanding(
+          deductionsByKey.get(`${employee.id}|${period}`) || {},
+          employee
+        ),
         config,
       };
       out.push(calcPayslip(input));
@@ -256,7 +273,10 @@ export const localApi = {
       employee,
       period: p,
       attendance: employeeAttendance(employeeId, period),
-      deductions: deductionsByKey.get(`${employeeId}|${period}`) || {},
+      deductions: mergeStanding(
+        deductionsByKey.get(`${employeeId}|${period}`) || {},
+        employee
+      ),
       config,
     };
     return calcPayslip(input);
@@ -360,6 +380,9 @@ export const localApi = {
     idNo?: string | null;
     joinDate?: string | null;
     sssNo?: string | null;
+    canteenDebt?: number | null;
+    adjustment?: number | null;
+    adjustmentDeduction?: number | null;
   }): Promise<Employee> {
     const base = slugify(input.name) || 'worker';
     const id = `${base}-${Date.now().toString(36).slice(-4)}`;
@@ -377,6 +400,10 @@ export const localApi = {
       idNo: input.idNo?.trim() || undefined,
       joinDate: input.joinDate || undefined,
       sssNo: input.sssNo?.trim() || undefined,
+      canteenDebt: input.canteenDebt == null ? undefined : Number(input.canteenDebt),
+      adjustment: input.adjustment == null ? undefined : Number(input.adjustment),
+      adjustmentDeduction:
+        input.adjustmentDeduction == null ? undefined : Number(input.adjustmentDeduction),
     } as Employee;
     employees.push(emp);
     employees.sort((a, b) => a.name.localeCompare(b.name));
@@ -395,6 +422,9 @@ export const localApi = {
       idNo?: string | null;
       joinDate?: string | null;
       sssNo?: string | null;
+      canteenDebt?: number | null;
+      adjustment?: number | null;
+      adjustmentDeduction?: number | null;
     }
   ): Promise<Employee> {
     const emp = employees.find((e) => e.id === employeeId);
@@ -414,6 +444,13 @@ export const localApi = {
     if (patch.idNo !== undefined) emp.idNo = patch.idNo?.trim() || undefined;
     if (patch.joinDate !== undefined) emp.joinDate = patch.joinDate || undefined;
     if (patch.sssNo !== undefined) emp.sssNo = patch.sssNo?.trim() || undefined;
+    if (patch.canteenDebt !== undefined)
+      emp.canteenDebt = patch.canteenDebt == null ? undefined : Number(patch.canteenDebt);
+    if (patch.adjustment !== undefined)
+      emp.adjustment = patch.adjustment == null ? undefined : Number(patch.adjustment);
+    if (patch.adjustmentDeduction !== undefined)
+      emp.adjustmentDeduction =
+        patch.adjustmentDeduction == null ? undefined : Number(patch.adjustmentDeduction);
     employees.sort((a, b) => a.name.localeCompare(b.name));
     return emp;
   },

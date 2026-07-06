@@ -33,6 +33,9 @@ export interface Employee {
   photoUrl?: string;   // ID photo public URL (사진)
   joinDate?: string;   // join / hire date, ISO yyyy-mm-dd (입사일)
   sssNo?: string;      // SSS number (SSS 번호)
+  canteenDebt?: number;         // running canteen debt balance (₱), deducted each run (식당 외상)
+  adjustment?: number;          // standing adjustment ADDED to pay each run (₱, +) (조정 가산)
+  adjustmentDeduction?: number; // standing adjustment SUBTRACTED from pay each run (₱, +) (조정 공제)
 }
 
 // ---- Attendance ------------------------------------------------------------
@@ -137,6 +140,8 @@ export interface EmployeeDeductions {
   canteen?: number;
   overpaid?: number;
   adjustments?: number;             // PFF / misc adjustments (signed)
+  adjustment?: number;              // standing adjustment ADDED to pay (positive credit)
+  adjustmentDeduction?: number;     // standing adjustment SUBTRACTED from pay (positive deduction)
 }
 
 export interface PayrollCalcInput {
@@ -175,14 +180,17 @@ export interface PayslipResult {
 export const SKILL_KEYS = [
   "tile",
   "carpentry",
+  "plastering",
   "paint",
   "scaffolding",
   "water_pipe",
   "sanitary_pipe",
   "fire_protection",
   "window_frame",
+  "window_glass",
   "ducting",
   "roofing",
+  "installer",
   "ceiling",
   "wall_panel",
   "welding",

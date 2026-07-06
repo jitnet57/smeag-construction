@@ -321,6 +321,23 @@ export function calcPayslip(input: PayrollCalcInput): PayslipResult {
       label: "Adjustments",
       value: deductions.adjustments,
     },
+    // Standing adjustment ADDED to pay: stored as a positive amount but applied
+    // as a negative deduction line (a credit that increases net pay).
+    {
+      key: "adjustment",
+      label: "Adjustment",
+      value:
+        deductions.adjustment != null ? -Math.abs(deductions.adjustment) : undefined,
+    },
+    // Standing adjustment SUBTRACTED from pay: positive deduction, reduces net.
+    {
+      key: "adjustmentDeduction",
+      label: "Adjustment Deduction",
+      value:
+        deductions.adjustmentDeduction != null
+          ? Math.abs(deductions.adjustmentDeduction)
+          : undefined,
+    },
   ];
 
   for (const field of manualDeductionFields) {

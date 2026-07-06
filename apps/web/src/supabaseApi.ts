@@ -74,6 +74,10 @@ function toEmployee(r: any): Employee {
     photoUrl: r.photo_url ?? undefined,
     joinDate: r.join_date ?? undefined,
     sssNo: r.sss_no ?? undefined,
+    canteenDebt: r.canteen_debt == null ? undefined : Number(r.canteen_debt),
+    adjustment: r.adjustment == null ? undefined : Number(r.adjustment),
+    adjustmentDeduction:
+      r.adjustment_deduction == null ? undefined : Number(r.adjustment_deduction),
   };
 }
 
@@ -138,6 +142,22 @@ function toDeductions(r: any): EmployeeDeductions {
 }
 function num(v: unknown): number | undefined {
   return v == null ? undefined : Number(v);
+}
+
+// Merge the per-employee STANDING balances (canteen debt + adjustments, which
+// live on the employee record and carry across periods) into the per-period
+// manual deductions fed to the engine. The employee value wins when present so
+// the running balance drives the payslip deduction.
+function mergeStanding(
+  base: EmployeeDeductions,
+  emp: Employee
+): EmployeeDeductions {
+  return {
+    ...base,
+    canteen: emp.canteenDebt ?? base.canteen,
+    adjustment: emp.adjustment ?? base.adjustment,
+    adjustmentDeduction: emp.adjustmentDeduction ?? base.adjustmentDeduction,
+  };
 }
 
 function toTask(r: any): Task {
@@ -298,7 +318,7 @@ export const supabaseApi = {
         attendance: (byEmp.get(employee.id) ?? []).sort((a, b) =>
           a.date.localeCompare(b.date)
         ),
-        deductions: deductions.get(employee.id) ?? {},
+        deductions: mergeStanding(deductions.get(employee.id) ?? {}, employee),
         config,
       };
       return calcPayslip(input);
@@ -335,11 +355,12 @@ export const supabaseApi = {
       .lte('date', p.endDate)
       .order('date', { ascending: true });
     if (attErr) throw attErr;
+    const employee = toEmployee(empRow);
     const input: PayrollCalcInput = {
-      employee: toEmployee(empRow),
+      employee,
       period: p,
       attendance: (att ?? []).map(toAttendance),
-      deductions: deductions.get(employeeId) ?? {},
+      deductions: mergeStanding(deductions.get(employeeId) ?? {}, employee),
       config,
     };
     return calcPayslip(input);
@@ -623,6 +644,9 @@ export const supabaseApi = {
     idNo?: string | null;
     joinDate?: string | null;
     sssNo?: string | null;
+    canteenDebt?: number | null;
+    adjustment?: number | null;
+    adjustmentDeduction?: number | null;
   }): Promise<Employee> {
     const base =
       input.name
@@ -644,6 +668,9 @@ export const supabaseApi = {
       id_no: input.idNo?.trim() || null,
       join_date: input.joinDate || null,
       sss_no: input.sssNo?.trim() || null,
+      canteen_debt: input.canteenDebt ?? 0,
+      adjustment: input.adjustment ?? 0,
+      adjustment_deduction: input.adjustmentDeduction ?? 0,
     };
     const { data, error } = await sb()
       .from('employees')
@@ -668,6 +695,9 @@ export const supabaseApi = {
       idNo?: string | null;
       joinDate?: string | null;
       sssNo?: string | null;
+      canteenDebt?: number | null;
+      adjustment?: number | null;
+      adjustmentDeduction?: number | null;
     }
   ): Promise<Employee> {
     const row: any = {};
@@ -682,6 +712,10 @@ export const supabaseApi = {
     if (patch.idNo !== undefined) row.id_no = patch.idNo?.trim() || null;
     if (patch.joinDate !== undefined) row.join_date = patch.joinDate || null;
     if (patch.sssNo !== undefined) row.sss_no = patch.sssNo?.trim() || null;
+    if (patch.canteenDebt !== undefined) row.canteen_debt = patch.canteenDebt ?? 0;
+    if (patch.adjustment !== undefined) row.adjustment = patch.adjustment ?? 0;
+    if (patch.adjustmentDeduction !== undefined)
+      row.adjustment_deduction = patch.adjustmentDeduction ?? 0;
     const { data, error } = await sb()
       .from('employees')
       .update(row)
