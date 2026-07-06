@@ -162,6 +162,7 @@ export default function Payslip({ period }: Props) {
             </div>
           </div>
 
+          <div className="overflow-x-auto">
           <table className="text-sm">
             <thead>
               <tr>
@@ -209,6 +210,7 @@ export default function Payslip({ period }: Props) {
               </tr>
             </tbody>
           </table>
+          </div>
 
           <div className="slip .net">
             <span>{t('slip.netPay')}</span>

@@ -598,7 +598,7 @@ export default function Dashboard({ period }: Props): JSX.Element {
                     {open && (
                       <tr>
                         <td colSpan={4} className="bg-blue-50/50 p-0">
-                          <div className="p-3">
+                          <div className="p-3 overflow-x-auto">
                             <table className="text-sm">
                               <thead>
                                 <tr>
@@ -690,7 +690,7 @@ export default function Dashboard({ period }: Props): JSX.Element {
                     {open && (
                       <tr>
                         <td colSpan={4} className="bg-blue-50/50 p-0">
-                          <div className="p-3">
+                          <div className="p-3 overflow-x-auto">
                             <table className="text-sm">
                               <thead>
                                 <tr>
@@ -805,7 +805,7 @@ export default function Dashboard({ period }: Props): JSX.Element {
                     {open && (
                       <tr>
                         <td colSpan={6} className="bg-blue-50/50 p-0">
-                          <div className="p-3">
+                          <div className="p-3 overflow-x-auto">
                             <table className="text-sm">
                               <thead>
                                 <tr>
