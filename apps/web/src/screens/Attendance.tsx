@@ -267,7 +267,7 @@ export default function Attendance({ period }: Props) {
             <thead>
               <tr>
                 <th>#</th>
-                <th>{t('att.thName')}</th>
+                <th className="freeze-col">{t('att.thName')}</th>
                 <th>{t('att.thPosition')}</th>
                 <th className="text-center">AM IN</th>
                 <th className="text-center">AM OUT</th>
@@ -283,7 +283,7 @@ export default function Attendance({ period }: Props) {
               {rows.map((row, idx) => (
                 <tr key={row.employee.id}>
                   <td>{idx + 1}</td>
-                  <td>{row.employee.name}</td>
+                  <td className="freeze-col">{row.employee.name}</td>
                   <td>{row.employee.position}</td>
                   <td className="text-center">
                     <input

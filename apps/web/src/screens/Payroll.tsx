@@ -283,7 +283,7 @@ export default function Payroll({ period }: Props) {
             <thead>
               <tr>
                 <th>#</th>
-                <th>{t('pay.thName')}</th>
+                <th className="freeze-col">{t('pay.thName')}</th>
                 <th>{t('pay.thPosition')}</th>
                 <th className="text-center">{t('pay.thWorkDays')}</th>
                 <th className="text-right">{t('pay.thBasic')}</th>
@@ -305,7 +305,7 @@ export default function Payroll({ period }: Props) {
               {displayData.map((slip, idx) => (
                 <tr key={slip.employeeId}>
                   <td>{idx + 1}</td>
-                  <td>{empMap.get(slip.employeeId)?.name ?? slip.employeeId}</td>
+                  <td className="freeze-col">{empMap.get(slip.employeeId)?.name ?? slip.employeeId}</td>
                   <td>{empMap.get(slip.employeeId)?.position ?? 'SKILLED'}</td>
                   <td className="text-center">{slip.workedDays}</td>
                   <td className="text-right">

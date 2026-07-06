@@ -597,7 +597,7 @@ export default function Employees(): JSX.Element {
               <tr>
                 <th>{t('emp.thEmpNo')}</th>
                 <th className="text-center">{t('emp.thPhoto')}</th>
-                <th>{t('emp.thName')}</th>
+                <th className="freeze-col">{t('emp.thName')}</th>
                 <th>{t('emp.thNickname')}</th>
                 <th className="text-center">{t('emp.thAge')}</th>
                 <th className="text-center">{t('emp.thId')}</th>
@@ -644,7 +644,7 @@ export default function Employees(): JSX.Element {
                       )}
                     </button>
                   </td>
-                  <td>{emp.name}</td>
+                  <td className="freeze-col">{emp.name}</td>
                   <td>{emp.nickname || '—'}</td>
                   <td className="text-center p-0.5">
                     <input

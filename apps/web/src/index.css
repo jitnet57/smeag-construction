@@ -101,6 +101,28 @@ html, body, #root {
   tbody tr:hover {
     @apply bg-blue-50;
   }
+
+  /* Freeze the name column so it stays visible while scrolling horizontally.
+     Applied to the <th>/<td> of the name column in each section. */
+  th.freeze-col {
+    position: sticky;
+    left: 0;
+    /* Header corner cell: above both the sticky row (5) and sticky body col (4) */
+    z-index: 6;
+  }
+
+  td.freeze-col {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    /* Solid background so scrolled cells don't show through */
+    background: #fff;
+  }
+
+  /* Keep the frozen cell readable on row hover */
+  tbody tr:hover td.freeze-col {
+    background: #eff6ff;
+  }
 }
 
 /* Utility overrides */

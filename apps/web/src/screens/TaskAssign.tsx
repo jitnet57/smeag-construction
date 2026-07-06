@@ -364,7 +364,7 @@ export default function TaskAssign({ period }: Props) {
           <table className="text-sm w-full">
             <thead>
               <tr>
-                <th className="text-left">{t('task.thName')}</th>
+                <th className="text-left freeze-col">{t('task.thName')}</th>
                 <th className="text-center">{t('task.thTrade')}</th>
                 <th className="text-center">{t('task.thManday')}</th>
                 <th className="text-center">{t('task.thHeadcount')}</th>
@@ -383,7 +383,7 @@ export default function TaskAssign({ period }: Props) {
               )}
               {tasks.map((tk) => (
                 <tr key={tk.id}>
-                  <td>
+                  <td className="freeze-col">
                     <input
                       type="text"
                       value={tk.name}
