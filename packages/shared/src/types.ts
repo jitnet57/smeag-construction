@@ -31,8 +31,6 @@ export interface Employee {
   age?: number;        // worker age (나이)
   idNo?: string;       // ID number / worker id (아이디)
   photoUrl?: string;   // ID photo public URL (사진)
-  joinDate?: string;   // join / hire date, ISO yyyy-mm-dd (입사일)
-  sssNo?: string;      // SSS number (SSS 번호)
 }
 
 // ---- Attendance ------------------------------------------------------------
@@ -175,17 +173,17 @@ export interface PayslipResult {
 export const SKILL_KEYS = [
   "tile",
   "carpentry",
-  "plastering",
   "paint",
   "scaffolding",
-  "pipe",
-  "window_frame",
-  "window_glass",
-  "plumbing",
-  "roofing",
+  "water_pipe",
+  "sanitary_pipe",
   "fire_protection",
+  "window_frame",
+  "ducting",
+  "roofing",
+  "ceiling",
   "wall_panel",
-  "fire_chase_seal",
+  "welding",
 ] as const;
 
 export type SkillKey = (typeof SKILL_KEYS)[number];
