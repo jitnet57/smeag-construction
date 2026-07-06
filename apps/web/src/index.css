@@ -88,6 +88,10 @@ html, body, #root {
 
   th {
     @apply bg-blue-50 text-dark text-left p-2.5 border-b-2 border-primary font-bold whitespace-nowrap;
+    /* Freeze the header row so it stays visible while scrolling each section */
+    position: sticky;
+    top: 0;
+    z-index: 5;
   }
 
   td {
@@ -100,6 +104,14 @@ html, body, #root {
 }
 
 /* Utility overrides */
+
+/* Table scroll containers: cap height and allow vertical scroll so the
+   sticky <th> header row (freeze menu) engages within each section. */
+.overflow-x-auto {
+  overflow-y: auto;
+  max-height: 75vh;
+}
+
 .up {
   color: var(--green);
 }
