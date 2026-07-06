@@ -189,7 +189,9 @@ export default function Skills() {
   };
 
   // Build a printable A4-landscape sign-up sheet (one page per crew) with each
-  // worker's photo, name, age and ID, plus blank skill columns to fill by hand.
+  // worker's photo, name, age and ID, and each trade column filled in with the
+  // saved proficiency level (0–10) and the same blue shading as the on-screen
+  // matrix, so the printout mirrors the Skills sheet.
   const handlePrint = () => {
     const esc = (s: string) =>
       String(s).replace(
@@ -200,6 +202,14 @@ export default function Skills() {
             string
           >)[c]
       );
+
+    // Inline print styling for a proficiency cell (mirrors cellStyle()).
+    const skillCell = (level: number) => {
+      if (!level) return '<td class="sk"></td>';
+      const alpha = (0.08 + (level / 10) * 0.5).toFixed(3);
+      const color = level >= 7 ? '#fff' : '#15304e';
+      return `<td class="sk" style="background:rgba(37,99,235,${alpha});color:${color}">${level}</td>`;
+    };
 
     const groups = new Map<string, Employee[]>();
     sorted.forEach((e) => {
@@ -226,7 +236,8 @@ export default function Skills() {
               <td class="nm">${esc(e.name)}</td>
               <td class="age">${esc(ages[e.id] ?? '')}</td>
               <td class="idn">${esc(idNos[e.id] ?? '')}</td>
-              ${SKILL_KEYS.map(() => '<td class="sk"></td>').join('')}
+              ${SKILL_KEYS.map((k) => skillCell(getLevel(e.id, k))).join('')}
+              <td class="avg">${avgOf(e.id).toFixed(1)}</td>
             </tr>`;
           })
           .join('');
@@ -240,6 +251,7 @@ export default function Skills() {
               <th class="age">${esc(t('skill.thAge'))}</th>
               <th class="idn">${esc(t('skill.thId'))}</th>
               ${skillHead}
+              <th class="avg">${esc(t('skill.thAvg'))}</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -259,14 +271,17 @@ export default function Skills() {
         h1 { font-size: 15px; margin: 0 0 6px; }
         h1 .cnt { font-size: 12px; color: #64748b; font-weight: 400; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #94a3b8; padding: 2px 4px; font-size: 10px; text-align: center; }
+        th, td { border: 1px solid #94a3b8; padding: 2px 4px; font-size: 10px; text-align: center;
+                 -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         th { background: #e2e8f0; }
         td.nm, th.nm { text-align: left; white-space: nowrap; }
+        td.avg, th.avg { font-weight: 700; }
         .num { width: 22px; }
         .pht { width: 44px; }
         .age { width: 34px; }
         .idn { width: 90px; }
         .sk { width: 26px; }
+        .avg { width: 30px; }
         img.ph { width: 34px; height: 42px; object-fit: cover; display: block; margin: 0 auto; }
         .ph-empty { width: 34px; height: 42px; margin: 0 auto; background: repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9 4px,#e2e8f0 4px,#e2e8f0 8px); }
         @media print {
