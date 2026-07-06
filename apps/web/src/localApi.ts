@@ -496,6 +496,11 @@ export const localApi = {
     if (emp) emp.photoUrl = url;
     return url;
   },
+  async deleteEmployee(employeeId: string): Promise<void> {
+    const idx = employees.findIndex((e) => e.id === employeeId);
+    if (idx >= 0) employees.splice(idx, 1);
+    attendance = attendance.filter((r) => r.employeeId !== employeeId);
+  },
 };
 
 export type LocalApi = typeof localApi;

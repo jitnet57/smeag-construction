@@ -387,6 +387,7 @@ const DICT = {
   // --- Attendance -----------------------------------------------------------
   'att.crewSelect': { en: 'Crew:', ko: '조 선택:' },
   'att.people': { en: '', ko: '명' },
+  'att.allCrews': { en: 'All Crews', ko: '전체 조' },
   'att.date': { en: 'Date:', ko: '날짜:' },
   'att.excelImport': { en: 'Import Excel', ko: '엑셀 가져오기' },
   'att.saveDraft': { en: 'Save Draft', ko: '임시저장' },
@@ -521,6 +522,12 @@ const DICT = {
   'emp.selectCrew': { en: 'Select crew…', ko: '조 선택…' },
   'emp.editTitle': { en: 'Edit Worker', ko: '인부 정보 수정' },
   'emp.edit': { en: 'Edit', ko: '수정' },
+  'emp.delete': { en: 'Delete', ko: '삭제' },
+  'emp.deleteConfirm': {
+    en: 'Delete "{name}"? This also removes their attendance and deduction records and cannot be undone.',
+    ko: '"{name}" 직원을 삭제할까요? 해당 직원의 출근·공제 기록도 함께 삭제되며 되돌릴 수 없습니다.',
+  },
+  'emp.deleteError': { en: 'Failed to delete employee.', ko: '직원 삭제에 실패했습니다.' },
   'emp.thActions': { en: 'Edit', ko: '수정' },
   'emp.fJoinDate': { en: 'Join Date', ko: '입사일' },
   'emp.fSssNo': { en: 'SSS No.', ko: 'SSS 번호' },

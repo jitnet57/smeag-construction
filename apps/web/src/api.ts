@@ -389,6 +389,11 @@ const networkApi = {
     _employeePhotos[employeeId] = url;
     return url;
   },
+  async deleteEmployee(employeeId: string): Promise<void> {
+    await fetchApi(`/api/employees/${encodeURIComponent(employeeId)}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 const _photos: RoomPhoto[] = [];

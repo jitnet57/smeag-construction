@@ -781,6 +781,19 @@ export const supabaseApi = {
     if (error) throw error;
     return url;
   },
+  async deleteEmployee(employeeId: string): Promise<void> {
+    // Remove child rows that don't cascade (attendance, employee_deductions);
+    // employee_skills / task_assignments / payroll_overrides cascade on delete.
+    const delAtt = await sb().from('attendance').delete().eq('employee_id', employeeId);
+    if (delAtt.error) throw delAtt.error;
+    const delDed = await sb()
+      .from('employee_deductions')
+      .delete()
+      .eq('employee_id', employeeId);
+    if (delDed.error) throw delDed.error;
+    const { error } = await sb().from('employees').delete().eq('id', employeeId);
+    if (error) throw error;
+  },
 };
 
 export type SupabaseApi = typeof supabaseApi;

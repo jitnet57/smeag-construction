@@ -185,6 +185,16 @@ export default function Employees(): JSX.Element {
     api.updateEmployeeInfo(empId, patch).catch(() => alert(t('skill.saveError')));
   };
 
+  const handleDelete = async (emp: Employee) => {
+    if (!window.confirm(t('emp.deleteConfirm').replace('{name}', emp.name))) return;
+    try {
+      await api.deleteEmployee(emp.id);
+      loadEmployees();
+    } catch {
+      alert(t('emp.deleteError'));
+    }
+  };
+
   // Trigger the hidden file picker for a given worker's photo.
   const pickPhoto = (empId: string) => {
     setUploadFor(empId);
@@ -697,12 +707,20 @@ export default function Employees(): JSX.Element {
                   <td>{emp.joinDate || '—'}</td>
                   <td>{emp.sssNo || '—'}</td>
                   <td className="text-center">
-                    <button
-                      onClick={() => openEdit(emp)}
-                      className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-primary hover:bg-gray-50"
-                    >
-                      {t('emp.edit')}
-                    </button>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => openEdit(emp)}
+                        className="rounded-lg border border-line px-2.5 py-1 text-xs font-semibold text-primary hover:bg-gray-50"
+                      >
+                        {t('emp.edit')}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(emp)}
+                        className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                      >
+                        {t('emp.delete')}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -65,8 +65,12 @@ export default function Attendance({ period }: Props) {
   }, []);
 
   useEffect(() => {
-    // Show every employee in the selected crew (no cap)
-    setEmployees(allEmployees.filter((e) => e.crewId === selectedCrew));
+    // Show every employee in the selected crew (or all crews), sorted by name
+    setEmployees(
+      allEmployees
+        .filter((e) => selectedCrew === 'ALL' || e.crewId === selectedCrew)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    );
   }, [selectedCrew, allEmployees]);
 
   // All dates within the current pay period, defaulting selection to the last day.
@@ -208,6 +212,9 @@ export default function Attendance({ period }: Props) {
           onChange={(e) => setSelectedCrew(e.target.value)}
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         >
+          <option value="ALL">
+            {t('att.allCrews')} ({allEmployees.length}{t('att.people')})
+          </option>
           {crews.map((c) => (
             <option key={c.id} value={c.id}>
               {c.id} ({c.count}{t('att.people')})
