@@ -445,10 +445,6 @@ const DICT = {
   'pay.thNight': { en: 'Night', ko: '야간' },
   'pay.thHoliday': { en: 'Holiday', ko: '휴일' },
   'pay.thIncentive': { en: 'Incentive', ko: '인센' },
-  'pay.incentiveRateHint': {
-    en: 'Incentive daily rate (₱ per day present) — saving recalculates payroll',
-    ko: '인센티브 일당 (출근일당 ₱) — 저장 시 급여 재계산',
-  },
   'pay.thGross': { en: 'Gross', ko: '총지급' },
   'pay.thOtherDeduct': { en: 'Other', ko: '기타공제' },
   'pay.thNet': { en: 'Net Pay', ko: '실지급(Net)' },
@@ -467,7 +463,6 @@ const DICT = {
   'slip.position': { en: 'Position', ko: '직급' },
   'slip.crew': { en: 'Crew', ko: '소속 조' },
   'slip.dailyRate': { en: 'Daily Rate', ko: '일당' },
-  'slip.incentive': { en: 'Incentive (₱/day)', ko: '인센티브 (일당 ₱)' },
   'slip.payPeriod': { en: 'Pay Period', ko: '급여기간' },
   'slip.payDate': { en: 'Pay Date', ko: '지급일' },
   'slip.earnings': { en: 'Earnings', ko: '지급 항목 (Earnings)' },
@@ -492,7 +487,6 @@ const DICT = {
   'emp.thPosition': { en: 'Position', ko: '직급' },
   'emp.thCrew': { en: 'Crew', ko: '소속 조' },
   'emp.thDailyRate': { en: 'Daily Rate', ko: '일당' },
-  'emp.thIncentive': { en: 'Incentive', ko: '인센티브' },
   'emp.thJoinDate': { en: 'Join Date', ko: '입사일' },
   'emp.thSssNo': { en: 'SSS No.', ko: 'SSS 번호' },
   'emp.noData': { en: 'No worker data.', ko: '인부 정보가 없습니다.' },
@@ -501,6 +495,29 @@ const DICT = {
     ko: '첫 50명만 표시됩니다. 검색으로 필터링하세요.',
   },
   'emp.showingCount': { en: 'of', ko: '명 중' },
+  'emp.addTitle': { en: 'Add Worker', ko: '인부 등록' },
+  'emp.fName': { en: 'Name', ko: '성명' },
+  'emp.fNamePh': { en: 'e.g. DELA CRUZ, JUAN', ko: '예: DELA CRUZ, JUAN' },
+  'emp.fNickname': { en: 'Nickname', ko: '닉네임' },
+  'emp.fCrew': { en: 'Crew', ko: '소속 조' },
+  'emp.fPosition': { en: 'Position', ko: '직급' },
+  'emp.fRate': { en: 'Daily Rate (₱)', ko: '일당 (₱)' },
+  'emp.fAge': { en: 'Age', ko: '나이' },
+  'emp.fId': { en: 'ID No.', ko: '아이디' },
+  'emp.fOptional': { en: 'optional', ko: '선택' },
+  'emp.cancel': { en: 'Cancel', ko: '취소' },
+  'emp.save': { en: 'Save', ko: '저장' },
+  'emp.saving': { en: 'Saving...', ko: '저장 중...' },
+  'emp.nameRequired': { en: 'Please enter a name.', ko: '성명을 입력하세요.' },
+  'emp.crewRequired': { en: 'Please select a crew.', ko: '소속 조를 선택하세요.' },
+  'emp.addError': { en: 'Could not add worker.', ko: '인부 등록에 실패했습니다.' },
+  'emp.selectCrew': { en: 'Select crew…', ko: '조 선택…' },
+  'emp.editTitle': { en: 'Edit Worker', ko: '인부 정보 수정' },
+  'emp.edit': { en: 'Edit', ko: '수정' },
+  'emp.thActions': { en: 'Edit', ko: '수정' },
+  'emp.fJoinDate': { en: 'Join Date', ko: '입사일' },
+  'emp.fSssNo': { en: 'SSS No.', ko: 'SSS 번호' },
+  'emp.updateError': { en: 'Could not update worker.', ko: '수정에 실패했습니다.' },
 
   // --- Settings -------------------------------------------------------------
   'set.loading': { en: 'Loading...', ko: '로딩 중...' },
@@ -607,4 +624,3 @@ export function useI18n(): I18nContextValue {
   }
   return ctx;
 }
-                                                                                                                 
