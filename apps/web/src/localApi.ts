@@ -355,6 +355,7 @@ export const localApi = {
     crewId: string;
     position: Employee['position'];
     ratePerDay: number;
+    incentiveDailyRate?: number | null;
     age?: number | null;
     idNo?: string | null;
     joinDate?: string | null;
@@ -369,7 +370,8 @@ export const localApi = {
       crewId: input.crewId,
       position: input.position,
       ratePerDay: input.ratePerDay,
-      incentiveDailyRate: incentiveByPosition[input.position] ?? undefined,
+      incentiveDailyRate:
+        input.incentiveDailyRate ?? incentiveByPosition[input.position] ?? undefined,
       active: true,
       age: input.age == null ? undefined : Number(input.age),
       idNo: input.idNo?.trim() || undefined,
@@ -388,6 +390,7 @@ export const localApi = {
       crewId?: string;
       position?: Employee['position'];
       ratePerDay?: number;
+      incentiveDailyRate?: number | null;
       age?: number | null;
       idNo?: string | null;
       joinDate?: string | null;
@@ -404,6 +407,9 @@ export const localApi = {
       emp.incentiveDailyRate = incentiveByPosition[patch.position] ?? emp.incentiveDailyRate;
     }
     if (patch.ratePerDay !== undefined) emp.ratePerDay = patch.ratePerDay;
+    if (patch.incentiveDailyRate !== undefined)
+      emp.incentiveDailyRate =
+        patch.incentiveDailyRate == null ? undefined : Number(patch.incentiveDailyRate);
     if (patch.age !== undefined) emp.age = patch.age == null ? undefined : Number(patch.age);
     if (patch.idNo !== undefined) emp.idNo = patch.idNo?.trim() || undefined;
     if (patch.joinDate !== undefined) emp.joinDate = patch.joinDate || undefined;

@@ -326,6 +326,7 @@ const networkApi = {
     crewId: string;
     position: Employee['position'];
     ratePerDay: number;
+    incentiveDailyRate?: number | null;
     age?: number | null;
     idNo?: string | null;
     joinDate?: string | null;
@@ -345,6 +346,7 @@ const networkApi = {
       crewId?: string;
       position?: Employee['position'];
       ratePerDay?: number;
+      incentiveDailyRate?: number | null;
       age?: number | null;
       idNo?: string | null;
       joinDate?: string | null;

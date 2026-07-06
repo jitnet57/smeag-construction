@@ -17,6 +17,7 @@ type NewWorker = {
   crewId: string;
   position: Employee['position'];
   ratePerDay: string;
+  incentive: string;
   age: string;
   idNo: string;
   joinDate: string;
@@ -29,6 +30,7 @@ const EMPTY_WORKER: NewWorker = {
   crewId: '',
   position: 'SKILLED',
   ratePerDay: '540',
+  incentive: '',
   age: '',
   idNo: '',
   joinDate: '',
@@ -96,6 +98,7 @@ export default function Employees(): JSX.Element {
       crewId: emp.crewId,
       position: emp.position,
       ratePerDay: String(emp.ratePerDay ?? ''),
+      incentive: emp.incentiveDailyRate != null ? String(emp.incentiveDailyRate) : '',
       age: emp.age != null ? String(emp.age) : '',
       idNo: emp.idNo || '',
       joinDate: emp.joinDate || '',
@@ -120,6 +123,9 @@ export default function Employees(): JSX.Element {
       crewId: form.crewId,
       position: form.position,
       ratePerDay: Math.max(0, Math.floor(Number(form.ratePerDay) || 0)),
+      incentiveDailyRate: form.incentive
+        ? Math.max(0, Math.floor(Number(form.incentive)))
+        : null,
       age: form.age ? Math.max(0, Math.floor(Number(form.age))) : null,
       idNo: form.idNo.trim() || null,
       joinDate: form.joinDate || null,
@@ -326,6 +332,25 @@ export default function Employees(): JSX.Element {
                   />
                 </label>
 
+                <label className="block flex-1">
+                  <span className="mb-1 block text-xs font-semibold text-muted">
+                    {t('emp.fIncentive')}{' '}
+                    <span className="font-normal">({t('emp.fOptional')})</span>
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={form.incentive}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, incentive: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
+                  />
+                </label>
+              </div>
+
+              <div className="flex gap-3">
                 <label className="block w-20">
                   <span className="mb-1 block text-xs font-semibold text-muted">
                     {t('emp.fAge')}
@@ -439,6 +464,7 @@ export default function Employees(): JSX.Element {
                 <th>{t('emp.thPosition')}</th>
                 <th>{t('emp.thCrew')}</th>
                 <th className="text-right">{t('emp.thDailyRate')}</th>
+                <th className="text-right">{t('emp.thIncentive')}</th>
                 <th>{t('emp.thJoinDate')}</th>
                 <th>{t('emp.thSssNo')}</th>
                 <th className="text-center">{t('emp.thActions')}</th>
@@ -447,7 +473,7 @@ export default function Employees(): JSX.Element {
             <tbody>
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={12} className="text-center text-muted py-8">
+                  <td colSpan={13} className="text-center text-muted py-8">
                     {t('emp.noData')}
                   </td>
                 </tr>
@@ -511,6 +537,9 @@ export default function Employees(): JSX.Element {
                     <span className="crewtag">{emp.crewId}</span>
                   </td>
                   <td className="text-right">₱{emp.ratePerDay}</td>
+                  <td className="text-right">
+                    {emp.incentiveDailyRate != null ? `₱${emp.incentiveDailyRate}` : '—'}
+                  </td>
                   <td>{emp.joinDate || '—'}</td>
                   <td>{emp.sssNo || '—'}</td>
                   <td className="text-center">

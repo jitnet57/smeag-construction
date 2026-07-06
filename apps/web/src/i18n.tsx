@@ -517,6 +517,8 @@ const DICT = {
   'emp.thActions': { en: 'Edit', ko: '수정' },
   'emp.fJoinDate': { en: 'Join Date', ko: '입사일' },
   'emp.fSssNo': { en: 'SSS No.', ko: 'SSS 번호' },
+  'emp.fIncentive': { en: 'Incentive (₱/day)', ko: '인센티브 (₱/일)' },
+  'emp.thIncentive': { en: 'Incentive', ko: '인센티브' },
   'emp.updateError': { en: 'Could not update worker.', ko: '수정에 실패했습니다.' },
 
   // --- Settings -------------------------------------------------------------

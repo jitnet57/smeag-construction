@@ -618,6 +618,7 @@ export const supabaseApi = {
     crewId: string;
     position: Position;
     ratePerDay: number;
+    incentiveDailyRate?: number | null;
     age?: number | null;
     idNo?: string | null;
     joinDate?: string | null;
@@ -637,6 +638,7 @@ export const supabaseApi = {
       crew_id: input.crewId,
       position: input.position,
       rate_per_day: input.ratePerDay,
+      incentive_daily_rate: input.incentiveDailyRate ?? null,
       active: true,
       age: input.age ?? null,
       id_no: input.idNo?.trim() || null,
@@ -661,6 +663,7 @@ export const supabaseApi = {
       crewId?: string;
       position?: Position;
       ratePerDay?: number;
+      incentiveDailyRate?: number | null;
       age?: number | null;
       idNo?: string | null;
       joinDate?: string | null;
@@ -673,6 +676,8 @@ export const supabaseApi = {
     if (patch.crewId !== undefined) row.crew_id = patch.crewId;
     if (patch.position !== undefined) row.position = patch.position;
     if (patch.ratePerDay !== undefined) row.rate_per_day = patch.ratePerDay;
+    if (patch.incentiveDailyRate !== undefined)
+      row.incentive_daily_rate = patch.incentiveDailyRate ?? null;
     if (patch.age !== undefined) row.age = patch.age ?? null;
     if (patch.idNo !== undefined) row.id_no = patch.idNo?.trim() || null;
     if (patch.joinDate !== undefined) row.join_date = patch.joinDate || null;
