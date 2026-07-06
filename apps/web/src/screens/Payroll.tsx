@@ -282,6 +282,7 @@ export default function Payroll({ period }: Props) {
           <table>
             <thead>
               <tr>
+                <th>#</th>
                 <th>{t('pay.thName')}</th>
                 <th>{t('pay.thPosition')}</th>
                 <th className="text-center">{t('pay.thWorkDays')}</th>
@@ -301,8 +302,9 @@ export default function Payroll({ period }: Props) {
               </tr>
             </thead>
             <tbody>
-              {displayData.map((slip) => (
+              {displayData.map((slip, idx) => (
                 <tr key={slip.employeeId}>
+                  <td>{idx + 1}</td>
                   <td>{empMap.get(slip.employeeId)?.name ?? slip.employeeId}</td>
                   <td>{empMap.get(slip.employeeId)?.position ?? 'SKILLED'}</td>
                   <td className="text-center">{slip.workedDays}</td>
@@ -406,7 +408,7 @@ export default function Payroll({ period }: Props) {
                 </tr>
               ))}
               <tr className="totrow">
-                <td colSpan={8}>{t('pay.total')} ({totals.employees}{t('pay.totalUnit')})</td>
+                <td colSpan={9}>{t('pay.total')} ({totals.employees}{t('pay.totalUnit')})</td>
                 <td className="text-right">₱ {totals.grossPay.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.sss.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.phil.toLocaleString()}</td>
