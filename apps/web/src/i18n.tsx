@@ -50,6 +50,8 @@ const DICT = {
   'skill.thAge': { en: 'Age', ko: '나이' },
   'skill.thId': { en: 'ID', ko: '아이디' },
   'skill.photoTitle': { en: 'Upload / take ID photo', ko: '증명사진 업로드 / 촬영' },
+  'skill.edit': { en: 'Edit', ko: '편집' },
+  'skill.close': { en: 'Close', ko: '닫기' },
   'skill.photoError': { en: 'Failed to upload photo.', ko: '사진 업로드에 실패했습니다.' },
   'skill.printSignup': { en: 'Print sign-up sheet', ko: '사인업 시트 인쇄' },
   'skill.signupTitle': { en: 'BRIGHTEM — Skill Sign-up Sheet', ko: 'BRIGHTEM — 스킬 사인업 시트' },

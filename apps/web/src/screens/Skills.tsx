@@ -36,6 +36,8 @@ export default function Skills() {
   const [idNos, setIdNos] = useState<Record<string, string>>({});
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [uploadFor, setUploadFor] = useState<string | null>(null);
+  // Mobile: which worker card is expanded for editing.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -366,33 +368,136 @@ export default function Skills() {
           {t('skill.title')}
         </h3>
 
-        {/* Mobile card view — read-only skill chips (edit levels on desktop table) */}
+        {/* Mobile card view — tap a card to expand and edit levels / info */}
         <div className="md:hidden space-y-3">
           {sorted.map((e) => {
             const skills = SKILL_KEYS.map((k) => ({ k, lvl: getLevel(e.id, k) }))
               .filter((s) => s.lvl > 0)
               .sort((a, b) => b.lvl - a.lvl);
             const avg = avgOf(e.id);
+            const open = editingId === e.id;
             return (
               <div key={e.id} className="bg-white border border-line rounded-xl p-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-bold text-sm text-dark truncate">{e.name}</div>
-                  <span className={`pill flex-shrink-0 ${avg >= 6 ? 'ok' : 'half'}`}>
-                    {t('skill.thAvg')} {avg.toFixed(1)}
-                  </span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {skills.length === 0 && <span className="text-xs text-muted">—</span>}
-                  {skills.map((s) => (
-                    <span
-                      key={s.k}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded"
-                      style={cellStyle(s.lvl)}
+                <button
+                  type="button"
+                  onClick={() => setEditingId(open ? null : e.id)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-bold text-sm text-dark truncate">{e.name}</div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`pill ${avg >= 6 ? 'ok' : 'half'}`}>
+                        {t('skill.thAvg')} {avg.toFixed(1)}
+                      </span>
+                      <span className="text-xs font-bold text-primary">
+                        {open ? t('skill.close') : t('skill.edit')}
+                      </span>
+                    </div>
+                  </div>
+                  {!open && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {skills.length === 0 && <span className="text-xs text-muted">—</span>}
+                      {skills.map((s) => (
+                        <span
+                          key={s.k}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded"
+                          style={cellStyle(s.lvl)}
+                        >
+                          {t(`skill.${s.k}` as TKey)} {s.lvl}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </button>
+
+                {open && (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => pickPhoto(e.id)}
+                        title={t('skill.photoTitle')}
+                        className="h-16 w-12 flex-shrink-0 overflow-hidden rounded border border-line bg-gray-50 flex items-center justify-center"
+                      >
+                        {photos[e.id] ? (
+                          <img src={photos[e.id]} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-lg text-muted">＋</span>
+                        )}
+                      </button>
+                      <label className="text-xs text-muted flex flex-col gap-1">
+                        {t('skill.thAge')}
+                        <input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={ages[e.id] ?? ''}
+                          onChange={(ev) =>
+                            setAges((prev) => ({ ...prev, [e.id]: ev.target.value }))
+                          }
+                          onBlur={() =>
+                            saveInfo(e.id, {
+                              age: ages[e.id] ? Math.max(0, Math.floor(Number(ages[e.id]))) : null,
+                            })
+                          }
+                          className="w-16 rounded border border-line bg-white px-2 py-1.5 text-center text-base text-dark"
+                          placeholder="—"
+                        />
+                      </label>
+                      <label className="text-xs text-muted flex flex-col gap-1 flex-1 min-w-0">
+                        {t('skill.thId')}
+                        <input
+                          type="text"
+                          value={idNos[e.id] ?? ''}
+                          onChange={(ev) =>
+                            setIdNos((prev) => ({ ...prev, [e.id]: ev.target.value }))
+                          }
+                          onBlur={() => saveInfo(e.id, { idNo: idNos[e.id]?.trim() || null })}
+                          className="w-full rounded border border-line bg-white px-2 py-1.5 text-base text-dark"
+                          placeholder="—"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {SKILL_KEYS.map((k) => {
+                        const lvl = getLevel(e.id, k);
+                        return (
+                          <label
+                            key={k}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-line px-2 py-1.5"
+                            style={cellStyle(lvl)}
+                          >
+                            <span className="text-xs font-bold truncate">
+                              {t(`skill.${k}` as TKey)}
+                            </span>
+                            <select
+                              value={lvl}
+                              onChange={(ev) => setLevel(e.id, k, Number(ev.target.value))}
+                              className="bg-white/80 text-dark rounded border border-line px-1 py-1 text-base"
+                            >
+                              {LEVELS.map((n) => (
+                                <option key={n} value={n}>
+                                  {n}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn w-full"
+                      onClick={handleSave}
+                      disabled={saving || dirty.size === 0}
                     >
-                      {t(`skill.${s.k}` as TKey)} {s.lvl}
-                    </span>
-                  ))}
-                </div>
+                      {saving ? t('skill.saving') : t('skill.save')}
+                      {dirty.size > 0 && ` (${dirty.size})`}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
