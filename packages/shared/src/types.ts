@@ -184,7 +184,7 @@ export interface PayslipResult {
 
 /**
  * Trade/skill categories tracked per worker, in the column order of the
- * company TEAMS.xlsx roster (CARPENTER … SCAFFOLDING, ELECTRICIAN).
+ * company TEAMS.xlsx roster (CARPENTER … SCAFFOLDING, ELECTRICAL).
  * Keys are stable DB ids; the TEAMS header for each lives in TEAMS_HEADERS.
  */
 export const SKILL_KEYS = [
@@ -203,7 +203,7 @@ export const SKILL_KEYS = [
   "roofing",         // ROOFING
   "steelman",        // STEELMAN
   "scaffolding",     // SCAFFOLDING
-  "electrician",     // ELECTRICIAN
+  "electrician",     // ELECTRICAL
 ] as const;
 
 /** TEAMS.xlsx column header for each skill key (used for import/export). */
@@ -223,7 +223,7 @@ export const TEAMS_HEADERS: Record<(typeof SKILL_KEYS)[number], string> = {
   roofing: "ROOFING",
   steelman: "STEELMAN",
   scaffolding: "SCAFFOLDING",
-  electrician: "ELECTRICIAN",
+  electrician: "ELECTRICAL",
 };
 
 /**

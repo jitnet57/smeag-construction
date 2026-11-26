@@ -113,7 +113,7 @@ const DICT = {
   'skill.roofing': { en: 'Roofing', ko: '지붕/방수' },
   'skill.steelman': { en: 'Steelman', ko: '철근' },
   'skill.scaffolding': { en: 'Scaffolding', ko: '스카폴딩' },
-  'skill.electrician': { en: 'Electrician', ko: '전기' },
+  'skill.electrician': { en: 'Electrical', ko: '전기' },
 
   // --- Task assignment ------------------------------------------------------
   'task.title': {

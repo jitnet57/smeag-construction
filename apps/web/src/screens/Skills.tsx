@@ -276,6 +276,8 @@ export default function Skills() {
     SKILL_KEYS.forEach((k) => {
       [TEAMS_HEADERS[k], k, t(`skill.${k}` as TKey)].forEach((a) => headAlias.set(normHead(a), k));
     });
+    // Older TEAMS files / exports used ELECTRICIAN for the ELECTRICAL column.
+    ['ELECTRICIAN', 'Electrician', '전기'].forEach((a) => headAlias.set(normHead(a), 'electrician'));
     const NAME_HEADS = new Set(['NAME', normHead(t('skill.thName')), '성명', '이름']);
     const isForemanSheet = (n: string) => /FOREMAN|포맨/i.test(n);
     const hasForemanSheet = sheets.some((sh) => isForemanSheet(sh.name));
