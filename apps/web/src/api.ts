@@ -12,8 +12,6 @@ import type {
   MaterialStock,
   StockMove,
   RoomPhoto,
-  AttendancePhoto,
-  AttendancePhotoKind,
   PayslipResult,
   PayrollConfig,
 } from '@brightem/shared';
@@ -345,35 +343,6 @@ const networkApi = {
     const i = _photos.findIndex((p) => p.id === id);
     if (i >= 0) _photos.splice(i, 1);
   },
-
-  // Attendance photos (check-in / check-out / break) — held in memory.
-  async getAttendancePhotos(date: string): Promise<AttendancePhoto[]> {
-    return _attPhotos
-      .filter((p) => p.date === date)
-      .sort((a, b) => (a.takenAt < b.takenAt ? -1 : 1));
-  },
-  async addAttendancePhoto(
-    employeeId: string,
-    date: string,
-    kind: AttendancePhotoKind,
-    file: Blob
-  ): Promise<AttendancePhoto> {
-    const url: string = await new Promise((resolve) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.readAsDataURL(file);
-    });
-    const photo: AttendancePhoto = {
-      id: `att-photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      employeeId,
-      date,
-      kind,
-      url,
-      takenAt: new Date().toISOString(),
-    };
-    _attPhotos.push(photo);
-    return photo;
-  },
   async createEmployee(input: {
     name: string;
     nickname?: string;
@@ -453,7 +422,6 @@ const networkApi = {
 };
 
 const _photos: RoomPhoto[] = [];
-const _attPhotos: AttendancePhoto[] = [];
 const _stock: MaterialStock[] = [];
 const _moves: StockMove[] = [];
 let _photoSeq = 1;
@@ -496,10 +464,6 @@ export const api: typeof baseApi = {
   },
   async getAttendance(period: string) {
     const [rows, ids] = await Promise.all([baseApi.getAttendance(period), scopedIds()]);
-    return byEmployee(rows, ids);
-  },
-  async getAttendancePhotos(date: string) {
-    const [rows, ids] = await Promise.all([baseApi.getAttendancePhotos(date), scopedIds()]);
     return byEmployee(rows, ids);
   },
   async getPayroll(period: string) {

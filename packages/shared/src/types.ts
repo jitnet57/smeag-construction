@@ -74,6 +74,8 @@ export interface AttendanceRecord {
   amOut?: number | null;
   pmIn?: number | null;
   pmOut?: number | null;
+  breakIn?: number | null;  // 10:00 break start / end (camera check), decimal hour
+  breakOut?: number | null;
   otHours?: number;      // overtime hours worked that day
   nightHours?: number;   // hours falling in the night-differential window
   lateMinutes?: number;  // tardiness in minutes

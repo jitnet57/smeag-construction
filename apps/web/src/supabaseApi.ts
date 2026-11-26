@@ -30,8 +30,6 @@ import type {
   MaterialStock,
   StockMove,
   RoomPhoto,
-  AttendancePhoto,
-  AttendancePhotoKind,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -126,6 +124,8 @@ function toAttendance(r: any): AttendanceRecord {
     amOut: r.am_out ?? null,
     pmIn: r.pm_in ?? null,
     pmOut: r.pm_out ?? null,
+    breakIn: r.break_in == null ? null : Number(r.break_in),
+    breakOut: r.break_out == null ? null : Number(r.break_out),
     otHours: r.ot_hours == null ? undefined : Number(r.ot_hours),
     nightHours: r.night_hours == null ? undefined : Number(r.night_hours),
     lateMinutes: r.late_minutes == null ? undefined : Number(r.late_minutes),
@@ -144,6 +144,8 @@ function fromAttendance(rec: AttendanceRecord): Record<string, unknown> {
     am_out: rec.amOut ?? null,
     pm_in: rec.pmIn ?? null,
     pm_out: rec.pmOut ?? null,
+    break_in: rec.breakIn ?? null,
+    break_out: rec.breakOut ?? null,
     ot_hours: rec.otHours ?? null,
     night_hours: rec.nightHours ?? null,
     late_minutes: rec.lateMinutes ?? null,
@@ -740,53 +742,6 @@ export const supabaseApi = {
     }
     const del = await client.from('room_photos').delete().eq('id', id);
     if (del.error) throw del.error;
-  },
-
-  // --- Attendance photos (check-in / check-out / break) ---------------------
-  // Files go to the 'room-photos' bucket under attendance/<date>/<employee>/.
-  async getAttendancePhotos(date: string): Promise<AttendancePhoto[]> {
-    const { data, error } = await sb()
-      .from('attendance_photos')
-      .select('id, employee_id, date, kind, path, taken_at')
-      .eq('date', date)
-      .order('taken_at', { ascending: true });
-    if (error) throw error;
-    const bucket = sb().storage.from('room-photos');
-    return (data ?? []).map((r: any) => ({
-      id: r.id,
-      employeeId: r.employee_id,
-      date: r.date,
-      kind: r.kind,
-      url: resolvePhotoUrl(bucket.getPublicUrl(r.path).data.publicUrl),
-      takenAt: r.taken_at,
-    }));
-  },
-
-  async addAttendancePhoto(
-    employeeId: string,
-    date: string,
-    kind: AttendancePhotoKind,
-    file: Blob
-  ): Promise<AttendancePhoto> {
-    const path = `attendance/${date}/${employeeId}/${kind}-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}.jpg`;
-    const bucket = sb().storage.from('room-photos');
-    const up = await bucket.upload(path, file, { contentType: 'image/jpeg', upsert: false });
-    if (up.error) throw up.error;
-    const takenAt = new Date().toISOString();
-    const { error } = await sb()
-      .from('attendance_photos')
-      .insert({ employee_id: employeeId, date, kind, path, taken_at: takenAt });
-    if (error) throw error;
-    return {
-      id: path,
-      employeeId,
-      date,
-      kind,
-      url: resolvePhotoUrl(bucket.getPublicUrl(path).data.publicUrl),
-      takenAt,
-    };
   },
 
   // --- Create a new worker --------------------------------------------------

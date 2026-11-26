@@ -7,6 +7,7 @@ import { parseCsv } from '../lib/csv';
 import { readXlsx } from '../lib/xlsx';
 import { useAuth, canEditCheckin, isTeamLeader, isAdmin, syncServerClock, manilaNow } from '../auth';
 import CheckCameraModal, { KIND_SPEECH, speak } from '../components/CheckCameraModal';
+import { getDevicePhotos, addDevicePhoto } from '../lib/devicePhotos';
 
 // 10:00–10:15 (Manila) is break time: the camera buttons record the break.
 const BREAK_START = 10;
@@ -18,6 +19,12 @@ const KIND_LABEL: Record<AttendancePhotoKind, string> = {
   break_in: 'att.breakIn',
   break_out: 'att.breakOut',
 };
+
+// Decimal hour (10.05) → "10:03".
+function hourClock(h: number): string {
+  const m = Math.round(h * 60);
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
 
 // "07:05" in Manila time for a photo's ISO timestamp.
 function manilaClock(iso: string): string {
@@ -65,6 +72,8 @@ interface AttendanceRow {
   amOut: string;
   pmIn: string;
   pmOut: string;
+  breakIn: number | null;
+  breakOut: number | null;
   otIn: string;
   otOut: string;
   workedHours: number;
@@ -141,6 +150,8 @@ export default function Attendance({ period }: Props) {
             amOut: rec?.amOut?.toString() ?? '',
             pmIn: rec?.pmIn?.toString() ?? '',
             pmOut: rec?.pmOut?.toString() ?? '',
+            breakIn: rec?.breakIn ?? null,
+            breakOut: rec?.breakOut ?? null,
             otIn: rec?.otHours ? '17' : '',
             otOut: rec?.otHours ? '19' : '',
             workedHours: rec?.otHours ? 10.0 : 8.0,
@@ -170,16 +181,15 @@ export default function Attendance({ period }: Props) {
   const [photos, setPhotos] = useState<AttendancePhoto[]>([]);
   const [camera, setCamera] = useState<{ employeeId: string; kind: AttendancePhotoKind } | null>(null);
   const [viewer, setViewer] = useState<string | null>(null);
-  const [photoKey, setPhotoKey] = useState(0);
   useEffect(() => {
     let alive = true;
-    api.getAttendancePhotos(selectedDate)
+    getDevicePhotos(selectedDate)
       .then((list) => alive && setPhotos(list))
       .catch(() => alive && setPhotos([]));
     return () => {
       alive = false;
     };
-  }, [selectedDate, photoKey, reloadKey]);
+  }, [selectedDate, reloadKey]);
 
   // Morning check-in (AM IN) closes at 07:00 Manila time on the work date;
   // after that only a team leader may change it. Re-check every 30s so an
@@ -194,8 +204,15 @@ export default function Attendance({ period }: Props) {
   const now = manilaNow();
   const isToday = selectedDate === now.date;
   const breakTime = isToday && now.hour >= BREAK_START && now.hour < BREAK_END;
-  const inKind: AttendancePhotoKind = breakTime ? 'break_in' : 'check_in';
-  const outKind: AttendancePhotoKind = breakTime ? 'break_out' : 'check_out';
+  // Break times are saved on the server row, so every phone agrees. A worker
+  // with Break in but no Break out is still on break: they keep a single
+  // "Break time out" button until they take it, even after 10:15, so a late
+  // return is still recorded with its real time.
+  const onBreak = (row: AttendanceRow) => row.breakIn != null && row.breakOut == null;
+  const rowKinds = (row: AttendanceRow): AttendancePhotoKind[] =>
+    onBreak(row) ? ['break_out']
+      : breakTime && row.breakIn == null ? ['break_in']
+      : ['check_in', 'check_out'];
   const camDisabled = (row: AttendanceRow, kind: AttendancePhotoKind) =>
     !isToday || isLocked(row) || (kind === 'check_in' && amInLocked);
   const camTitle = (row: AttendanceRow, kind: AttendancePhotoKind) =>
@@ -222,13 +239,15 @@ export default function Attendance({ period }: Props) {
     amOut: row.amOut ? parseFloat(row.amOut) : null,
     pmIn: row.pmIn ? parseFloat(row.pmIn) : null,
     pmOut: row.pmOut ? parseFloat(row.pmOut) : null,
+    breakIn: row.breakIn,
+    breakOut: row.breakOut,
     otHours: row.otIn ? 2 : undefined,
     confirmed: confirm,
   } as AttendanceRecord);
 
-  // A photo was taken: announce it out loud, then save the photo. Check-in
-  // fills AM IN and check-out fills PM OUT with the current time and saves
-  // that worker's row as a draft; break photos only record the photo.
+  // A photo was taken: announce it out loud, save the time on the server row
+  // (check-in → AM IN, check-out → PM OUT, break → break in / out; the row is
+  // saved as a draft) and keep the photo on this phone.
   const handleCapture = async (blob: Blob) => {
     if (!camera) return;
     const { employeeId, kind } = camera;
@@ -236,18 +255,24 @@ export default function Attendance({ period }: Props) {
     speak(KIND_SPEECH[kind]);
     const idx = rows.findIndex((r) => r.employee.id === employeeId);
     if (idx < 0) return;
-    const hour = String(Math.round(manilaNow().hour * 100) / 100);
+    const h = Math.round(manilaNow().hour * 100) / 100;
+    const hour = String(h);
     let row = rows[idx];
     try {
-      if (kind === 'check_in' || kind === 'check_out') {
-        row = kind === 'check_in' ? { ...row, amIn: hour } : { ...row, pmOut: hour };
-        const rec = toRecord(row, false);
-        await api.updateAttendance([rec]);
-        row = { ...row, record: { ...(row.record ?? {}), ...rec } as AttendanceRecord };
-        setRows((cur) => cur.map((r) => (r.employee.id === employeeId ? row : r)));
-      }
-      await api.addAttendancePhoto(employeeId, selectedDate, kind, blob);
-      setPhotoKey((n) => n + 1);
+      row =
+        kind === 'check_in' ? { ...row, amIn: hour }
+          : kind === 'check_out' ? { ...row, pmOut: hour }
+          : kind === 'break_in' ? { ...row, breakIn: h, breakOut: null }
+          : { ...row, breakOut: h };
+      const rec = toRecord(row, false);
+      await api.updateAttendance([rec]);
+      row = { ...row, record: { ...(row.record ?? {}), ...rec } as AttendanceRecord };
+      setRows((cur) => cur.map((r) => (r.employee.id === employeeId ? row : r)));
+      const photo = await addDevicePhoto(
+        employeeId, row.employee.name, selectedDate, kind, blob,
+        manilaClock(new Date().toISOString())
+      );
+      setPhotos((cur) => [...cur.filter((p) => p.id !== photo.id), photo]);
     } catch (err) {
       if (String((err as { message?: string })?.message ?? '').includes('CHECKIN_CLOSED')) {
         await syncServerClock();
@@ -261,10 +286,10 @@ export default function Attendance({ period }: Props) {
 
   const camButtons = (row: AttendanceRow) => (
     <div className="flex gap-1.5">
-      {([inKind, outKind] as AttendancePhotoKind[]).map((kind) => (
+      {rowKinds(row).map((kind) => (
         <button
           key={kind}
-          className={`btn ${kind.endsWith('in') ? '' : 'ghost'} !px-2.5 !py-1.5 text-xs whitespace-nowrap disabled:opacity-40`}
+          className={`btn ${kind === 'check_out' ? 'ghost' : ''} ${kind.startsWith('break_') ? '!bg-amber-500 !border-amber-500' : ''} !px-2.5 !py-1.5 text-xs whitespace-nowrap disabled:opacity-40`}
           disabled={camDisabled(row, kind)}
           title={camTitle(row, kind)}
           onClick={() => setCamera({ employeeId: row.employee.id, kind })}
@@ -277,9 +302,15 @@ export default function Attendance({ period }: Props) {
 
   const photoStrip = (row: AttendanceRow) => {
     const mine = photos.filter((p) => p.employeeId === row.employee.id);
-    if (!mine.length) return null;
+    const brk = row.breakIn != null && (
+      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800">
+        ☕ {hourClock(row.breakIn)} – {row.breakOut != null ? hourClock(row.breakOut) : t('att.onBreak')}
+      </span>
+    );
+    if (!mine.length && !brk) return null;
     return (
-      <div className="flex flex-wrap gap-1.5 mt-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+        {brk}
         {mine.map((p) => (
           <button key={p.id} onClick={() => setViewer(p.url)} className="flex items-center gap-1 rounded border border-line bg-bg px-1 py-0.5 text-[10px] text-muted">
             <img src={p.url} alt="" className="h-6 w-6 rounded object-cover" />
