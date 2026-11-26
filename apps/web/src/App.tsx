@@ -57,7 +57,13 @@ const NAV_ITEMS: NavItem[] = [
 
 // Screens each role may open. Team leaders get the field screens only.
 const TEAM_LEADER_SCREENS: ScreenKey[] = ['attendance', 'skills', 'tasks', 'units', 'materials', 'stock'];
-function canOpen(role: Role, key: ScreenKey): boolean {
+// An admin picks a view after login: 'staff' shows the same field screens a
+// team leader sees (with admin rights kept), 'admin' shows every menu.
+type View = 'staff' | 'admin';
+const VIEW_KEY = 'brightem.view'; // "<token>:<view>", kept for this browser tab
+
+function canOpen(role: Role, key: ScreenKey, view: View = 'admin'): boolean {
+  if (view === 'staff') return TEAM_LEADER_SCREENS.includes(key);
   if (role === 'admin') return true;
   if (role === 'manager') return key !== 'accounts';
   return TEAM_LEADER_SCREENS.includes(key);
@@ -91,7 +97,57 @@ export default function App() {
   const { t } = useI18n();
   if (!ready) return <div className="p-6 text-center text-gray-500">{t('app.loading')}</div>;
   if (!session) return <Login />;
-  return <Shell key={session.username} />;
+  if (session.role !== 'admin') return <Shell key={session.username} view="admin" />;
+  return <AdminApp token={session.token} username={session.username} />;
+}
+
+function AdminApp({ token, username }: { token: string; username: string }) {
+  const [view, setViewState] = useState<View | null>(() => {
+    const [tok, v] = (sessionStorage.getItem(VIEW_KEY) ?? '').split(':');
+    return tok === token && (v === 'staff' || v === 'admin') ? v : null;
+  });
+  const setView = (v: View | null) => {
+    if (v) sessionStorage.setItem(VIEW_KEY, `${token}:${v}`);
+    else sessionStorage.removeItem(VIEW_KEY);
+    setViewState(v);
+  };
+  if (!view) return <ViewChooser onPick={setView} />;
+  return <Shell key={`${username}:${view}`} view={view} onSwitchView={() => setView(null)} />;
+}
+
+function ViewChooser({ onPick }: { onPick: (v: View) => void }) {
+  const { t } = useI18n();
+  const { session, logout } = useAuth();
+  const card = (v: View, icon: string, title: TKey, sub: TKey) => (
+    <button
+      type="button"
+      onClick={() => onPick(v)}
+      className="w-full text-left border border-line rounded-xl p-4 bg-white hover:border-primary hover:bg-bg flex gap-3 items-center"
+    >
+      <span className="text-3xl leading-none">{icon}</span>
+      <span>
+        <b className="block text-dark">{t(title)}</b>
+        <span className="text-xs text-muted">{t(sub)}</span>
+      </span>
+    </button>
+  );
+  return (
+    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-white border border-line rounded-xl shadow-sm p-6 space-y-3">
+        <div>
+          <b className="text-dark text-xl block">BRIGHTEM</b>
+          <span className="text-xs text-muted">👤 {session!.displayName}</span>
+        </div>
+        <h2 className="font-bold text-dark">{t('view.title')}</h2>
+        {card('staff', '👷', 'view.staff', 'view.staffSub')}
+        {card('admin', '🔐', 'view.admin', 'view.adminSub')}
+        <p className="text-xs text-muted">{t('view.hint')}</p>
+        <button type="button" className="block mx-auto text-xs text-muted underline" onClick={() => logout()}>
+          {t('auth.logout')}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function ChangePassword({ onClose }: { onClose: () => void }) {
@@ -131,15 +187,15 @@ function ChangePassword({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Shell() {
+function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }) {
   const { t, lang, setLang } = useI18n();
   const { session, logout } = useAuth();
   const role = session!.role;
-  const navItems = NAV_ITEMS.filter((n) => canOpen(role, n.key));
-  const bottomTabs = BOTTOM_TABS.filter((n) => canOpen(role, n.key));
+  const navItems = NAV_ITEMS.filter((n) => canOpen(role, n.key, view));
+  const bottomTabs = BOTTOM_TABS.filter((n) => canOpen(role, n.key, view));
   const [pwOpen, setPwOpen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<ScreenKey>(
-    role === 'team_leader' ? 'attendance' : 'dashboard'
+    role === 'team_leader' || view === 'staff' ? 'attendance' : 'dashboard'
   );
   const [currentPeriod, setCurrentPeriod] = useState<PayPeriod | null>(null);
   const [periods, setPeriods] = useState<PayPeriod[]>([]);
@@ -157,7 +213,7 @@ function Shell() {
   }, []);
 
   const renderScreen = () => {
-    if (!canOpen(role, currentScreen)) return null;
+    if (!canOpen(role, currentScreen, view)) return null;
     if (
       !currentPeriod &&
       currentScreen !== 'settings' &&
@@ -303,6 +359,15 @@ function Shell() {
                 {session!.crewId ? ` (${session!.crewId})` : ''}
               </span>
             </span>
+            {onSwitchView && (
+              <button
+                onClick={onSwitchView}
+                className="border border-line rounded-full px-2.5 py-1 text-xs font-bold text-dark hover:bg-bg flex-shrink-0"
+                title={t('view.switch')}
+              >
+                {view === 'staff' ? '👷' : '🔐'} <span className="hidden sm:inline">{t('view.switch')}</span>
+              </button>
+            )}
             <button
               onClick={() => setPwOpen(true)}
               className="text-muted hover:text-dark flex-shrink-0"

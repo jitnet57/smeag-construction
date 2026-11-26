@@ -12,6 +12,8 @@ import type {
   MaterialStock,
   StockMove,
   RoomPhoto,
+  AttendancePhoto,
+  AttendancePhotoKind,
   PayslipResult,
   PayrollConfig,
 } from '@brightem/shared';
@@ -129,7 +131,7 @@ const networkApi = {
     }
   },
 
-  async updateAttendance(records: AttendanceRecord[]): Promise<void> {
+  async updateAttendance(records: AttendanceRecord[], _opts?: { unlock?: boolean }): Promise<void> {
     await fetchApi('/api/attendance', {
       method: 'POST',
       body: JSON.stringify(records),
@@ -343,6 +345,35 @@ const networkApi = {
     const i = _photos.findIndex((p) => p.id === id);
     if (i >= 0) _photos.splice(i, 1);
   },
+
+  // Attendance photos (check-in / check-out / break) — held in memory.
+  async getAttendancePhotos(date: string): Promise<AttendancePhoto[]> {
+    return _attPhotos
+      .filter((p) => p.date === date)
+      .sort((a, b) => (a.takenAt < b.takenAt ? -1 : 1));
+  },
+  async addAttendancePhoto(
+    employeeId: string,
+    date: string,
+    kind: AttendancePhotoKind,
+    file: Blob
+  ): Promise<AttendancePhoto> {
+    const url: string = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(file);
+    });
+    const photo: AttendancePhoto = {
+      id: `att-photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      employeeId,
+      date,
+      kind,
+      url,
+      takenAt: new Date().toISOString(),
+    };
+    _attPhotos.push(photo);
+    return photo;
+  },
   async createEmployee(input: {
     name: string;
     nickname?: string;
@@ -422,6 +453,7 @@ const networkApi = {
 };
 
 const _photos: RoomPhoto[] = [];
+const _attPhotos: AttendancePhoto[] = [];
 const _stock: MaterialStock[] = [];
 const _moves: StockMove[] = [];
 let _photoSeq = 1;
@@ -430,6 +462,69 @@ const _employeePhotos: Record<string, string> = {};
 // Pick the data source at build time. Supabase (Vercel deploy) and local
 // (fully static/offline) both run the pure engine in the browser; otherwise
 // fall back to the network-backed Express API. Same shape either way.
-export const api = USE_SUPABASE ? supabaseApi : USE_LOCAL ? localApi : networkApi;
+const baseApi = USE_SUPABASE ? supabaseApi : USE_LOCAL ? localApi : networkApi;
+
+// ---- Crew scope -------------------------------------------------------------
+// A team leader only sees the employees of their own crew. auth.tsx sets the
+// scope (synchronously, before any screen loads data) on login / session
+// restore and clears it on logout. Every employee-keyed read is filtered here,
+// so no screen can leak another crew's people; writes that replace a whole day
+// keep the rows of employees outside the scope.
+let crewScope: string | null = null;
+export function setApiCrewScope(crewId: string | null) {
+  crewScope = crewId ? crewId.toUpperCase() : null;
+}
+const inScope = (e: Employee) => !crewScope || e.crewId.toUpperCase() === crewScope;
+async function scopedIds(): Promise<Set<string> | null> {
+  if (!crewScope) return null;
+  const emps = await baseApi.getEmployees();
+  return new Set(emps.filter(inScope).map((e) => e.id));
+}
+function byEmployee<T extends { employeeId: string }>(rows: T[], ids: Set<string> | null) {
+  return ids ? rows.filter((r) => ids.has(r.employeeId)) : rows;
+}
+
+export const api: typeof baseApi = {
+  ...baseApi,
+  async getEmployees() {
+    const emps = await baseApi.getEmployees();
+    return crewScope ? emps.filter(inScope) : emps;
+  },
+  async getCrews() {
+    const crews = await baseApi.getCrews();
+    return crewScope ? crews.filter((c) => c.id.toUpperCase() === crewScope) : crews;
+  },
+  async getAttendance(period: string) {
+    const [rows, ids] = await Promise.all([baseApi.getAttendance(period), scopedIds()]);
+    return byEmployee(rows, ids);
+  },
+  async getAttendancePhotos(date: string) {
+    const [rows, ids] = await Promise.all([baseApi.getAttendancePhotos(date), scopedIds()]);
+    return byEmployee(rows, ids);
+  },
+  async getPayroll(period: string) {
+    const [rows, ids] = await Promise.all([baseApi.getPayroll(period), scopedIds()]);
+    return byEmployee(rows, ids);
+  },
+  async getEmployeeSkills() {
+    const [rows, ids] = await Promise.all([baseApi.getEmployeeSkills(), scopedIds()]);
+    return byEmployee(rows, ids);
+  },
+  async getAssignments(date: string) {
+    const [rows, ids] = await Promise.all([baseApi.getAssignments(date), scopedIds()]);
+    return byEmployee(rows, ids);
+  },
+  async saveAssignments(date: string, rows: TaskAssignment[]) {
+    const ids = await scopedIds();
+    if (!ids) return baseApi.saveAssignments(date, rows);
+    const own = rows.filter((r) => ids.has(r.employeeId));
+    // Supabase: RLS already limits the day-wide delete to this crew's rows
+    // (and refuses inserts for other crews), so send only our own.
+    if (USE_SUPABASE) return baseApi.saveAssignments(date, own);
+    // Other backends replace the whole day: keep other crews' assignments.
+    const others = (await baseApi.getAssignments(date)).filter((a) => !ids.has(a.employeeId));
+    return baseApi.saveAssignments(date, [...others, ...own]);
+  },
+} as typeof baseApi;
 
 export { USE_MOCK };

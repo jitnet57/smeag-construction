@@ -16,6 +16,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { sb } from './supabaseApi';
+import { setApiCrewScope } from './api';
 import {
   forgetOfflineLogin,
   isNetworkError,
@@ -85,7 +86,8 @@ const supabaseAuth = {
     }
   },
   // Phone login (pelham-shift style): the last 4 digits are the whole
-  // credential. Admin accounts are never reachable this way.
+  // credential. Admins may use it too (admin 2222, admin1 3333); the server
+  // throttles failed attempts (20261129_admin_phone_login.sql).
   async loginPhone(digits: string): Promise<Session | null> {
     try {
       const s = await rpc<Session | null>('app_login_phone', { p_digits: digits });
@@ -148,12 +150,21 @@ async function hashPw(username: string, pw: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+const ADMIN_PHONES: Record<string, string> = { admin: '2222', admin1: '3333' };
+
 async function localAccounts(): Promise<LocalAccount[]> {
   const raw = localStorage.getItem(LOCAL_KEY);
-  if (raw) return (JSON.parse(raw) as LocalAccount[]).map((a) => ({ ...a, phone: a.phone ?? '' }));
+  if (raw) {
+    // Older dev stores: give admin / admin1 their phone-login digits once.
+    const list = (JSON.parse(raw) as LocalAccount[]).map((a) => ({
+      ...a,
+      phone: a.phone || ADMIN_PHONES[a.username] || '',
+    }));
+    return list;
+  }
   const seed: Omit<LocalAccount, 'hash'>[] = [
-    { username: 'admin', displayName: 'Emmeline Hwang', role: 'admin', crewId: null, phone: '', active: true },
-    { username: 'admin1', displayName: 'Jaesun Hwang', role: 'admin', crewId: null, phone: '', active: true },
+    { username: 'admin', displayName: 'Emmeline Hwang', role: 'admin', crewId: null, phone: '2222', active: true },
+    { username: 'admin1', displayName: 'Jaesun Hwang', role: 'admin', crewId: null, phone: '3333', active: true },
     { username: 'carloongos23@gmail.com', displayName: 'Carlo Ongos', role: 'manager', crewId: null, phone: '', active: true },
     ...LOCAL_CREWS.map((c) => ({
       username: `tl.${c.toLowerCase()}`, displayName: `${c} Team Leader`,
@@ -185,7 +196,7 @@ async function localAdmin(token: string): Promise<LocalAccount> {
 async function localPhoneMatch(digits: string): Promise<LocalAccount | null> {
   if (!/^\d{4}$/.test(digits)) return null;
   const hits = (await localAccounts()).filter(
-    (a) => a.active && a.role !== 'admin' && phoneLast4(a.phone) === digits
+    (a) => a.active && phoneLast4(a.phone) === digits
   );
   return hits.length === 1 ? hits[0] : null; // shared digits → refuse, never guess
 }
@@ -282,8 +293,14 @@ interface AuthCtx {
 const Ctx = createContext<AuthCtx | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSessionState] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
+  // Set the api crew scope together with the session, before any screen
+  // mounts and loads data: team leaders only see their own crew's employees.
+  const setSession = useCallback((s: Session | null) => {
+    setApiCrewScope(s?.role === 'team_leader' ? s.crewId ?? '__none__' : null);
+    setSessionState(s);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -306,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(TOKEN_KEY, s.token);
     setSession(s);
     return true;
-  }, []);
+  }, [setSession]);
   const login = useCallback(
     async (username: string, password: string) => start(await authApi.login(username, password)),
     [start]
@@ -369,7 +386,7 @@ if (typeof window !== 'undefined' && USE_SUPABASE) {
 }
 
 /** Current date (YYYY-MM-DD) and decimal hour in the site's time zone. */
-function manilaNow(): { date: string; hour: number } {
+export function manilaNow(): { date: string; hour: number } {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23',

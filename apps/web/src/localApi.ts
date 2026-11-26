@@ -23,6 +23,8 @@ import type {
   MaterialStock,
   StockMove,
   RoomPhoto,
+  AttendancePhoto,
+  AttendancePhotoKind,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
@@ -163,6 +165,7 @@ const materialStock = new Map<string, MaterialStock>(); // key: id
 let stockMoves: StockMove[] = [];
 const roomPhotos = new Map<string, RoomPhoto>();
 let roomPhotoSeq = 1;
+const attendancePhotos: AttendancePhoto[] = [];
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // --- query helpers ----------------------------------------------------------
@@ -229,7 +232,7 @@ export const localApi = {
   async getAttendance(period: string): Promise<AttendanceRecord[]> {
     return attendanceForPeriod(period);
   },
-  async updateAttendance(records: AttendanceRecord[]): Promise<void> {
+  async updateAttendance(records: AttendanceRecord[], _opts?: { unlock?: boolean }): Promise<void> {
     for (const rec of records) {
       const idx = attendance.findIndex(
         (r) => r.employeeId === rec.employeeId && r.date === rec.date
@@ -394,6 +397,34 @@ export const localApi = {
       createdAt: new Date().toISOString(),
     };
     roomPhotos.set(photo.id, photo);
+    return photo;
+  },
+  // Attendance photos (check-in / check-out / break) — held in memory.
+  async getAttendancePhotos(date: string): Promise<AttendancePhoto[]> {
+    return attendancePhotos
+      .filter((p) => p.date === date)
+      .sort((a, b) => (a.takenAt < b.takenAt ? -1 : 1));
+  },
+  async addAttendancePhoto(
+    employeeId: string,
+    date: string,
+    kind: AttendancePhotoKind,
+    file: Blob
+  ): Promise<AttendancePhoto> {
+    const url: string = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.readAsDataURL(file);
+    });
+    const photo: AttendancePhoto = {
+      id: `att-photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      employeeId,
+      date,
+      kind,
+      url,
+      takenAt: new Date().toISOString(),
+    };
+    attendancePhotos.push(photo);
     return photo;
   },
   async deleteRoomPhoto(id: string): Promise<void> {

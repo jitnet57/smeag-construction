@@ -1,11 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
-import type { PayPeriod, AttendanceRecord, Employee } from '@brightem/shared';
+import type { PayPeriod, AttendanceRecord, Employee, AttendancePhoto, AttendancePhotoKind } from '@brightem/shared';
 import { api } from '../api';
 import { onDataChanged } from '../offline';
 import { useI18n } from '../i18n';
 import { parseCsv } from '../lib/csv';
 import { readXlsx } from '../lib/xlsx';
-import { useAuth, canEditCheckin, isTeamLeader, isAdmin, syncServerClock } from '../auth';
+import { useAuth, canEditCheckin, isTeamLeader, isAdmin, syncServerClock, manilaNow } from '../auth';
+import CheckCameraModal, { KIND_SPEECH, speak } from '../components/CheckCameraModal';
+
+// 10:00–10:15 (Manila) is break time: the camera buttons record the break.
+const BREAK_START = 10;
+const BREAK_END = 10.25;
+
+const KIND_LABEL: Record<AttendancePhotoKind, string> = {
+  check_in: 'att.checkIn',
+  check_out: 'att.checkOut',
+  break_in: 'att.breakIn',
+  break_out: 'att.breakOut',
+};
+
+// "07:05" in Manila time for a photo's ISO timestamp.
+function manilaClock(iso: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(new Date(iso));
+}
 
 interface Props {
   period: PayPeriod | null;
@@ -147,6 +166,21 @@ export default function Attendance({ period }: Props) {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Camera check-in / check-out (and break) photos for the selected date.
+  const [photos, setPhotos] = useState<AttendancePhoto[]>([]);
+  const [camera, setCamera] = useState<{ employeeId: string; kind: AttendancePhotoKind } | null>(null);
+  const [viewer, setViewer] = useState<string | null>(null);
+  const [photoKey, setPhotoKey] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    api.getAttendancePhotos(selectedDate)
+      .then((list) => alive && setPhotos(list))
+      .catch(() => alive && setPhotos([]));
+    return () => {
+      alive = false;
+    };
+  }, [selectedDate, photoKey, reloadKey]);
+
   // Morning check-in (AM IN) closes at 07:00 Manila time on the work date;
   // after that only a team leader may change it. Re-check every 30s so an
   // open page locks itself when the cutoff passes.
@@ -157,6 +191,17 @@ export default function Attendance({ period }: Props) {
   }, []);
   const amInLocked = !canEditCheckin(session, selectedDate);
   const isLocked = (row: AttendanceRow) => !!row.record?.confirmed;
+  const now = manilaNow();
+  const isToday = selectedDate === now.date;
+  const breakTime = isToday && now.hour >= BREAK_START && now.hour < BREAK_END;
+  const inKind: AttendancePhotoKind = breakTime ? 'break_in' : 'check_in';
+  const outKind: AttendancePhotoKind = breakTime ? 'break_out' : 'check_out';
+  const camDisabled = (row: AttendanceRow, kind: AttendancePhotoKind) =>
+    !isToday || isLocked(row) || (kind === 'check_in' && amInLocked);
+  const camTitle = (row: AttendanceRow, kind: AttendancePhotoKind) =>
+    !isToday ? t('att.camOnlyToday')
+      : isLocked(row) ? undefined
+      : kind === 'check_in' && amInLocked ? t('att.checkinLocked') : undefined;
   const lockedCount = rows.filter(isLocked).length;
   const allLocked = rows.length > 0 && lockedCount === rows.length;
 
@@ -165,6 +210,84 @@ export default function Attendance({ period }: Props) {
     newRows[index] = { ...newRows[index], [field]: value };
     dirtyRef.current = true;
     setRows(newRows);
+  };
+
+  const toRecord = (row: AttendanceRow, confirm: boolean): AttendanceRecord => ({
+    employeeId: row.employee.id,
+    date: selectedDate,
+    status: row.workedHours >= 8 ? ('full' as const) : 'half' as const,
+    amIn: !canEditCheckin(session, selectedDate)
+      ? row.record?.amIn ?? null
+      : row.amIn ? parseFloat(row.amIn) : null,
+    amOut: row.amOut ? parseFloat(row.amOut) : null,
+    pmIn: row.pmIn ? parseFloat(row.pmIn) : null,
+    pmOut: row.pmOut ? parseFloat(row.pmOut) : null,
+    otHours: row.otIn ? 2 : undefined,
+    confirmed: confirm,
+  } as AttendanceRecord);
+
+  // A photo was taken: announce it out loud, then save the photo. Check-in
+  // fills AM IN and check-out fills PM OUT with the current time and saves
+  // that worker's row as a draft; break photos only record the photo.
+  const handleCapture = async (blob: Blob) => {
+    if (!camera) return;
+    const { employeeId, kind } = camera;
+    setCamera(null);
+    speak(KIND_SPEECH[kind]);
+    const idx = rows.findIndex((r) => r.employee.id === employeeId);
+    if (idx < 0) return;
+    const hour = String(Math.round(manilaNow().hour * 100) / 100);
+    let row = rows[idx];
+    try {
+      if (kind === 'check_in' || kind === 'check_out') {
+        row = kind === 'check_in' ? { ...row, amIn: hour } : { ...row, pmOut: hour };
+        const rec = toRecord(row, false);
+        await api.updateAttendance([rec]);
+        row = { ...row, record: { ...(row.record ?? {}), ...rec } as AttendanceRecord };
+        setRows((cur) => cur.map((r) => (r.employee.id === employeeId ? row : r)));
+      }
+      await api.addAttendancePhoto(employeeId, selectedDate, kind, blob);
+      setPhotoKey((n) => n + 1);
+    } catch (err) {
+      if (String((err as { message?: string })?.message ?? '').includes('CHECKIN_CLOSED')) {
+        await syncServerClock();
+        setTick((n) => n + 1);
+        alert(t('att.checkinLocked'));
+      } else {
+        alert(t('att.photoError'));
+      }
+    }
+  };
+
+  const camButtons = (row: AttendanceRow) => (
+    <div className="flex gap-1.5">
+      {([inKind, outKind] as AttendancePhotoKind[]).map((kind) => (
+        <button
+          key={kind}
+          className={`btn ${kind.endsWith('in') ? '' : 'ghost'} !px-2.5 !py-1.5 text-xs whitespace-nowrap disabled:opacity-40`}
+          disabled={camDisabled(row, kind)}
+          title={camTitle(row, kind)}
+          onClick={() => setCamera({ employeeId: row.employee.id, kind })}
+        >
+          📷 {t(KIND_LABEL[kind] as Parameters<typeof t>[0])}
+        </button>
+      ))}
+    </div>
+  );
+
+  const photoStrip = (row: AttendanceRow) => {
+    const mine = photos.filter((p) => p.employeeId === row.employee.id);
+    if (!mine.length) return null;
+    return (
+      <div className="flex flex-wrap gap-1.5 mt-1.5">
+        {mine.map((p) => (
+          <button key={p.id} onClick={() => setViewer(p.url)} className="flex items-center gap-1 rounded border border-line bg-bg px-1 py-0.5 text-[10px] text-muted">
+            <img src={p.url} alt="" className="h-6 w-6 rounded object-cover" />
+            {t(KIND_LABEL[p.kind] as Parameters<typeof t>[0])} {manilaClock(p.takenAt)}
+          </button>
+        ))}
+      </div>
+    );
   };
 
   // Save the editable (not yet confirmed) rows: as a draft, or confirmed
@@ -177,19 +300,7 @@ export default function Attendance({ period }: Props) {
       return;
     }
     if (confirm && !window.confirm(t('att.confirmAsk'))) return;
-    const records = editable.map((row) => ({
-      employeeId: row.employee.id,
-      date: selectedDate,
-      status: row.workedHours >= 8 ? ('full' as const) : 'half' as const,
-      amIn: !canEditCheckin(session, selectedDate)
-        ? row.record?.amIn ?? null
-        : row.amIn ? parseFloat(row.amIn) : null,
-      amOut: row.amOut ? parseFloat(row.amOut) : null,
-      pmIn: row.pmIn ? parseFloat(row.pmIn) : null,
-      pmOut: row.pmOut ? parseFloat(row.pmOut) : null,
-      otHours: row.otIn ? 2 : undefined,
-      confirmed: confirm,
-    } as AttendanceRecord));
+    const records = editable.map((row) => toRecord(row, confirm));
 
     try {
       await api.updateAttendance(records);
@@ -212,7 +323,10 @@ export default function Attendance({ period }: Props) {
     const locked = rows.filter(isLocked);
     if (!locked.length || !window.confirm(t('att.unlockAsk'))) return;
     try {
-      await api.updateAttendance(locked.map((row) => ({ ...row.record!, confirmed: false })));
+      await api.updateAttendance(
+        locked.map((row) => ({ ...row.record!, confirmed: false })),
+        { unlock: true }
+      );
       alert(t('att.unlocked'));
       setReloadKey((n) => n + 1);
     } catch {
@@ -370,6 +484,11 @@ export default function Attendance({ period }: Props) {
         >
           🕖 {amInLocked ? t('att.checkinLocked') : isTeamLeader(session) ? t('att.checkinTl') : t('att.checkinOpen')}
         </div>
+        {breakTime && (
+          <div className="text-xs rounded-lg px-3 py-2 mb-3 bg-amber-50 text-amber-800">
+            ☕ {t('att.breakBanner')}
+          </div>
+        )}
         {lockedCount > 0 && (
           <div className="text-xs rounded-lg px-3 py-2 mb-3 bg-green-50 text-green-800">
             🔒{' '}
@@ -426,6 +545,8 @@ export default function Attendance({ period }: Props) {
                     onChange={(e) => handleInputChange(idx, 'otOut', e.target.value)} />
                 </label>
               </div>
+              <div className="mt-3">{camButtons(row)}</div>
+              {photoStrip(row)}
             </div>
           ))}
         </div>
@@ -446,6 +567,7 @@ export default function Attendance({ period }: Props) {
                 <th className="text-center">OT OUT</th>
                 <th className="text-center">{t('att.thWorkedH')}</th>
                 <th className="text-center">{t('att.thStatus')}</th>
+                <th>{t('att.thCamera')}</th>
               </tr>
             </thead>
             <tbody>
@@ -507,6 +629,10 @@ export default function Attendance({ period }: Props) {
                   <td className="text-center">
                     <span className={`pill ${row.statusType}`}>{isLocked(row) && '🔒 '}{row.status}</span>
                   </td>
+                  <td>
+                    {camButtons(row)}
+                    {photoStrip(row)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -516,6 +642,21 @@ export default function Attendance({ period }: Props) {
           {t('att.note')}
         </div>
       </div>
+
+      {camera && (
+        <CheckCameraModal
+          title={`${rows.find((r) => r.employee.id === camera.employeeId)?.employee.name ?? ''} · ${t(
+            KIND_LABEL[camera.kind] as Parameters<typeof t>[0]
+          )}`}
+          onCapture={handleCapture}
+          onClose={() => setCamera(null)}
+        />
+      )}
+      {viewer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setViewer(null)}>
+          <img src={viewer} alt="" className="max-h-full max-w-full rounded-lg" />
+        </div>
+      )}
     </div>
   );
 }

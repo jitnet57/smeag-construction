@@ -445,6 +445,20 @@ export interface RoomPhoto {
   createdAt: string; // ISO timestamp
 }
 
+// ---- Attendance photos -------------------------------------------------------
+// A photo taken with the camera when a worker checks in / out, or starts /
+// ends the 10:00–10:15 break.
+export type AttendancePhotoKind = 'check_in' | 'check_out' | 'break_in' | 'break_out';
+
+export interface AttendancePhoto {
+  id: string;
+  employeeId: string;
+  date: string;       // work date YYYY-MM-DD
+  kind: AttendancePhotoKind;
+  url: string;        // public URL (or data URL for local/mock backends)
+  takenAt: string;    // ISO timestamp
+}
+
 // ---- API contract ----------------------------------------------------------
 
 export interface ApiError {

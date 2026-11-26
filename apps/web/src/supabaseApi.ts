@@ -30,12 +30,14 @@ import type {
   MaterialStock,
   StockMove,
   RoomPhoto,
+  AttendancePhoto,
+  AttendancePhotoKind,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
 } from '@brightem/shared';
 import { calcPayslip } from '@brightem/engine';
-import { offlineFetch, resolvePhotoUrl } from './offline';
+import { INTENT_HEADER, offlineFetch, resolvePhotoUrl } from './offline';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as
@@ -307,12 +309,20 @@ export const supabaseApi = {
     return (data ?? []).map(toAttendance);
   },
 
-  async updateAttendance(records: AttendanceRecord[]): Promise<void> {
+  /**
+   * Upsert attendance rows. Rows already confirmed on the server are never
+   * overwritten (see dropConfirmedAttendance in offline.ts) unless `unlock`
+   * is set — the admin's explicit "unlock confirmed rows" action.
+   */
+  async updateAttendance(
+    records: AttendanceRecord[],
+    opts?: { unlock?: boolean }
+  ): Promise<void> {
     if (!records.length) return;
     const rows = records.map(fromAttendance);
-    const { error } = await sb()
-      .from('attendance')
-      .upsert(rows, { onConflict: 'employee_id,date' });
+    let q = sb().from('attendance').upsert(rows, { onConflict: 'employee_id,date' });
+    if (opts?.unlock) q = q.setHeader(INTENT_HEADER, 'unlock');
+    const { error } = await q;
     if (error) throw error;
   },
 
@@ -730,6 +740,53 @@ export const supabaseApi = {
     }
     const del = await client.from('room_photos').delete().eq('id', id);
     if (del.error) throw del.error;
+  },
+
+  // --- Attendance photos (check-in / check-out / break) ---------------------
+  // Files go to the 'room-photos' bucket under attendance/<date>/<employee>/.
+  async getAttendancePhotos(date: string): Promise<AttendancePhoto[]> {
+    const { data, error } = await sb()
+      .from('attendance_photos')
+      .select('id, employee_id, date, kind, path, taken_at')
+      .eq('date', date)
+      .order('taken_at', { ascending: true });
+    if (error) throw error;
+    const bucket = sb().storage.from('room-photos');
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      employeeId: r.employee_id,
+      date: r.date,
+      kind: r.kind,
+      url: resolvePhotoUrl(bucket.getPublicUrl(r.path).data.publicUrl),
+      takenAt: r.taken_at,
+    }));
+  },
+
+  async addAttendancePhoto(
+    employeeId: string,
+    date: string,
+    kind: AttendancePhotoKind,
+    file: Blob
+  ): Promise<AttendancePhoto> {
+    const path = `attendance/${date}/${employeeId}/${kind}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}.jpg`;
+    const bucket = sb().storage.from('room-photos');
+    const up = await bucket.upload(path, file, { contentType: 'image/jpeg', upsert: false });
+    if (up.error) throw up.error;
+    const takenAt = new Date().toISOString();
+    const { error } = await sb()
+      .from('attendance_photos')
+      .insert({ employee_id: employeeId, date, kind, path, taken_at: takenAt });
+    if (error) throw error;
+    return {
+      id: path,
+      employeeId,
+      date,
+      kind,
+      url: resolvePhotoUrl(bucket.getPublicUrl(path).data.publicUrl),
+      takenAt,
+    };
   },
 
   // --- Create a new worker --------------------------------------------------

@@ -83,7 +83,16 @@ interface OutboxEntry {
   body: StoredBody;
   table: string | null; // REST table, null for storage
   at: number;
+  /** App-level intent from the INTENT_HEADER (never sent to the server). */
+  intent?: string;
 }
+
+/**
+ * Request header the app sets to mark a write's intent (e.g. 'unlock' for an
+ * admin unlocking confirmed attendance). Stripped here before any request
+ * leaves the browser.
+ */
+export const INTENT_HEADER = 'x-brightem-intent';
 
 // ---- status (for the header badge) -----------------------------------------
 export interface SyncStatus {
@@ -123,6 +132,15 @@ function readFailed(): unknown[] {
     return [];
   }
 }
+/** Rows a sync deliberately did not send (shown in the red badge). */
+function recordSkipped(e: OutboxEntry, rows: Row[], reason: string) {
+  const list = readFailed();
+  for (const r of rows) list.push({ url: e.url, method: e.method, status: 409, error: reason, row: r, at: e.at });
+  localStorage.setItem(FAILED_KEY, JSON.stringify(list.slice(-50)));
+  setStatus({ failed: list.length });
+  console.warn('[offline] not synced —', reason, rows);
+}
+
 function recordFailed(e: OutboxEntry, statusCode: number, text: string) {
   const list = readFailed();
   list.push({ url: e.url, method: e.method, status: statusCode, error: text.slice(0, 500), at: e.at });
@@ -389,6 +407,7 @@ async function compactUpserts(entry: OutboxEntry): Promise<OutboxEntry> {
     if (old.method !== 'POST' || old.table !== entry.table) continue;
     if (new URL(old.url).searchParams.get('on_conflict') !== conflict) continue;
     if (!(old.headers['prefer'] ?? '').includes('resolution=merge-duplicates')) continue;
+    if ((old.intent ?? '') !== (entry.intent ?? '')) continue;
     const oldRows = bodyRows(old);
     const keep: Row[] = [];
     for (const r of oldRows) {
@@ -451,10 +470,17 @@ export function flushOutbox(): Promise<boolean> {
         for (const e of entries) {
           let res: Response;
           try {
-            res = await nativeFetch(e.url, {
-              method: e.method,
-              headers: e.headers,
-              body: restoreBody(e.body),
+            const send = await dropConfirmedAttendance(e);
+            if (!send) {
+              await outboxDel(e.key!);
+              await refreshPending();
+              sent++; // the screen should reload to show the locked rows
+              continue;
+            }
+            res = await nativeFetch(send.url, {
+              method: send.method,
+              headers: send.headers,
+              body: restoreBody(send.body),
             });
           } catch {
             markDown();
@@ -643,13 +669,69 @@ function sortRows(rows: Row[], order: string | null): Row[] {
   });
 }
 
+/**
+ * Confirmed attendance is final: an attendance upsert never overwrites a row
+ * the server already holds as confirmed (e.g. a team leader's offline edit
+ * that syncs after the admin confirmed that day). Those rows are dropped and
+ * listed in the red badge. Only an explicit admin unlock (intent 'unlock')
+ * may change a confirmed row. Returns null when nothing is left to send.
+ * Throws on network failure.
+ */
+async function dropConfirmedAttendance(e: OutboxEntry): Promise<OutboxEntry | null> {
+  if (e.table !== 'attendance' || e.method !== 'POST' || e.intent === 'unlock') return e;
+  if (e.body.kind !== 'text') return e;
+  const rows = bodyRows(e);
+  if (!rows.length) return e;
+  const list = (vals: unknown[]) => `in.(${[...new Set(vals.map((v) => `"${String(v)}"`))].join(',')})`;
+  const q = new URL(e.url);
+  q.search = '';
+  q.searchParams.set('select', 'employee_id,date,confirmed');
+  q.searchParams.set('confirmed', 'is.true');
+  q.searchParams.set('employee_id', list(rows.map((r) => r.employee_id)));
+  q.searchParams.set('date', list(rows.map((r) => r.date)));
+  const headers = { ...e.headers };
+  delete headers['content-type'];
+  delete headers['prefer'];
+  const res = await nativeFetch(q.toString(), { headers });
+  if (!res.ok) return e; // guard unavailable — let the server decide
+  const locked = new Set(
+    ((await res.json()) as Row[])
+      .filter((r) => r.confirmed === true) // double-check the server's filter
+      .map((r) => `${r.employee_id}|${r.date}`)
+  );
+  const keep = rows.filter((r) => !locked.has(`${r.employee_id}|${r.date}`));
+  if (keep.length === rows.length) return e;
+  recordSkipped(e, rows.filter((r) => locked.has(`${r.employee_id}|${r.date}`)), 'attendance already confirmed');
+  if (!keep.length) return null;
+  const wasArray = e.body.text.trimStart().startsWith('[');
+  return { ...e, ...rowsText(e, keep, wasArray) };
+}
+
 async function handleWrite(url: string, init: RequestInit, p: Parsed, method: string): Promise<Response> {
   const objectAccept = (new Headers(init.headers).get('accept') ?? '').includes('vnd.pgrst.object');
   const bodyIn = typeof init.body === 'string' ? withClientIds(p, method, init.body) : init.body;
+  const headers = headersToObject(init.headers);
+  const intent = headers[INTENT_HEADER];
+  delete headers[INTENT_HEADER];
+  const entry: OutboxEntry = {
+    url,
+    method,
+    headers,
+    body: await storeBody(bodyIn),
+    table: p.kind === 'rest' ? p.table : null,
+    at: Date.now(),
+    ...(intent ? { intent } : {}),
+  };
 
   if (status.pending === 0 && !networkLikelyDown()) {
     try {
-      const res = await nativeFetch(url, { ...init, body: bodyIn });
+      const send = await dropConfirmedAttendance(entry);
+      if (!send) {
+        markUp();
+        notifyDataChanged(); // screen reloads and shows the locked rows
+        return jsonResponse('', 201);
+      }
+      const res = await nativeFetch(send.url, { ...init, headers, body: restoreBody(send.body) });
       markUp();
       return res;
     } catch (err) {
@@ -657,14 +739,6 @@ async function handleWrite(url: string, init: RequestInit, p: Parsed, method: st
       markDown();
     }
   }
-  const entry: OutboxEntry = {
-    url,
-    method,
-    headers: headersToObject(init.headers),
-    body: await storeBody(bodyIn),
-    table: p.kind === 'rest' ? p.table : null,
-    at: Date.now(),
-  };
   await outboxAdd(await compactUpserts(entry));
   rememberLocalPhoto(entry);
   await refreshPending();
