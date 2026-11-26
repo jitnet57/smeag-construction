@@ -27,12 +27,15 @@ import type {
   MaterialItem,
   UnitProgress,
   MaterialReadiness,
+  MaterialStock,
+  StockMove,
   RoomPhoto,
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
 } from '@brightem/shared';
 import { calcPayslip } from '@brightem/engine';
+import { offlineFetch, resolvePhotoUrl } from './offline';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as
@@ -40,7 +43,7 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as
   | undefined;
 
 let _client: SupabaseClient | null = null;
-function sb(): SupabaseClient {
+export function sb(): SupabaseClient {
   if (_client) return _client;
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error(
@@ -49,6 +52,8 @@ function sb(): SupabaseClient {
   }
   _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false },
+    // Offline-first: cache reads, queue writes while the network is down.
+    global: { fetch: offlineFetch },
   });
   return _client;
 }
@@ -71,7 +76,7 @@ function toEmployee(r: any): Employee {
     active: !!r.active,
     age: r.age == null ? undefined : Number(r.age),
     idNo: r.id_no ?? undefined,
-    photoUrl: r.photo_url ?? undefined,
+    photoUrl: resolvePhotoUrl(r.photo_url ?? undefined),
     joinDate: r.join_date ?? undefined,
     sssNo: r.sss_no ?? undefined,
     canteenDebt: r.canteen_debt == null ? undefined : Number(r.canteen_debt),
@@ -113,6 +118,7 @@ function toAttendance(r: any): AttendanceRecord {
     lateMinutes: r.late_minutes == null ? undefined : Number(r.late_minutes),
     holiday: r.holiday ?? null,
     isRestDay: r.is_rest_day ?? false,
+    confirmed: r.confirmed ?? false,
   };
 }
 
@@ -130,6 +136,7 @@ function fromAttendance(rec: AttendanceRecord): Record<string, unknown> {
     late_minutes: rec.lateMinutes ?? null,
     holiday: rec.holiday ?? null,
     is_rest_day: rec.isRestDay ?? false,
+    confirmed: rec.confirmed ?? false,
   };
 }
 
@@ -582,6 +589,78 @@ export const supabaseApi = {
     if (error) throw error;
   },
 
+  // --- Material stock ---------------------------------------------------------
+  async getMaterialStock(): Promise<MaterialStock[]> {
+    const { data, error } = await sb()
+      .from('material_stock')
+      .select('*')
+      .order('sort', { ascending: true })
+      .order('name', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      name: r.name ?? '',
+      unit: r.unit ?? '',
+      qty: Number(r.qty) || 0,
+      minQty: Number(r.min_qty) || 0,
+      note: r.note ?? '',
+      sort: Number(r.sort) || 0,
+      updatedAt: r.updated_at ?? undefined,
+    }));
+  },
+
+  async saveMaterialStock(item: MaterialStock): Promise<void> {
+    const { error } = await sb()
+      .from('material_stock')
+      .upsert({
+        id: item.id,
+        name: item.name,
+        unit: item.unit,
+        qty: item.qty,
+        min_qty: item.minQty,
+        note: item.note || null,
+        sort: item.sort,
+        updated_at: new Date().toISOString(),
+      });
+    if (error) throw error;
+  },
+
+  async deleteMaterialStock(id: string): Promise<void> {
+    const { error } = await sb().from('material_stock').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async getStockMoves(): Promise<StockMove[]> {
+    const { data, error } = await sb()
+      .from('material_stock_moves')
+      .select('*')
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      stockId: r.stock_id,
+      date: r.date ?? '',
+      delta: Number(r.delta) || 0,
+      note: r.note ?? '',
+      createdAt: r.created_at ?? undefined,
+    }));
+  },
+
+  async addStockMove(move: StockMove): Promise<void> {
+    const { error } = await sb()
+      .from('material_stock_moves')
+      .insert({
+        id: move.id,
+        stock_id: move.stockId,
+        date: move.date,
+        delta: move.delta,
+        note: move.note || null,
+      });
+    if (error) throw error;
+  },
+
   // --- Room photos (stored in the 'room-photos' storage bucket) -------------
   async getRoomPhotos(floor: number, room: number): Promise<RoomPhoto[]> {
     const { data, error } = await sb()
@@ -596,7 +675,7 @@ export const supabaseApi = {
       id: r.id,
       floor: Number(r.floor),
       room: Number(r.room),
-      url: bucket.getPublicUrl(r.path).data.publicUrl,
+      url: resolvePhotoUrl(bucket.getPublicUrl(r.path).data.publicUrl),
       caption: r.caption ?? undefined,
       createdAt: r.created_at,
     }));
@@ -621,7 +700,7 @@ export const supabaseApi = {
       id: data.id,
       floor: Number(data.floor),
       room: Number(data.room),
-      url: bucket.getPublicUrl(data.path).data.publicUrl,
+      url: resolvePhotoUrl(bucket.getPublicUrl(data.path).data.publicUrl),
       caption: data.caption ?? undefined,
       createdAt: data.created_at,
     };
@@ -788,7 +867,7 @@ export const supabaseApi = {
       .update({ photo_url: url })
       .eq('id', employeeId);
     if (error) throw error;
-    return url;
+    return resolvePhotoUrl(url);
   },
   async deleteEmployee(employeeId: string): Promise<void> {
     // Remove child rows that don't cascade (attendance, employee_deductions);

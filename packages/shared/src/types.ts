@@ -79,6 +79,7 @@ export interface AttendanceRecord {
   lateMinutes?: number;  // tardiness in minutes
   holiday?: HolidayKind | null; // if the date is a holiday
   isRestDay?: boolean;   // Duty Rest Day (DRD) worked
+  confirmed?: boolean;   // confirmed & applied — locked against edits
 }
 
 export type HolidayKind = "special" | "legal";
@@ -402,6 +403,30 @@ export interface MaterialReadiness {
   deliveredRooms?: number[]; // room offsets (1..26) fully delivered
   ongoingRooms?: number[];   // room offsets (1..26) currently "on going to deliver"
   roomDetails?: RoomDelivery[]; // per-room pieces + memo captured during delivery
+}
+
+// ---- Material stock (site inventory) ----------------------------------------
+
+/** One stocked material on site, e.g. cement, tile adhesive, metal furring. */
+export interface MaterialStock {
+  id: string;
+  name: string;      // e.g. "Cement"
+  unit: string;      // e.g. "bags", "pcs", "sheets"
+  qty: number;       // current quantity on hand
+  minQty: number;    // reorder level: at or below this is "low"
+  note?: string;
+  sort: number;      // display order
+  updatedAt?: string;
+}
+
+/** A stock movement: positive delta = received (in), negative = used (out). */
+export interface StockMove {
+  id: string;
+  stockId: string;
+  date: string;      // YYYY-MM-DD
+  delta: number;
+  note?: string;
+  createdAt?: string;
 }
 
 // ---- Room photos ------------------------------------------------------------

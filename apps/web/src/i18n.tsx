@@ -28,8 +28,57 @@ const DICT = {
   'nav.units': { en: 'Unit Progress', ko: '층별 공정' },
   'nav.materials': { en: 'Materials', ko: '자재 구매' },
   'nav.matReady': { en: 'Material Readiness', ko: '자재 준비 현황' },
+  'nav.stock': { en: 'Material Stock', ko: '자재 재고' },
   'nav.settings': { en: 'Settings', ko: '규칙 설정' },
   'nav.more': { en: 'More', ko: '더보기' },
+  'nav.accounts': { en: 'Accounts', ko: '계정 관리' },
+
+  // --- Auth / accounts ------------------------------------------------------
+  'auth.username': { en: 'User ID', ko: '아이디' },
+  'auth.password': { en: 'Password', ko: '비밀번호' },
+  'auth.login': { en: 'Log in', ko: '로그인' },
+  'auth.logout': { en: 'Log out', ko: '로그아웃' },
+  'auth.invalid': { en: 'Wrong user ID or password.', ko: '아이디 또는 비밀번호가 올바르지 않습니다.' },
+  'auth.error': { en: 'Could not reach the server. Try again.', ko: '서버에 연결할 수 없습니다. 다시 시도하세요.' },
+  'auth.changePw': { en: 'Change password', ko: '비밀번호 변경' },
+  'auth.currentPw': { en: 'Current password', ko: '현재 비밀번호' },
+  'auth.pwChanged': { en: 'Password changed.', ko: '비밀번호가 변경되었습니다.' },
+  'auth.pwWrong': { en: 'Current password is wrong.', ko: '현재 비밀번호가 올바르지 않습니다.' },
+  'role.admin': { en: 'Admin', ko: '관리자' },
+  'role.manager': { en: 'Manager (Accounting)', ko: '매니저 (회계)' },
+  'role.teamLeader': { en: 'Team Leader', ko: '팀 리더' },
+  'acct.title': { en: 'Login accounts', ko: '로그인 계정' },
+  'acct.add': { en: '+ New account', ko: '+ 계정 생성' },
+  'acct.edit': { en: 'Edit', ko: '수정' },
+  'acct.delete': { en: 'Delete', ko: '삭제' },
+  'acct.save': { en: 'Save', ko: '저장' },
+  'acct.cancel': { en: 'Cancel', ko: '취소' },
+  'acct.name': { en: 'Name', ko: '이름' },
+  'acct.role': { en: 'Role', ko: '권한' },
+  'acct.crew': { en: 'Crew', ko: '담당 조' },
+  'acct.active': { en: 'Active', ko: '사용' },
+  'acct.newPassword': { en: 'New password', ko: '새 비밀번호' },
+  'acct.keepPassword': { en: 'Leave blank to keep', ko: '비워두면 기존 유지' },
+  'acct.required': { en: 'User ID and name are required.', ko: '아이디와 이름은 필수입니다.' },
+  'acct.pwShort': { en: 'Password must be at least 6 characters.', ko: '비밀번호는 6자 이상이어야 합니다.' },
+  'acct.duplicate': { en: 'That user ID already exists.', ko: '이미 존재하는 아이디입니다.' },
+  'acct.confirmDelete': { en: 'Delete account', ko: '계정을 삭제할까요:' },
+  'acct.note': {
+    en: 'User ID: 3–32 lowercase letters, digits, dot, dash or underscore. Team leaders see only their crew and are the only ones who can change the morning check-in (AM IN) after 07:00.',
+    ko: '아이디: 영문 소문자·숫자·점·하이픈·밑줄 3~32자. 팀 리더는 자기 조만 보며, 07:00 이후 오전 출근(AM IN)은 팀 리더만 수정할 수 있습니다.',
+  },
+  'att.checkinLocked': {
+    en: 'Morning check-in closed at 07:00 — only a team leader can change AM IN for this date.',
+    ko: '오전 출근 체크인은 07:00에 마감되었습니다 — 이 날짜의 AM IN은 팀 리더만 수정할 수 있습니다.',
+  },
+  'att.checkinOpen': {
+    en: 'Morning check-in (AM IN) is open until 07:00.',
+    ko: '오전 출근 체크인(AM IN)은 07:00까지 입력 가능합니다.',
+  },
+  'att.checkinTl': {
+    en: 'Team leader: you can change AM IN after the 07:00 cutoff.',
+    ko: '팀 리더: 07:00 마감 이후에도 AM IN을 수정할 수 있습니다.',
+  },
 
   // --- Skills matrix --------------------------------------------------------
   'skill.title': {
@@ -65,13 +114,9 @@ const DICT = {
     ko: '팝업이 차단되었습니다. 인쇄하려면 팝업을 허용해 주세요.',
   },
   'skill.note': {
-    en: '※ 0 = not rated, 1–10 = proficiency. Columns follow TEAMS.xlsx. Import/Export Excel use the same layout (WORKERS + FOREMAN sheets). Click Save to store changes.',
-    ko: '※ 0 = 미평가, 1~10 = 숙련도. 열 구성은 TEAMS.xlsx와 동일합니다. 엑셀 가져오기/내보내기도 같은 양식(WORKERS + FOREMAN 시트)을 사용합니다. 변경 후 저장을 눌러야 반영됩니다.',
+    en: '※ 0 = not rated, 1–10 = proficiency. Columns follow TEAMS.xlsx. Import/Export Excel use the same layout. Click Save to store changes.',
+    ko: '※ 0 = 미평가, 1~10 = 숙련도. 열 구성은 TEAMS.xlsx와 동일합니다. 엑셀 가져오기/내보내기도 같은 양식을 사용합니다. 변경 후 저장을 눌러야 반영됩니다.',
   },
-  'skill.tabAll': { en: 'All', ko: '전체' },
-  'skill.tabWorkers': { en: 'Workers', ko: '작업자' },
-  'skill.tabForeman': { en: 'Foreman', ko: '포맨' },
-  'skill.thForeman': { en: 'Foreman', ko: '포맨' },
   'skill.import': { en: 'Import Excel', ko: '엑셀 가져오기' },
   'skill.importError': {
     en: 'Could not read the file. Use .xlsx (TEAMS layout) or .csv.',
@@ -84,7 +129,6 @@ const DICT = {
   'skill.importResult': { en: 'Import result', ko: '가져오기 결과' },
   'skill.importMatched': { en: 'Matched workers', ko: '일치한 인원' },
   'skill.importChanged': { en: 'Changed scores', ko: '변경된 점수' },
-  'skill.importForeman': { en: 'Foreman team changes', ko: '포맨 팀 변경' },
   'skill.importUnmatched': {
     en: 'Names not found in Employees (skipped)',
     ko: '인부 관리에 없는 이름 (건너뜀)',
@@ -277,6 +321,49 @@ const DICT = {
   'unit.wi.wallpaper': { en: 'Wallpaper', ko: '도배' },
   'unit.wi.door': { en: 'Door', ko: '문' },
 
+  // --- Material stock (site inventory) ---------------------------------------
+  'stk.title': { en: 'Material Stock', ko: '자재 재고' },
+  'stk.intro': {
+    en: 'Quantity on hand for each site material. Record deliveries as Stock In and usage as Stock Out.',
+    ko: '현장 자재별 보유 수량입니다. 입고는 재고 입고로, 사용분은 재고 출고로 기록하세요.',
+  },
+  'stk.addItem': { en: '+ Add material', ko: '+ 자재 추가' },
+  'stk.addStarter': { en: 'Add starter list (cement, tile adhesive, metal furring…)', ko: '기본 목록 추가 (시멘트, 타일 접착제, 메탈 퍼링…)' },
+  'stk.missing': { en: 'Not in your list yet', ko: '아직 목록에 없는 자재' },
+  'stk.addMissing': { en: 'Add them', ko: '추가하기' },
+  'stk.empty':{ en: 'No materials yet.', ko: '등록된 자재가 없습니다.' },
+  'stk.items': { en: 'Materials', ko: '자재 수' },
+  'stk.lowCount': { en: 'Low stock', ko: '재고 부족' },
+  'stk.outCount': { en: 'Out of stock', ko: '재고 없음' },
+  'stk.thName': { en: 'Material', ko: '자재' },
+  'stk.thUnit': { en: 'Unit', ko: '단위' },
+  'stk.thQty': { en: 'On hand', ko: '보유 수량' },
+  'stk.thMin': { en: 'Reorder at', ko: '재주문 기준' },
+  'stk.thStatus': { en: 'Status', ko: '상태' },
+  'stk.thActions': { en: 'Actions', ko: '관리' },
+  'stk.thNote': { en: 'Note', ko: '메모' },
+  'stk.ok': { en: 'OK', ko: '충분' },
+  'stk.low': { en: 'Low', ko: '부족' },
+  'stk.out': { en: 'Out', ko: '없음' },
+  'stk.in': { en: 'Stock In', ko: '입고' },
+  'stk.outBtn': { en: 'Stock Out', ko: '출고' },
+  'stk.history': { en: 'History', ko: '내역' },
+  'stk.edit': { en: 'Edit', ko: '수정' },
+  'stk.delete': { en: 'Delete', ko: '삭제' },
+  'stk.save': { en: 'Save', ko: '저장' },
+  'stk.cancel': { en: 'Cancel', ko: '취소' },
+  'stk.confirmDelete': { en: 'Delete this material and its history?', ko: '이 자재와 내역을 삭제할까요?' },
+  'stk.qtyLabel': { en: 'Quantity', ko: '수량' },
+  'stk.date': { en: 'Date', ko: '날짜' },
+  'stk.notePh': { en: 'e.g. delivered by supplier / used on 7F', ko: '예: 공급업체 납품 / 7층 사용' },
+  'stk.notEnough': { en: 'Not enough stock for that quantity.', ko: '보유 수량보다 많이 출고할 수 없습니다.' },
+  'stk.noHistory': { en: 'No movements yet.', ko: '입출고 내역이 없습니다.' },
+  'stk.saveError': { en: 'Failed to save.', ko: '저장에 실패했습니다.' },
+  'stk.newItem': { en: 'New material', ko: '새 자재' },
+  'stk.namePh': { en: 'e.g. Cement', ko: '예: 시멘트' },
+  'stk.unitPh': { en: 'e.g. bags', ko: '예: 포대' },
+  'stk.recent': { en: 'Recent stock movements', ko: '최근 입출고 내역' },
+
   // --- Material readiness (supply pipeline per floor) -----------------------
   'matr.title': {
     en: 'Material Readiness — supply pipeline by material and floor',
@@ -424,6 +511,28 @@ const DICT = {
   'att.date': { en: 'Date:', ko: '날짜:' },
   'att.excelImport': { en: 'Import Excel', ko: '엑셀 가져오기' },
   'att.saveDraft': { en: 'Save Draft', ko: '임시저장' },
+  'att.draftSaved': { en: 'Draft saved. It can still be edited.', ko: '임시저장되었습니다. 계속 수정할 수 있습니다.' },
+  'att.confirmAsk': {
+    en: 'Confirm attendance for this date and crew? Confirmed rows are locked and can no longer be edited.',
+    ko: '이 날짜·조의 근태를 확정할까요? 확정된 기록은 잠겨서 더 이상 수정할 수 없습니다.',
+  },
+  'att.confirmed': { en: 'Attendance confirmed and locked.', ko: '근태가 확정되어 잠겼습니다.' },
+  'att.lockedBanner': {
+    en: 'Confirmed — this attendance is locked and cannot be edited.',
+    ko: '확정됨 — 이 근태는 잠겨 있어 수정할 수 없습니다.',
+  },
+  'att.lockedBannerAdmin': {
+    en: 'Confirmed — locked. As admin you can unlock it to make corrections.',
+    ko: '확정됨 — 잠겨 있습니다. 관리자는 잠금 해제 후 수정할 수 있습니다.',
+  },
+  'att.someLocked': { en: 'confirmed (locked)', ko: '명 확정됨(잠김)' },
+  'att.unlock': { en: 'Unlock', ko: '잠금 해제' },
+  'att.unlockAsk': {
+    en: 'Unlock the confirmed attendance for this date and crew so it can be edited?',
+    ko: '이 날짜·조의 확정된 근태를 잠금 해제하고 수정 가능하게 할까요?',
+  },
+  'att.unlocked': { en: 'Unlocked. Confirm again after editing.', ko: '잠금 해제되었습니다. 수정 후 다시 확정하세요.' },
+  'att.nothingToSave': { en: 'All rows are already confirmed.', ko: '모든 기록이 이미 확정되어 있습니다.' },
   'att.confirm': { en: 'Confirm & Apply', ko: '확정 및 근태 반영' },
   'att.timeEntryTitle': {
     en: 'Time Entry — AM / PM / Overtime (OT)',
@@ -445,6 +554,7 @@ const DICT = {
     ko: '파일에서 "Name(성명)" 열을 찾을 수 없습니다.',
   },
   'att.importError': { en: 'Failed to read the file.', ko: '파일을 읽지 못했습니다.' },
+  'att.importSkipped': { en: 'Skipped (confirmed):', ko: '건너뜀(확정됨):' },
   'att.note': {
     en: '※ Enter times in 24-hour format (e.g. 7 = 07:00, 13 = 13:00). On save, worked hours, tardiness, OT and night differential are auto-aggregated into payroll.',
     ko: '※ 시각은 24시간제로 입력(예: 7 = 오전 7시, 13 = 오후 1시). 저장 시 근무시간·지각·OT·야간이 자동 집계되어 급여 계산에 반영됩니다.',
@@ -685,6 +795,20 @@ const DICT = {
   'set.saving': { en: 'Saving...', ko: '저장 중...' },
   'set.saved': { en: 'Settings saved.', ko: '설정이 저장되었습니다.' },
   'set.saveError': { en: 'An error occurred while saving.', ko: '저장 중 오류가 발생했습니다.' },
+
+  // --- Offline / sync -------------------------------------------------------
+  'sync.offline': { en: 'Offline', ko: '오프라인' },
+  'sync.pending': { en: 'to sync', ko: '건 동기화 대기' },
+  'sync.syncing': { en: 'Syncing…', ko: '동기화 중…' },
+  'sync.failed': { en: 'rejected', ko: '건 반영 실패' },
+  'sync.offlineHint': {
+    en: 'No internet. Showing saved data; your changes are kept on this device and upload automatically when the connection returns.',
+    ko: '인터넷 연결 없음. 저장된 데이터를 표시하며, 입력한 내용은 이 기기에 보관되었다가 연결되면 자동으로 업로드됩니다.',
+  },
+  'sync.failedHint': {
+    en: 'Some offline changes were rejected by the server (see the browser console). Click to clear this notice.',
+    ko: '오프라인 중 입력한 일부 내용이 서버에서 거부되었습니다(브라우저 콘솔 참고). 클릭하면 알림을 지웁니다.',
+  },
 } satisfies Record<string, Entry>;
 
 export type TKey = keyof typeof DICT;

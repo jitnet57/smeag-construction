@@ -60,7 +60,7 @@ export default function Payslip({ period }: Props) {
     id: 'abadilla-jeffrey',
     name: 'ABADILLA, JEFFREY',
     nickname: 'JEFFREY',
-    crewId: 'FOREMAN',
+    crewId: 'JUNIE',
     position: 'SKILLED',
     ratePerDay: 540,
     active: true,

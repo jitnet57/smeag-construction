@@ -13,9 +13,9 @@
  ],
  "crews": [
   "ANTHONY",
-  "FOREMAN",
   "JASON",
   "JERRY",
+  "JUNIE",
   "NANTE",
   "RICO",
   "UNASSIGNED"
@@ -24,7 +24,7 @@
   {
    "name": "ABADILLA , COCOY",
    "nickname": "COCOY",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -39,7 +39,7 @@
   {
    "name": "ABADILLA , JEFFREY",
    "nickname": "JEFF",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -54,7 +54,7 @@
   {
    "name": "BALUCOS, JOSEPH LARRY",
    "nickname": "JOSEPH",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -69,7 +69,7 @@
   {
    "name": "CENIZA , LINO",
    "nickname": "LINO",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -84,7 +84,7 @@
   {
    "name": "ECOY, MARTIN",
    "nickname": "MARTIN",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "LABOR",
    "rate": 540.0,
    "attendance": {
@@ -99,7 +99,7 @@
   {
    "name": "GALLARDO, EDDIE",
    "nickname": "EDDIE",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -114,7 +114,7 @@
   {
    "name": "HERIDA, JOHN",
    "nickname": "JOHN",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -129,7 +129,7 @@
   {
    "name": "HIYOCA, JOBEN",
    "nickname": "JOBEN",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "LABOR",
    "rate": 540.0,
    "attendance": {
@@ -144,7 +144,7 @@
   {
    "name": "MANCIO, JUPITER",
    "nickname": "JUPITER",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "LABOR",
    "rate": 540.0,
    "attendance": {
@@ -159,7 +159,7 @@
   {
    "name": "OHENDRAS, AGANE",
    "nickname": "AGANE",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "LABOR",
    "rate": 540.0,
    "attendance": {
@@ -174,7 +174,7 @@
   {
    "name": "RENDON, NIÑO",
    "nickname": "NIÑO",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -189,7 +189,7 @@
   {
    "name": "TOQUERO, PABLITO",
    "nickname": "PABLITO",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -204,7 +204,7 @@
   {
    "name": "YBANEZ, JOBERT",
    "nickname": "JOBERT",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -219,7 +219,7 @@
   {
    "name": "RETES, MARCELO",
    "nickname": "MAR",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "LABOR",
    "rate": 540.0,
    "attendance": {
@@ -234,7 +234,7 @@
   {
    "name": "AYING, JAYCINTH",
    "nickname": "JAY",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -249,7 +249,7 @@
   {
    "name": "AYING, DIETHER",
    "nickname": "DIETHER",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -264,7 +264,7 @@
   {
    "name": "BALANSAG, JEFFREY",
    "nickname": "JEFF",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -279,7 +279,7 @@
   {
    "name": "BEBELONE , RONNIL",
    "nickname": "NIL",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -294,7 +294,7 @@
   {
    "name": "JAMAR, ALLAN LLOYD",
    "nickname": "ALLAN",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -309,7 +309,7 @@
   {
    "name": "GULBIN, REMILO LIPON",
    "nickname": "MILO",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -324,7 +324,7 @@
   {
    "name": "BEBELONE , RODEL",
    "nickname": "DEL",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -339,7 +339,7 @@
   {
    "name": "GARCIA , ARMANDO DIAZ",
    "nickname": "ARMAN",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -354,7 +354,7 @@
   {
    "name": "PAEL , JERRY A.",
    "nickname": "JERRY",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -369,7 +369,7 @@
   {
    "name": "PATIGDAS, ADBYENTO",
    "nickname": "ADBYENTO",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "SKILLED",
    "rate": 540.0,
    "attendance": {
@@ -384,7 +384,7 @@
   {
    "name": "MALOLOY-ON, JUSTINE",
    "nickname": "JUSTINE",
-   "crew": "FOREMAN",
+   "crew": "JUNIE",
    "position": "LABOR",
    "rate": 540.0,
    "attendance": {

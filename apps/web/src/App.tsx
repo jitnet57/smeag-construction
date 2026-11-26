@@ -12,8 +12,13 @@ import Skills from './screens/Skills';
 import TaskAssign from './screens/TaskAssign';
 import UnitProgress from './screens/UnitProgress';
 import Materials from './screens/Materials';
-import MaterialReadiness from './screens/MaterialReadiness';
+import MaterialStock from './screens/MaterialStock';
 import Settings from './screens/Settings';
+import Accounts, { ROLE_LABEL } from './screens/Accounts';
+import Login from './screens/Login';
+import { authApi, useAuth } from './auth';
+import type { Role } from './auth';
+import SyncBadge from './components/SyncBadge';
 
 type ScreenKey =
   | 'dashboard'
@@ -25,8 +30,9 @@ type ScreenKey =
   | 'tasks'
   | 'units'
   | 'materials'
-  | 'matready'
-  | 'settings';
+  | 'stock'
+  | 'settings'
+  | 'accounts';
 
 interface NavItem {
   key: ScreenKey;
@@ -44,9 +50,18 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'tasks', icon: '📋', labelKey: 'nav.tasks' },
   { key: 'units', icon: '🏢', labelKey: 'nav.units' },
   { key: 'materials', icon: '📦', labelKey: 'nav.materials' },
-  { key: 'matready', icon: '🚚', labelKey: 'nav.matReady' },
+  { key: 'stock', icon: '🧱', labelKey: 'nav.stock' },
   { key: 'settings', icon: '⚙', labelKey: 'nav.settings' },
+  { key: 'accounts', icon: '🔐', labelKey: 'nav.accounts' },
 ];
+
+// Screens each role may open. Team leaders get the field screens only.
+const TEAM_LEADER_SCREENS: ScreenKey[] = ['attendance', 'skills', 'tasks', 'units', 'materials', 'stock'];
+function canOpen(role: Role, key: ScreenKey): boolean {
+  if (role === 'admin') return true;
+  if (role === 'manager') return key !== 'accounts';
+  return TEAM_LEADER_SCREENS.includes(key);
+}
 
 // Primary tabs shown in the mobile bottom bar (the rest live under "More").
 const BOTTOM_TABS: NavItem[] = [
@@ -66,13 +81,66 @@ const SCREEN_TITLES: Record<ScreenKey, TKey> = {
   tasks: 'nav.tasks',
   units: 'nav.units',
   materials: 'nav.materials',
-  matready: 'nav.matReady',
+  stock: 'nav.stock',
   settings: 'nav.settings',
+  accounts: 'nav.accounts',
 };
 
 export default function App() {
+  const { session, ready } = useAuth();
+  const { t } = useI18n();
+  if (!ready) return <div className="p-6 text-center text-gray-500">{t('app.loading')}</div>;
+  if (!session) return <Login />;
+  return <Shell key={session.username} />;
+}
+
+function ChangePassword({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
+  const { session } = useAuth();
+  const [oldPw, setOldPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [msg, setMsg] = useState('');
+  const submit = async () => {
+    if (newPw.length < 6) return setMsg(t('acct.pwShort'));
+    try {
+      const ok = await authApi.changePassword(session!.token, oldPw, newPw);
+      if (!ok) return setMsg(t('auth.pwWrong'));
+      alert(t('auth.pwChanged'));
+      onClose();
+    } catch (e) {
+      setMsg(String((e as Error).message ?? e));
+    }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl p-5 w-full max-w-sm space-y-3">
+        <h3 className="font-bold text-dark">{t('auth.changePw')}</h3>
+        <input type="password" autoComplete="current-password" placeholder={t('auth.currentPw')}
+          className="border border-line rounded px-3 py-2 w-full" value={oldPw}
+          onChange={(e) => setOldPw(e.target.value)} />
+        <input type="password" autoComplete="new-password" placeholder={t('acct.newPassword')}
+          className="border border-line rounded px-3 py-2 w-full" value={newPw}
+          onChange={(e) => setNewPw(e.target.value)} />
+        {msg && <div className="text-sm text-red-600">{msg}</div>}
+        <div className="flex justify-end gap-2">
+          <button className="btn ghost" onClick={onClose}>{t('acct.cancel')}</button>
+          <button className="btn" onClick={submit}>{t('acct.save')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Shell() {
   const { t, lang, setLang } = useI18n();
-  const [currentScreen, setCurrentScreen] = useState<ScreenKey>('dashboard');
+  const { session, logout } = useAuth();
+  const role = session!.role;
+  const navItems = NAV_ITEMS.filter((n) => canOpen(role, n.key));
+  const bottomTabs = BOTTOM_TABS.filter((n) => canOpen(role, n.key));
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<ScreenKey>(
+    role === 'team_leader' ? 'attendance' : 'dashboard'
+  );
   const [currentPeriod, setCurrentPeriod] = useState<PayPeriod | null>(null);
   const [periods, setPeriods] = useState<PayPeriod[]>([]);
   // Mobile navigation drawer (closed by default; only shown on < md screens)
@@ -89,15 +157,17 @@ export default function App() {
   }, []);
 
   const renderScreen = () => {
+    if (!canOpen(role, currentScreen)) return null;
     if (
       !currentPeriod &&
       currentScreen !== 'settings' &&
+      currentScreen !== 'accounts' &&
       currentScreen !== 'employees' &&
       currentScreen !== 'skills' &&
       currentScreen !== 'tasks' &&
       currentScreen !== 'units' &&
       currentScreen !== 'materials' &&
-      currentScreen !== 'matready'
+      currentScreen !== 'stock'
     ) {
       return <div className="p-6 text-center text-gray-500">{t('app.loading')}</div>;
     }
@@ -121,10 +191,12 @@ export default function App() {
         return <UnitProgress />;
       case 'materials':
         return <Materials />;
-      case 'matready':
-        return <MaterialReadiness />;
+      case 'stock':
+        return <MaterialStock />;
       case 'settings':
         return <Settings />;
+      case 'accounts':
+        return <Accounts />;
       default:
         return null;
     }
@@ -168,7 +240,7 @@ export default function App() {
           </button>
         </div>
         <nav className="flex-1 py-2.5">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.key}
               onClick={() => goTo(item.key)}
@@ -209,6 +281,7 @@ export default function App() {
                 {currentPeriod.label.includes('주') ? t('app.weekly') : t('app.monthly')})
               </span>
             )}
+            <SyncBadge />
             {/* Language toggle — English is the default */}
             <div className="flex items-center rounded-full border border-line overflow-hidden flex-shrink-0">
               {(['en', 'ko'] as Lang[]).map((l) => (
@@ -223,11 +296,31 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <span className="hidden sm:inline">
-              👤 <b className="text-dark">{t('app.role')}</b>
+            <span className="hidden sm:inline whitespace-nowrap">
+              👤 <b className="text-dark">{session!.displayName}</b>{' '}
+              <span className="text-muted">
+                · {t(ROLE_LABEL[role])}
+                {session!.crewId ? ` (${session!.crewId})` : ''}
+              </span>
             </span>
+            <button
+              onClick={() => setPwOpen(true)}
+              className="text-muted hover:text-dark flex-shrink-0"
+              title={t('auth.changePw')}
+              aria-label={t('auth.changePw')}
+            >
+              🔑
+            </button>
+            <button
+              onClick={() => logout()}
+              className="border border-line rounded-full px-2.5 py-1 text-xs font-bold text-dark hover:bg-bg flex-shrink-0"
+            >
+              {t('auth.logout')}
+            </button>
           </div>
         </div>
+
+        {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
 
         {/* Content area — extra bottom padding on mobile so the tab bar doesn't cover content */}
         <div className="flex-1 overflow-auto p-4 sm:p-6 pb-20 md:pb-6">
@@ -236,7 +329,7 @@ export default function App() {
 
         {/* Bottom tab bar — mobile only. 5 primary tabs; "More" opens the drawer. */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-line flex justify-around items-stretch h-14 pb-[env(safe-area-inset-bottom)]">
-          {BOTTOM_TABS.map((item) => {
+          {bottomTabs.map((item) => {
             const active = currentScreen === item.key;
             return (
               <button

@@ -1,0 +1,10 @@
+{
+  "name": "BRIGHTEM Attendance & Payroll",
+  "short_name": "BRIGHTEM",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2E75B6",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

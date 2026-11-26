@@ -20,6 +20,8 @@ import type {
   MaterialRequest,
   UnitProgress,
   MaterialReadiness,
+  MaterialStock,
+  StockMove,
   RoomPhoto,
   PayslipResult,
   PayrollConfig,
@@ -157,6 +159,8 @@ const unitProgress = new Map<string, UnitProgress>();
 
 // key: `${floor}-${material}` -> MaterialReadiness
 const materialReadiness = new Map<string, MaterialReadiness>();
+const materialStock = new Map<string, MaterialStock>(); // key: id
+let stockMoves: StockMove[] = [];
 const roomPhotos = new Map<string, RoomPhoto>();
 let roomPhotoSeq = 1;
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
@@ -230,7 +234,10 @@ export const localApi = {
       const idx = attendance.findIndex(
         (r) => r.employeeId === rec.employeeId && r.date === rec.date
       );
-      if (idx >= 0) attendance[idx] = { ...attendance[idx], ...rec };
+      // A confirmed row is locked: only its confirmed flag may change (unlock).
+      if (idx >= 0 && attendance[idx].confirmed) {
+        if (!rec.confirmed) attendance[idx] = { ...attendance[idx], confirmed: false };
+      } else if (idx >= 0) attendance[idx] = { ...attendance[idx], ...rec };
       else attendance.push({ ...rec });
     }
   },
@@ -347,6 +354,26 @@ export const localApi = {
   },
   async saveMaterialReadiness(entry: MaterialReadiness): Promise<void> {
     materialReadiness.set(`${entry.floor}-${entry.material}`, { ...entry });
+  },
+  async getMaterialStock(): Promise<MaterialStock[]> {
+    return Array.from(materialStock.values())
+      .map((m) => ({ ...m }))
+      .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name));
+  },
+  async saveMaterialStock(item: MaterialStock): Promise<void> {
+    materialStock.set(item.id, { ...item, updatedAt: new Date().toISOString() });
+  },
+  async deleteMaterialStock(id: string): Promise<void> {
+    materialStock.delete(id);
+    stockMoves = stockMoves.filter((m) => m.stockId !== id);
+  },
+  async getStockMoves(): Promise<StockMove[]> {
+    return stockMoves
+      .map((m) => ({ ...m }))
+      .sort((a, b) => (a.date === b.date ? ((a.createdAt ?? '') < (b.createdAt ?? '') ? 1 : -1) : a.date < b.date ? 1 : -1));
+  },
+  async addStockMove(move: StockMove): Promise<void> {
+    stockMoves.push({ ...move, createdAt: new Date().toISOString() });
   },
   async getRoomPhotos(floor: number, room: number): Promise<RoomPhoto[]> {
     return Array.from(roomPhotos.values())

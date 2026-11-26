@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FOREMAN_TEAM_KEY } from '@brightem/shared';
 import type { Employee, EmployeeSkill } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
@@ -14,8 +13,6 @@ const LEVELS = Array.from({ length: 11 }, (_, i) => i); // 0..10
 const MARK_LEVEL = 5;
 
 const keyOf = (empId: string, skill: string) => `${empId}::${skill}`;
-
-type Team = 'all' | 'workers' | 'foreman';
 
 // Normalise a worker name for matching across files: "RENDON, NIÑO " ==
 // "rendon nino" == "RENDON,NINO".
@@ -33,7 +30,6 @@ interface ImportReport {
   file: string;
   matched: number;
   changed: number;
-  foremanChanged: number;
   unmatched: string[];
   usedMarks: boolean;
 }
@@ -55,7 +51,6 @@ export default function Skills() {
   const [levels, setLevels] = useState<Record<string, number>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
-  const [team, setTeam] = useState<Team>('all');
   const [report, setReport] = useState<ImportReport | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -133,9 +128,6 @@ export default function Skills() {
     setDirty((prev) => new Set(prev).add(k));
   };
 
-  const isForeman = (empId: string) => getLevel(empId, FOREMAN_TEAM_KEY) > 0;
-  const setForeman = (empId: string, on: boolean) => setLevel(empId, FOREMAN_TEAM_KEY, on ? 1 : 0);
-
   const avgOf = (empId: string) => {
     const sum = SKILL_KEYS.reduce((s, k) => s + getLevel(empId, k), 0);
     return SKILL_KEYS.length ? sum / SKILL_KEYS.length : 0;
@@ -150,8 +142,8 @@ export default function Skills() {
       .sort((a, b) => b.count - a.count);
   }, [employees]);
 
-  // Crew + search filter (shared by the on-screen tabs and the Excel export).
-  const filtered = useMemo(() => {
+  // Crew + search filter (shared by the screen and the Excel export).
+  const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return employees.filter(
       (e) =>
@@ -159,21 +151,6 @@ export default function Skills() {
         (q === '' || e.name.toLowerCase().includes(q))
     );
   }, [employees, selectedCrew, query]);
-
-  const teamCounts = useMemo(() => {
-    const foreman = filtered.filter((e) => isForeman(e.id)).length;
-    return { all: filtered.length, foreman, workers: filtered.length - foreman };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, levels]);
-
-  const visible = useMemo(
-    () =>
-      filtered.filter((e) =>
-        team === 'all' ? true : team === 'foreman' ? isForeman(e.id) : !isForeman(e.id)
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filtered, team, levels]
-  );
 
   // Click a column header to sort by it; click again to flip direction.
   const toggleSort = (col: SortCol) => {
@@ -224,12 +201,12 @@ export default function Skills() {
     }
   };
 
-  // Export in the TEAMS.xlsx layout: a WORKERS sheet and a FOREMAN sheet,
-  // each "# | NAME | <trade columns…>" with the 0–10 score (blank = 0), plus
+  // Export in the TEAMS.xlsx layout: a WORKERS sheet,
+  // "# | NAME | <trade columns…>" with the 0–10 score (blank = 0), plus
   // CREW and AVG at the end. The file can be edited and imported back.
   const handleExport = () => {
     const header: XCell[] = ['', 'NAME', ...skillDefs.map((s) => s.header || s.en), 'CREW', 'AVG'];
-    const byName = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    const byName = [...visible].sort((a, b) => a.name.localeCompare(b.name));
     const sheet = (name: string, list: Employee[]) => ({
       name,
       rows: [
@@ -246,10 +223,7 @@ export default function Skills() {
       freeze: { rows: 1, cols: 2 },
     });
     const crewTag = selectedCrew === ALL_CREWS ? 'all' : selectedCrew;
-    downloadXlsx(`TEAMS_skills_${crewTag}.xlsx`, [
-      sheet('WORKERS', byName.filter((e) => !isForeman(e.id))),
-      sheet('FOREMAN', byName.filter((e) => isForeman(e.id))),
-    ]);
+    downloadXlsx(`TEAMS_skills_${crewTag}.xlsx`, [sheet('WORKERS', byName)]);
   };
 
   // ---- Excel import (TEAMS.xlsx layout, or a CSV with a NAME column) --------
@@ -257,8 +231,6 @@ export default function Skills() {
   // matched by TEAMS header (CARPENTER, MASON…), skill key, or screen label.
   // Numbers set the score (clamped 0–10); a non-numeric mark sets MARK_LEVEL
   // when the worker had no score; blank cells leave the score unchanged.
-  // Names on a sheet called FOREMAN join the Foreman team; when the file has a
-  // FOREMAN sheet, names on the other sheets are moved to Workers.
   const handleImportFile = async (ev: React.ChangeEvent<HTMLInputElement>) => {
     const file = ev.target.files?.[0];
     ev.target.value = '';
@@ -284,15 +256,11 @@ export default function Skills() {
     if (SKILL_KEYS.includes('electrician') && !headAlias.has('ELECTRICIAN'))
       headAlias.set('ELECTRICIAN', 'electrician');
     const NAME_HEADS = new Set(['NAME', normHead(t('skill.thName')), '성명', '이름']);
-    const isForemanSheet = (n: string) => /FOREMAN|포맨/i.test(n);
-    const hasForemanSheet = sheets.some((sh) => isForemanSheet(sh.name));
 
     const empByName = new Map(employees.map((e) => [normName(e.name), e]));
     const nextLevels = { ...levels };
     const touched = new Set<string>();
     const matchedIds = new Set<string>();
-    const foremanIds = new Set<string>();
-    const workerIds = new Set<string>();
     const unmatched: string[] = [];
     let usedMarks = false;
     let foundHeader = false;
@@ -306,7 +274,6 @@ export default function Skills() {
       const skillCols = head
         .map((h, i) => ({ i, k: headAlias.get(h) }))
         .filter((c): c is { i: number; k: string } => !!c.k);
-      const foremanSheet = isForemanSheet(sh.name);
 
       for (const row of sh.rows.slice(hi + 1)) {
         const raw = (row[nameCol] ?? '').trim();
@@ -317,8 +284,6 @@ export default function Skills() {
           continue;
         }
         matchedIds.add(emp.id);
-        if (foremanSheet) foremanIds.add(emp.id);
-        else if (hasForemanSheet) workerIds.add(emp.id);
 
         for (const { i, k } of skillCols) {
           const cell = (row[i] ?? '').trim();
@@ -345,19 +310,6 @@ export default function Skills() {
       return;
     }
 
-    // Team membership: FOREMAN sheet wins if a name appears on both.
-    let foremanChanged = 0;
-    matchedIds.forEach((id) => {
-      const want = foremanIds.has(id) ? 1 : workerIds.has(id) ? 0 : null;
-      if (want === null) return;
-      const key = keyOf(id, FOREMAN_TEAM_KEY);
-      if ((nextLevels[key] ?? 0) !== want) {
-        nextLevels[key] = want;
-        touched.add(key);
-        foremanChanged++;
-      }
-    });
-
     setLevels(nextLevels);
     setDirty((prev) => {
       const n = new Set(prev);
@@ -367,8 +319,7 @@ export default function Skills() {
     setReport({
       file: file.name,
       matched: matchedIds.size,
-      changed: touched.size - foremanChanged,
-      foremanChanged,
+      changed: touched.size,
       unmatched: Array.from(new Set(unmatched)),
       usedMarks,
     });
@@ -518,22 +469,6 @@ export default function Skills() {
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         />
 
-        <div className="flex rounded-lg border border-line bg-white overflow-hidden text-sm">
-          {(['all', 'workers', 'foreman'] as Team[]).map((tm) => (
-            <button
-              key={tm}
-              type="button"
-              onClick={() => setTeam(tm)}
-              className={`px-3 py-2 font-bold ${
-                team === tm ? 'bg-primary text-white' : 'text-dark hover:bg-gray-50'
-              }`}
-            >
-              {t(tm === 'all' ? 'skill.tabAll' : tm === 'workers' ? 'skill.tabWorkers' : 'skill.tabForeman')}{' '}
-              ({teamCounts[tm]})
-            </button>
-          ))}
-        </div>
-
         <div className="flex-1" />
 
         {dirty.size > 0 && (
@@ -587,9 +522,6 @@ export default function Skills() {
                   {t('skill.importChanged')}: <b>{report.changed}</b>
                 </span>
                 <span>
-                  {t('skill.importForeman')}: <b>{report.foremanChanged}</b>
-                </span>
-                <span>
                   {t('skill.importUnmatched')}: <b>{report.unmatched.length}</b>
                 </span>
               </div>
@@ -634,11 +566,6 @@ export default function Skills() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-bold text-sm text-dark truncate">
                       {idx + 1}. {e.name}
-                      {isForeman(e.id) && (
-                        <span className="ml-1.5 text-[10px] font-bold text-primary">
-                          {t('skill.thForeman')}
-                        </span>
-                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className={`pill ${avg >= 6 ? 'ok' : 'half'}`}>
@@ -714,16 +641,6 @@ export default function Skills() {
                       </label>
                     </div>
 
-                    <label className="flex items-center gap-2 text-sm text-dark">
-                      <input
-                        type="checkbox"
-                        checked={isForeman(e.id)}
-                        onChange={(ev) => setForeman(e.id, ev.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      {t('skill.thForeman')}
-                    </label>
-
                     <div className="grid grid-cols-2 gap-2">
                       {SKILL_KEYS.map((k) => {
                         const lvl = getLevel(e.id, k);
@@ -791,7 +708,6 @@ export default function Skills() {
                   {t('skill.thCrew')}
                   {arrow('crew')}
                 </th>
-                <th className="text-center whitespace-nowrap">{t('skill.thForeman')}</th>
                 {SKILL_KEYS.map((k) => (
                   <th
                     key={k}
@@ -864,14 +780,6 @@ export default function Skills() {
                     />
                   </td>
                   <td className="text-center text-muted">{e.crewId}</td>
-                  <td className="text-center">
-                    <input
-                      type="checkbox"
-                      checked={isForeman(e.id)}
-                      onChange={(ev) => setForeman(e.id, ev.target.checked)}
-                      className="h-4 w-4 cursor-pointer"
-                    />
-                  </td>
                   {SKILL_KEYS.map((k) => {
                     const lvl = getLevel(e.id, k);
                     return (

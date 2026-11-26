@@ -92,10 +92,17 @@ export function initSchema() {
       lateMinutes REAL,
       holiday TEXT,
       isRestDay INTEGER,
+      confirmed INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (employeeId, date),
       FOREIGN KEY (employeeId) REFERENCES employees(id)
     )
   `);
+  const attCols = db
+    .prepare("PRAGMA table_info(attendance)")
+    .all() as Array<{ name: string }>;
+  if (!attCols.some((c) => c.name === "confirmed")) {
+    db.exec("ALTER TABLE attendance ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0");
+  }
 
   // Create employee_deductions table
   db.exec(`
@@ -337,7 +344,7 @@ export function getAttendanceForPeriod(
 
   const rows = db
     .prepare(
-      `SELECT employeeId, date, status, amIn, amOut, pmIn, pmOut, otHours, nightHours, lateMinutes, holiday, isRestDay
+      `SELECT employeeId, date, status, amIn, amOut, pmIn, pmOut, otHours, nightHours, lateMinutes, holiday, isRestDay, confirmed
        FROM attendance
        WHERE date >= ? AND date <= ?
        ORDER BY date, employeeId`
@@ -355,6 +362,7 @@ export function getAttendanceForPeriod(
     lateMinutes: number | null;
     holiday: string | null;
     isRestDay: number | null;
+    confirmed: number | null;
   }>;
 
   return rows.map((row) => ({
@@ -370,13 +378,14 @@ export function getAttendanceForPeriod(
     lateMinutes: row.lateMinutes ?? undefined,
     holiday: row.holiday as any,
     isRestDay: row.isRestDay === 1,
+    confirmed: row.confirmed === 1,
   }));
 }
 
 export function upsertAttendance(records: AttendanceRecord[]) {
   const stmt = db.prepare(
-    `INSERT INTO attendance (employeeId, date, status, amIn, amOut, pmIn, pmOut, otHours, nightHours, lateMinutes, holiday, isRestDay)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO attendance (employeeId, date, status, amIn, amOut, pmIn, pmOut, otHours, nightHours, lateMinutes, holiday, isRestDay, confirmed)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(employeeId, date) DO UPDATE SET
        status=excluded.status,
        amIn=excluded.amIn,
@@ -387,11 +396,24 @@ export function upsertAttendance(records: AttendanceRecord[]) {
        nightHours=excluded.nightHours,
        lateMinutes=excluded.lateMinutes,
        holiday=excluded.holiday,
-       isRestDay=excluded.isRestDay`
+       isRestDay=excluded.isRestDay,
+       confirmed=excluded.confirmed`
+  );
+  // A confirmed row is locked: only its confirmed flag may change (unlock).
+  const isLocked = db.prepare(
+    "SELECT confirmed FROM attendance WHERE employeeId = ? AND date = ?"
+  );
+  const unlock = db.prepare(
+    "UPDATE attendance SET confirmed = 0 WHERE employeeId = ? AND date = ?"
   );
 
   const transaction = db.transaction(() => {
     for (const rec of records) {
+      const cur = isLocked.get(rec.employeeId, rec.date) as { confirmed: number } | undefined;
+      if (cur?.confirmed === 1) {
+        if (!rec.confirmed) unlock.run(rec.employeeId, rec.date);
+        continue;
+      }
       stmt.run(
         rec.employeeId,
         rec.date,
@@ -404,7 +426,8 @@ export function upsertAttendance(records: AttendanceRecord[]) {
         rec.nightHours ?? null,
         rec.lateMinutes ?? null,
         rec.holiday ?? null,
-        rec.isRestDay ? 1 : 0
+        rec.isRestDay ? 1 : 0,
+        rec.confirmed ? 1 : 0
       );
     }
   });

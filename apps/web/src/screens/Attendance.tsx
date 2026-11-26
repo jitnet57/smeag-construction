@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import type { PayPeriod, AttendanceRecord, Employee } from '@brightem/shared';
 import { api } from '../api';
+import { onDataChanged } from '../offline';
 import { useI18n } from '../i18n';
 import { parseCsv } from '../lib/csv';
+import { readXlsx } from '../lib/xlsx';
+import { useAuth, canEditCheckin, isTeamLeader, isAdmin } from '../auth';
 
 interface Props {
   period: PayPeriod | null;
@@ -23,6 +26,19 @@ function buildDateList(start?: string, end?: string): string[] {
   return out;
 }
 
+// Normalise an imported time cell to the app's decimal-hour text.
+// Excel stores a time-formatted cell (07:00) as a day fraction (0.2916…);
+// text like "7:30" or "07:30" becomes 7.5; plain hours (7, 13.5) pass through.
+function toHourText(v: string): string {
+  const s = v.trim();
+  if (!s) return '';
+  const hm = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (hm) return String(Math.round((Number(hm[1]) + Number(hm[2]) / 60) * 100) / 100);
+  const n = Number(s);
+  if (Number.isFinite(n) && n > 0 && n < 1) return String(Math.round(n * 24 * 100) / 100);
+  return s;
+}
+
 interface AttendanceRow {
   employee: Employee;
   record: AttendanceRecord | null;
@@ -39,9 +55,16 @@ interface AttendanceRow {
 
 export default function Attendance({ period }: Props) {
   const { t } = useI18n();
-  const [selectedCrew, setSelectedCrew] = useState('ANTHONY');
+  const { session } = useAuth();
+  // Team leaders only see and edit their own crew.
+  const lockedCrew = isTeamLeader(session) ? session!.crewId : null;
+  const [selectedCrew, setSelectedCrew] = useState(lockedCrew ?? 'ANTHONY');
   const [selectedDate, setSelectedDate] = useState('2026-06-25');
   const [rows, setRows] = useState<AttendanceRow[]>([]);
+  const [reloadKey, setReloadKey] = useState(0); // bump to refetch after save
+  // True while the table holds edits that are not saved yet: auto-refresh
+  // (sync / other devices) must not overwrite them.
+  const dirtyRef = useRef(false);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [crews, setCrews] = useState<{ id: string; count: number }[]>([]);
@@ -55,9 +78,9 @@ export default function Attendance({ period }: Props) {
       const crewList = Array.from(counts.entries())
         .map(([id, count]) => ({ id, count }))
         .sort((a, b) => b.count - a.count);
-      setCrews(crewList);
+      setCrews(lockedCrew ? crewList.filter((c) => c.id === lockedCrew) : crewList);
       // If the current selection isn't present, default to the largest crew
-      if (crewList.length && !counts.has(selectedCrew)) {
+      if (!lockedCrew && crewList.length && !counts.has(selectedCrew)) {
         setSelectedCrew(crewList[0].id);
       }
     });
@@ -106,43 +129,94 @@ export default function Attendance({ period }: Props) {
             statusType,
           };
         });
+        dirtyRef.current = false;
         setRows(newRows);
       });
     }
-  }, [employees, period, selectedDate, t]);
+  }, [employees, period, selectedDate, t, reloadKey]);
+
+  // Pick up attendance uploaded by other devices (or this one coming back
+  // online) without a manual reload — unless there are unsaved edits.
+  useEffect(
+    () =>
+      onDataChanged(() => {
+        if (!dirtyRef.current) setReloadKey((n) => n + 1);
+      }),
+    []
+  );
 
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Morning check-in (AM IN) closes at 07:00 Manila time on the work date;
+  // after that only a team leader may change it. Re-check every 30s so an
+  // open page locks itself when the cutoff passes.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const amInLocked = !canEditCheckin(session, selectedDate);
+  const isLocked = (row: AttendanceRow) => !!row.record?.confirmed;
+  const lockedCount = rows.filter(isLocked).length;
+  const allLocked = rows.length > 0 && lockedCount === rows.length;
 
   const handleInputChange = (index: number, field: string, value: string) => {
     const newRows = [...rows];
     newRows[index] = { ...newRows[index], [field]: value };
+    dirtyRef.current = true;
     setRows(newRows);
   };
 
-  const handleSave = async () => {
+  // Save the editable (not yet confirmed) rows: as a draft, or confirmed
+  // (locked). Confirmed rows are never rewritten here.
+  const handleSave = async (confirm: boolean) => {
     if (!period) return;
-    const records = rows.map((row) => ({
+    const editable = rows.filter((row) => !isLocked(row));
+    if (!editable.length) {
+      alert(t('att.nothingToSave'));
+      return;
+    }
+    if (confirm && !window.confirm(t('att.confirmAsk'))) return;
+    const records = editable.map((row) => ({
       employeeId: row.employee.id,
       date: selectedDate,
       status: row.workedHours >= 8 ? ('full' as const) : 'half' as const,
-      amIn: row.amIn ? parseFloat(row.amIn) : null,
+      amIn: !canEditCheckin(session, selectedDate)
+        ? row.record?.amIn ?? null
+        : row.amIn ? parseFloat(row.amIn) : null,
       amOut: row.amOut ? parseFloat(row.amOut) : null,
       pmIn: row.pmIn ? parseFloat(row.pmIn) : null,
       pmOut: row.pmOut ? parseFloat(row.pmOut) : null,
       otHours: row.otIn ? 2 : undefined,
+      confirmed: confirm,
     } as AttendanceRecord));
 
     try {
       await api.updateAttendance(records);
-      alert(t('att.saved'));
+      alert(t(confirm ? 'att.confirmed' : 'att.draftSaved'));
+      setReloadKey((n) => n + 1);
     } catch {
       alert(t('att.saveError'));
     }
   };
 
-  // ---- Excel / CSV import --------------------------------------------------
+  // Admin only: unlock the confirmed rows shown, keeping their data.
+  const handleUnlock = async () => {
+    const locked = rows.filter(isLocked);
+    if (!locked.length || !window.confirm(t('att.unlockAsk'))) return;
+    try {
+      await api.updateAttendance(locked.map((row) => ({ ...row.record!, confirmed: false })));
+      alert(t('att.unlocked'));
+      setReloadKey((n) => n + 1);
+    } catch {
+      alert(t('att.saveError'));
+    }
+  };
+
+  // ---- Excel (.xlsx) / CSV import -------------------------------------------
   // Expected columns (header row, case-insensitive): Name, AM IN, AM OUT,
   // PM IN, PM OUT, OT IN, OT OUT. Rows are matched to workers by name.
+  // For .xlsx the first sheet is read. Confirmed (locked) rows are skipped.
   const handleImportClick = () => fileRef.current?.click();
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,8 +224,11 @@ export default function Attendance({ period }: Props) {
     e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
     try {
-      const text = await file.text();
-      const table = parseCsv(text).filter((r) => r.some((c) => c.trim() !== ''));
+      const isXlsx = /\.xlsx$/i.test(file.name);
+      const raw = isXlsx
+        ? (await readXlsx(await file.arrayBuffer()))[0]?.rows ?? []
+        : parseCsv(await file.text());
+      const table = raw.filter((r) => r.some((c) => (c ?? '').trim() !== ''));
       if (table.length < 2) {
         alert(t('att.importEmpty'));
         return;
@@ -170,16 +247,22 @@ export default function Attendance({ period }: Props) {
         alert(t('att.importNoName'));
         return;
       }
-      const at = (r: string[], i: number) => (i >= 0 ? (r[i] ?? '').trim() : '');
+      const at = (r: string[], i: number) => (i >= 0 ? toHourText(r[i] ?? '') : '');
+      const nameAt = (r: string[]) => (r[iName] ?? '').trim();
       const byName = new Map(rows.map((row, idx) => [row.employee.name.trim().toLowerCase(), idx]));
       const next = [...rows];
       let matched = 0;
+      let skipped = 0;
       for (const r of table.slice(1)) {
-        const key = at(r, iName).toLowerCase();
+        const key = nameAt(r).toLowerCase();
         const idx = byName.get(key);
         if (idx === undefined) continue;
+        if (isLocked(next[idx])) {
+          skipped++;
+          continue;
+        }
         matched++;
-        const amIn = at(r, iAmIn) || next[idx].amIn;
+        const amIn = amInLocked ? next[idx].amIn : at(r, iAmIn) || next[idx].amIn;
         const amOut = at(r, iAmOut) || next[idx].amOut;
         const pmIn = at(r, iPmIn) || next[idx].pmIn;
         const pmOut = at(r, iPmOut) || next[idx].pmOut;
@@ -196,8 +279,12 @@ export default function Attendance({ period }: Props) {
           workedHours: otIn ? 10.0 : 8.0,
         };
       }
+      dirtyRef.current = true;
       setRows(next);
-      alert(`${t('att.imported')} ${matched} / ${table.length - 1}`);
+      alert(
+        `${t('att.imported')} ${matched} / ${table.length - 1}` +
+          (skipped ? `\n${t('att.importSkipped')} ${skipped}` : '')
+      );
     } catch {
       alert(t('att.importError'));
     }
@@ -212,9 +299,11 @@ export default function Attendance({ period }: Props) {
           onChange={(e) => setSelectedCrew(e.target.value)}
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         >
-          <option value="ALL">
-            {t('att.allCrews')} ({allEmployees.length}{t('att.people')})
-          </option>
+          {!lockedCrew && (
+            <option value="ALL">
+              {t('att.allCrews')} ({allEmployees.length}{t('att.people')})
+            </option>
+          )}
           {crews.map((c) => (
             <option key={c.id} value={c.id}>
               {c.id} ({c.count}{t('att.people')})
@@ -242,17 +331,22 @@ export default function Attendance({ period }: Props) {
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           onChange={handleImportFile}
         />
-        <button className="btn gray" onClick={handleImportClick}>
+        {isAdmin(session) && lockedCount > 0 && (
+          <button className="btn ghost" onClick={handleUnlock}>
+            🔓 {t('att.unlock')}
+          </button>
+        )}
+        <button className="btn gray disabled:opacity-50" onClick={handleImportClick} disabled={allLocked}>
           {t('att.excelImport')}
         </button>
-        <button className="btn ghost" onClick={handleSave}>
+        <button className="btn ghost disabled:opacity-50" onClick={() => handleSave(false)} disabled={allLocked}>
           {t('att.saveDraft')}
         </button>
-        <button onClick={handleSave} className="btn">
+        <button onClick={() => handleSave(true)} className="btn disabled:opacity-50" disabled={allLocked}>
           {t('att.confirm')}
         </button>
       </div>
@@ -262,6 +356,21 @@ export default function Attendance({ period }: Props) {
         <h3 className="text-sm font-bold text-dark mb-3">
           {t('att.timeEntryTitle')}
         </h3>
+        <div
+          className={`text-xs rounded-lg px-3 py-2 mb-3 ${
+            amInLocked ? 'bg-red-50 text-red-700' : isTeamLeader(session) ? 'bg-blue-50 text-dark' : 'bg-bg text-muted'
+          }`}
+        >
+          🕖 {amInLocked ? t('att.checkinLocked') : isTeamLeader(session) ? t('att.checkinTl') : t('att.checkinOpen')}
+        </div>
+        {lockedCount > 0 && (
+          <div className="text-xs rounded-lg px-3 py-2 mb-3 bg-green-50 text-green-800">
+            🔒{' '}
+            {allLocked
+              ? t(isAdmin(session) ? 'att.lockedBannerAdmin' : 'att.lockedBanner')
+              : `${lockedCount}/${rows.length} ${t('att.someLocked')}`}
+          </div>
+        )}
         {/* Mobile card view */}
         <div className="md:hidden space-y-3">
           {rows.map((row, idx) => (
@@ -274,38 +383,39 @@ export default function Attendance({ period }: Props) {
                   <div className="text-xs text-muted truncate">{row.employee.position}</div>
                 </div>
                 <span className={`pill ${row.statusType} flex-shrink-0`}>
-                  {row.status} · {row.workedHours.toFixed(1)}h
+                  {isLocked(row) && '🔒 '}{row.status} · {row.workedHours.toFixed(1)}h
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2 mt-3">
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">AM IN</span>
-                  <input className="in w-full" value={row.amIn}
+                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.amIn}
+                    disabled={amInLocked || isLocked(row)} title={amInLocked ? t('att.checkinLocked') : undefined}
                     onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)} />
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">AM OUT</span>
-                  <input className="in w-full" value={row.amOut}
+                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.amOut} disabled={isLocked(row)}
                     onChange={(e) => handleInputChange(idx, 'amOut', e.target.value)} />
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">PM IN</span>
-                  <input className="in w-full" value={row.pmIn}
+                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.pmIn} disabled={isLocked(row)}
                     onChange={(e) => handleInputChange(idx, 'pmIn', e.target.value)} />
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">PM OUT</span>
-                  <input className="in w-full" value={row.pmOut}
+                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.pmOut} disabled={isLocked(row)}
                     onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)} />
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">OT IN</span>
-                  <input className="in w-full" value={row.otIn}
+                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.otIn} disabled={isLocked(row)}
                     onChange={(e) => handleInputChange(idx, 'otIn', e.target.value)} />
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">OT OUT</span>
-                  <input className="in w-full" value={row.otOut}
+                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.otOut} disabled={isLocked(row)}
                     onChange={(e) => handleInputChange(idx, 'otOut', e.target.value)} />
                 </label>
               </div>
@@ -339,49 +449,56 @@ export default function Attendance({ period }: Props) {
                   <td>{row.employee.position}</td>
                   <td className="text-center">
                     <input
-                      className="in"
+                      className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.amIn}
+                      disabled={amInLocked || isLocked(row)}
+                      title={amInLocked ? t('att.checkinLocked') : undefined}
                       onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)}
                     />
                   </td>
                   <td className="text-center">
                     <input
-                      className="in"
+                      className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.amOut}
+                      disabled={isLocked(row)}
                       onChange={(e) => handleInputChange(idx, 'amOut', e.target.value)}
                     />
                   </td>
                   <td className="text-center">
                     <input
-                      className="in"
+                      className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.pmIn}
+                      disabled={isLocked(row)}
                       onChange={(e) => handleInputChange(idx, 'pmIn', e.target.value)}
                     />
                   </td>
                   <td className="text-center">
                     <input
-                      className="in"
+                      className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.pmOut}
+                      disabled={isLocked(row)}
                       onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)}
                     />
                   </td>
                   <td className="text-center">
                     <input
-                      className="in"
+                      className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.otIn}
+                      disabled={isLocked(row)}
                       onChange={(e) => handleInputChange(idx, 'otIn', e.target.value)}
                     />
                   </td>
                   <td className="text-center">
                     <input
-                      className="in"
+                      className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.otOut}
+                      disabled={isLocked(row)}
                       onChange={(e) => handleInputChange(idx, 'otOut', e.target.value)}
                     />
                   </td>
                   <td className="text-center">{row.workedHours.toFixed(1)}</td>
                   <td className="text-center">
-                    <span className={`pill ${row.statusType}`}>{row.status}</span>
+                    <span className={`pill ${row.statusType}`}>{isLocked(row) && '🔒 '}{row.status}</span>
                   </td>
                 </tr>
               ))}

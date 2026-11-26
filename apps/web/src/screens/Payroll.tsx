@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { PayPeriod, PayslipResult, Employee } from '@brightem/shared';
 import { api } from '../api';
+import { onDataChanged } from '../offline';
 import { useI18n } from '../i18n';
 import { downloadCsv } from '../lib/csv';
 
@@ -39,6 +40,14 @@ export default function Payroll({ period }: Props) {
   useEffect(() => {
     loadPayroll();
   }, [loadPayroll]);
+
+  // Silent refresh when synced attendance arrives (no busy spinner).
+  useEffect(() => {
+    if (!period) return;
+    return onDataChanged(() => {
+      api.getPayroll(period.id).then(setPayslips).catch(() => undefined);
+    });
+  }, [period]);
 
   // Map employeeId -> employee for name/position/crew lookups
   const empMap = new Map(employees.map((e) => [e.id, e]));

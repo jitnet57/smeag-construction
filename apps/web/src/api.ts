@@ -9,6 +9,8 @@ import type {
   MaterialRequest,
   UnitProgress,
   MaterialReadiness,
+  MaterialStock,
+  StockMove,
   RoomPhoto,
   PayslipResult,
   PayrollConfig,
@@ -36,7 +38,7 @@ const MOCK_DATA = {
       id: 'abadilla-cocoy',
       name: 'ABADILLA , COCOY',
       nickname: 'COCOY',
-      crewId: 'FOREMAN',
+      crewId: 'JUNIE',
       position: 'SKILLED',
       ratePerDay: 540,
       active: true,
@@ -52,7 +54,7 @@ const MOCK_DATA = {
     } as Employee,
   ],
   crews: [
-    { id: 'FOREMAN', name: 'FOREMAN', foreman: 'FOREMAN' } as Crew,
+    { id: 'JUNIE', name: 'JUNIE', foreman: 'JUNIE' } as Crew,
     { id: 'ANTHONY', name: 'ANTHONY', foreman: 'ANTHONY' } as Crew,
   ] as Crew[],
   periods: [
@@ -293,6 +295,27 @@ const networkApi = {
     });
   },
 
+  // Material stock — held in memory (no Express endpoint; the Supabase layer
+  // persists it).
+  async getMaterialStock(): Promise<MaterialStock[]> {
+    return _stock.map((m) => ({ ...m })).sort((a, b) => a.sort - b.sort);
+  },
+  async saveMaterialStock(item: MaterialStock): Promise<void> {
+    const i = _stock.findIndex((m) => m.id === item.id);
+    if (i >= 0) _stock[i] = { ...item };
+    else _stock.push({ ...item });
+  },
+  async deleteMaterialStock(id: string): Promise<void> {
+    const i = _stock.findIndex((m) => m.id === id);
+    if (i >= 0) _stock.splice(i, 1);
+  },
+  async getStockMoves(): Promise<StockMove[]> {
+    return [..._moves].reverse();
+  },
+  async addStockMove(move: StockMove): Promise<void> {
+    _moves.push({ ...move, createdAt: new Date().toISOString() });
+  },
+
   // Room photos — held in memory (this network layer is a mock fallback; the
   // production Supabase layer persists them to storage).
   async getRoomPhotos(floor: number, room: number): Promise<RoomPhoto[]> {
@@ -399,6 +422,8 @@ const networkApi = {
 };
 
 const _photos: RoomPhoto[] = [];
+const _stock: MaterialStock[] = [];
+const _moves: StockMove[] = [];
 let _photoSeq = 1;
 const _employeePhotos: Record<string, string> = {};
 

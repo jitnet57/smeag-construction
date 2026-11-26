@@ -10,6 +10,7 @@ import type {
 } from '@brightem/shared';
 import { UNIT_WORK_ITEMS } from '@brightem/shared';
 import { api } from '../api';
+import { onDataChanged } from '../offline';
 import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
 
@@ -160,8 +161,12 @@ export default function Dashboard({ period }: Props): JSX.Element {
 
   useEffect(() => {
     if (!period) return;
-    api.getAttendance(period.id).then(setAttendance);
-    api.getPayroll(period.id).then(setPayslips);
+    const load = () => {
+      api.getAttendance(period.id).then(setAttendance).catch(() => undefined);
+      api.getPayroll(period.id).then(setPayslips).catch(() => undefined);
+    };
+    load();
+    return onDataChanged(load); // keep totals current as attendance syncs in
   }, [period]);
 
   // ---- Crew list (from all employees) for the filter dropdown ----
