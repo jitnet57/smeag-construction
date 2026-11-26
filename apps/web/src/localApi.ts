@@ -389,6 +389,7 @@ export const localApi = {
     sssDeduction?: number | null;
     pagibigDeduction?: number | null;
     philhealthDeduction?: number | null;
+    custom?: Record<string, string>;
   }): Promise<Employee> {
     const base = slugify(input.name) || 'worker';
     const id = `${base}-${Date.now().toString(36).slice(-4)}`;
@@ -416,6 +417,7 @@ export const localApi = {
         input.pagibigDeduction == null ? undefined : Number(input.pagibigDeduction),
       philhealthDeduction:
         input.philhealthDeduction == null ? undefined : Number(input.philhealthDeduction),
+      custom: input.custom && Object.keys(input.custom).length ? { ...input.custom } : undefined,
     } as Employee;
     employees.push(emp);
     employees.sort((a, b) => a.name.localeCompare(b.name));
@@ -440,6 +442,7 @@ export const localApi = {
       sssDeduction?: number | null;
       pagibigDeduction?: number | null;
       philhealthDeduction?: number | null;
+      custom?: Record<string, string>;
     }
   ): Promise<Employee> {
     const emp = employees.find((e) => e.id === employeeId);
@@ -474,6 +477,7 @@ export const localApi = {
     if (patch.philhealthDeduction !== undefined)
       emp.philhealthDeduction =
         patch.philhealthDeduction == null ? undefined : Number(patch.philhealthDeduction);
+    if (patch.custom !== undefined) emp.custom = { ...patch.custom };
     employees.sort((a, b) => a.name.localeCompare(b.name));
     return emp;
   },

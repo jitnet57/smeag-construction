@@ -39,6 +39,26 @@ export interface Employee {
   sssDeduction?: number;        // standing SSS contribution deducted each run (₱, +) (SSS 공제)
   pagibigDeduction?: number;    // standing Pag-IBIG contribution deducted each run (₱, +) (Pag-IBIG 공제)
   philhealthDeduction?: number; // standing PhilHealth contribution deducted each run (₱, +) (PhilHealth 공제)
+  /** Values of user-defined info fields (Settings → Employee fields), keyed by field key. */
+  custom?: Record<string, string>;
+}
+
+/** Input type of a user-defined employee info field. */
+export type EmployeeFieldType = "text" | "number" | "date";
+
+/**
+ * One column of the Employees info table (Settings → Employee fields).
+ * Built-in fields map to Employee properties and can be renamed, hidden and
+ * reordered; custom fields (`builtin` false) store their values in
+ * Employee.custom[key] and can also be added / deleted.
+ */
+export interface EmployeeFieldDef {
+  key: string;
+  en: string;
+  ko: string;
+  visible: boolean;
+  builtin: boolean;
+  type?: EmployeeFieldType; // custom fields only
 }
 
 // ---- Attendance ------------------------------------------------------------
@@ -126,6 +146,8 @@ export interface PayrollConfig {
   contributions: ContributionTable[];
   /** Editable trade/skill catalog (Settings → Skills). Falls back to DEFAULT_SKILLS. */
   skills?: SkillDef[];
+  /** Editable Employees info columns. Falls back to DEFAULT_EMPLOYEE_FIELDS. */
+  employeeFields?: EmployeeFieldDef[];
   // deductions the employer applies per-employee (loans, cash advance, canteen)
   // are supplied per payroll run, not in global config.
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Employee, Crew } from '@brightem/shared';
+import { REQUIRED_EMPLOYEE_FIELDS } from '@brightem/shared';
+import type { Employee, Crew, EmployeeFieldDef } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+import { useEmployeeFields } from '../lib/employeeFields';
 
 const POSITIONS = [
   'SKILLED',
@@ -28,6 +30,7 @@ type NewWorker = {
   sssDeduction: string;
   pagibigDeduction: string;
   philhealthDeduction: string;
+  custom: Record<string, string>;
 };
 
 const EMPTY_WORKER: NewWorker = {
@@ -47,10 +50,44 @@ const EMPTY_WORKER: NewWorker = {
   sssDeduction: '',
   pagibigDeduction: '',
   philhealthDeduction: '',
+  custom: {},
 };
+
+// Built-in field key -> NewWorker form property and input kind.
+type FormKey = Exclude<keyof NewWorker, 'custom' | 'position' | 'crewId'>;
+const BUILTIN_INPUTS: Record<string, { prop: FormKey; kind: 'text' | 'number' | 'date'; money?: boolean; optional?: boolean }> = {
+  name: { prop: 'name', kind: 'text' },
+  nickname: { prop: 'nickname', kind: 'text', optional: true },
+  ratePerDay: { prop: 'ratePerDay', kind: 'number', money: true },
+  incentiveDailyRate: { prop: 'incentive', kind: 'number', money: true, optional: true },
+  age: { prop: 'age', kind: 'number' },
+  idNo: { prop: 'idNo', kind: 'text', optional: true },
+  joinDate: { prop: 'joinDate', kind: 'date', optional: true },
+  sssNo: { prop: 'sssNo', kind: 'text', optional: true },
+  canteenDebt: { prop: 'canteenDebt', kind: 'number', money: true },
+  adjustment: { prop: 'adjustment', kind: 'number', money: true },
+  adjustmentDeduction: { prop: 'adjustmentDeduction', kind: 'number', money: true },
+  sssDeduction: { prop: 'sssDeduction', kind: 'number', money: true },
+  pagibigDeduction: { prop: 'pagibigDeduction', kind: 'number', money: true },
+  philhealthDeduction: { prop: 'philhealthDeduction', kind: 'number', money: true },
+};
+
+const MONEY_COLS = new Set([
+  'ratePerDay',
+  'incentiveDailyRate',
+  'canteenDebt',
+  'adjustment',
+  'adjustmentDeduction',
+  'sssDeduction',
+  'pagibigDeduction',
+  'philhealthDeduction',
+]);
+
+const peso = (v: number | null | undefined) => (v ? `₱${v}` : '—');
 
 export default function Employees(): JSX.Element {
   const { t } = useI18n();
+  const { fields, label } = useEmployeeFields();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPosition, setSelectedPosition] = useState('ALL');
@@ -69,6 +106,12 @@ export default function Employees(): JSX.Element {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<NewWorker>(EMPTY_WORKER);
+
+  const visibleFields = fields.filter((f) => f.visible);
+  // Fields shown in the add/edit form: visible ones plus the payroll-required ones.
+  const formFields = fields.filter(
+    (f) => f.key !== 'photo' && (f.visible || REQUIRED_EMPLOYEE_FIELDS.includes(f.key))
+  );
 
   const loadEmployees = () => {
     setLoading(true);
@@ -98,7 +141,7 @@ export default function Employees(): JSX.Element {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ ...EMPTY_WORKER, crewId: crews[0]?.id ?? '' });
+    setForm({ ...EMPTY_WORKER, custom: {}, crewId: crews[0]?.id ?? '' });
     setShowModal(true);
   };
 
@@ -121,8 +164,20 @@ export default function Employees(): JSX.Element {
       sssDeduction: emp.sssDeduction ? String(emp.sssDeduction) : '',
       pagibigDeduction: emp.pagibigDeduction ? String(emp.pagibigDeduction) : '',
       philhealthDeduction: emp.philhealthDeduction ? String(emp.philhealthDeduction) : '',
+      custom: { ...(emp.custom ?? {}) },
     });
     setShowModal(true);
+  };
+
+  // Custom values to save: the edited ones for current custom fields, plus any
+  // values of deleted fields kept as-is (re-adding the key restores them).
+  const buildCustom = (): Record<string, string> => {
+    const out: Record<string, string> = {};
+    Object.entries(form.custom).forEach(([k, v]) => {
+      const val = String(v ?? '').trim();
+      if (val) out[k] = val;
+    });
+    return out;
   };
 
   const submitWorker = async () => {
@@ -135,6 +190,11 @@ export default function Employees(): JSX.Element {
       alert(t('emp.crewRequired'));
       return;
     }
+    const prevCustom = editingId
+      ? employees.find((e) => e.id === editingId)?.custom ?? {}
+      : {};
+    const custom = buildCustom();
+    const customChanged = JSON.stringify(custom) !== JSON.stringify(prevCustom);
     const payload = {
       name,
       nickname: form.nickname.trim() || null,
@@ -160,6 +220,9 @@ export default function Employees(): JSX.Element {
       philhealthDeduction: form.philhealthDeduction
         ? Math.max(0, Number(form.philhealthDeduction))
         : 0,
+      // Only sent when custom values changed, so workers without custom
+      // fields never touch the custom_fields column.
+      ...(customChanged ? { custom } : {}),
     };
     setSaving(true);
     try {
@@ -174,7 +237,13 @@ export default function Employees(): JSX.Element {
       setShowModal(false);
       loadEmployees();
     } catch {
-      alert(editingId ? t('emp.updateError') : t('emp.addError'));
+      alert(
+        customChanged
+          ? `${editingId ? t('emp.updateError') : t('emp.addError')}\n${t('emp.customSaveError')}`
+          : editingId
+            ? t('emp.updateError')
+            : t('emp.addError')
+      );
     } finally {
       setSaving(false);
     }
@@ -218,9 +287,11 @@ export default function Employees(): JSX.Element {
 
   // Filter employees
   const filtered = employees.filter((emp) => {
+    const q = searchTerm.toLowerCase();
     const matchesSearch =
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.nickname.toLowerCase().includes(searchTerm.toLowerCase());
+      emp.name.toLowerCase().includes(q) ||
+      emp.nickname.toLowerCase().includes(q) ||
+      Object.values(emp.custom ?? {}).some((v) => String(v).toLowerCase().includes(q));
     const matchesPosition =
       selectedPosition === 'ALL' || emp.position === selectedPosition;
     return matchesSearch && matchesPosition;
@@ -234,6 +305,203 @@ export default function Employees(): JSX.Element {
     },
     {} as Record<string, number>
   );
+
+  const inputCls = 'w-full rounded-lg border border-line px-3 py-2 text-sm';
+
+  // One input in the add/edit form, rendered from its field definition.
+  const renderFormField = (f: EmployeeFieldDef, first: boolean) => {
+    const caption = (optional?: boolean, money?: boolean) => (
+      <span className="mb-1 block text-xs font-semibold text-muted">
+        {label(f)}
+        {money ? ' (₱)' : ''}
+        {optional ? <span className="font-normal"> ({t('emp.fOptional')})</span> : null}
+      </span>
+    );
+
+    if (!f.builtin) {
+      const kind = f.type ?? 'text';
+      return (
+        <label key={f.key} className="block">
+          {caption(true)}
+          <input
+            type={kind}
+            inputMode={kind === 'number' ? 'decimal' : undefined}
+            value={form.custom[f.key] ?? ''}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, custom: { ...prev.custom, [f.key]: e.target.value } }))
+            }
+            className={inputCls}
+          />
+        </label>
+      );
+    }
+
+    if (f.key === 'crewId') {
+      return (
+        <label key={f.key} className="block">
+          {caption()}
+          <select
+            value={form.crewId}
+            onChange={(e) => setForm((prev) => ({ ...prev, crewId: e.target.value }))}
+            className={`${inputCls} bg-white`}
+          >
+            <option value="">{t('emp.selectCrew')}</option>
+            {crews.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    }
+
+    if (f.key === 'position') {
+      return (
+        <label key={f.key} className="block">
+          {caption()}
+          <select
+            value={form.position}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, position: e.target.value as Employee['position'] }))
+            }
+            className={`${inputCls} bg-white`}
+          >
+            {POSITIONS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    }
+
+    const spec = BUILTIN_INPUTS[f.key];
+    if (!spec) return null;
+    return (
+      <label key={f.key} className={`block ${f.key === 'name' ? 'col-span-2' : ''}`}>
+        {caption(spec.optional, spec.money)}
+        <input
+          type={spec.kind}
+          autoFocus={first}
+          min={spec.kind === 'number' ? 0 : undefined}
+          inputMode={spec.kind === 'number' ? 'numeric' : undefined}
+          placeholder={f.key === 'name' ? t('emp.fNamePh') : undefined}
+          value={form[spec.prop]}
+          onChange={(e) => setForm((prev) => ({ ...prev, [spec.prop]: e.target.value }))}
+          className={inputCls}
+        />
+      </label>
+    );
+  };
+
+  // Table cell for one employee × one visible field.
+  const renderCell = (emp: Employee, f: EmployeeFieldDef) => {
+    if (!f.builtin) {
+      return <td key={f.key}>{emp.custom?.[f.key] || '—'}</td>;
+    }
+    switch (f.key) {
+      case 'photo':
+        return (
+          <td key={f.key} className="text-center p-1">
+            <button
+              onClick={() => pickPhoto(emp.id)}
+              title={t('skill.photoTitle')}
+              className="mx-auto block h-11 w-9 overflow-hidden rounded border border-line bg-gray-50 hover:ring-2 hover:ring-primary"
+            >
+              {photos[emp.id] ? (
+                <img src={photos[emp.id]} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-base leading-none text-muted">＋</span>
+              )}
+            </button>
+          </td>
+        );
+      case 'name':
+        return (
+          <td key={f.key} className="freeze-col">
+            {emp.name}
+          </td>
+        );
+      case 'nickname':
+        return <td key={f.key}>{emp.nickname || '—'}</td>;
+      case 'age':
+        return (
+          <td key={f.key} className="text-center p-0.5">
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={ages[emp.id] ?? ''}
+              onChange={(ev) => setAges((prev) => ({ ...prev, [emp.id]: ev.target.value }))}
+              onBlur={() =>
+                saveInfo(emp.id, {
+                  age: ages[emp.id] ? Math.max(0, Math.floor(Number(ages[emp.id]))) : null,
+                })
+              }
+              className="w-12 rounded border border-line bg-white px-1 py-1 text-center text-sm"
+              placeholder="—"
+            />
+          </td>
+        );
+      case 'idNo':
+        return (
+          <td key={f.key} className="text-center p-0.5">
+            <input
+              type="text"
+              value={idNos[emp.id] ?? ''}
+              onChange={(ev) => setIdNos((prev) => ({ ...prev, [emp.id]: ev.target.value }))}
+              onBlur={() => saveInfo(emp.id, { idNo: idNos[emp.id]?.trim() || null })}
+              className="w-24 rounded border border-line bg-white px-1 py-1 text-center text-sm"
+              placeholder="—"
+            />
+          </td>
+        );
+      case 'position':
+        return <td key={f.key}>{emp.position}</td>;
+      case 'crewId':
+        return (
+          <td key={f.key}>
+            <span className="crewtag">{emp.crewId}</span>
+          </td>
+        );
+      case 'ratePerDay':
+        return (
+          <td key={f.key} className="text-right">
+            ₱{emp.ratePerDay}
+          </td>
+        );
+      case 'incentiveDailyRate':
+        return (
+          <td key={f.key} className="text-right">
+            {emp.incentiveDailyRate != null ? `₱${emp.incentiveDailyRate}` : '—'}
+          </td>
+        );
+      case 'joinDate':
+        return <td key={f.key}>{emp.joinDate || '—'}</td>;
+      case 'sssNo':
+        return <td key={f.key}>{emp.sssNo || '—'}</td>;
+      default:
+        if (MONEY_COLS.has(f.key)) {
+          return (
+            <td key={f.key} className="text-right">
+              {peso((emp as unknown as Record<string, number | undefined>)[f.key])}
+            </td>
+          );
+        }
+        return <td key={f.key}>—</td>;
+    }
+  };
+
+  const headerAlign = (f: EmployeeFieldDef) =>
+    f.builtin && MONEY_COLS.has(f.key)
+      ? 'text-right'
+      : f.key === 'photo' || f.key === 'age' || f.key === 'idNo'
+        ? 'text-center'
+        : '';
+
+  const mobileCustom = visibleFields.filter((f) => !f.builtin);
 
   return (
     <div className="w-full">
@@ -281,279 +549,8 @@ export default function Employees(): JSX.Element {
               {editingId ? t('emp.editTitle') : t('emp.addTitle')}
             </h3>
 
-            <div className="space-y-3">
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-muted">
-                  {t('emp.fName')}
-                </span>
-                <input
-                  type="text"
-                  autoFocus
-                  value={form.name}
-                  placeholder={t('emp.fNamePh')}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-1 block text-xs font-semibold text-muted">
-                  {t('emp.fNickname')}{' '}
-                  <span className="font-normal">({t('emp.fOptional')})</span>
-                </span>
-                <input
-                  type="text"
-                  value={form.nickname}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, nickname: e.target.value }))
-                  }
-                  className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                />
-              </label>
-
-              <div className="flex gap-3">
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fCrew')}
-                  </span>
-                  <select
-                    value={form.crewId}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, crewId: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
-                  >
-                    <option value="">{t('emp.selectCrew')}</option>
-                    {crews.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fPosition')}
-                  </span>
-                  <select
-                    value={form.position}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        position: e.target.value as Employee['position'],
-                      }))
-                    }
-                    className="w-full rounded-lg border border-line bg-white px-3 py-2 text-sm"
-                  >
-                    {POSITIONS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="flex gap-3">
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fRate')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.ratePerDay}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, ratePerDay: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fIncentive')}{' '}
-                    <span className="font-normal">({t('emp.fOptional')})</span>
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.incentive}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, incentive: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-              </div>
-
-              <div className="flex gap-3">
-                <label className="block w-20">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fAge')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.age}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, age: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fId')}{' '}
-                    <span className="font-normal">({t('emp.fOptional')})</span>
-                  </span>
-                  <input
-                    type="text"
-                    value={form.idNo}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, idNo: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-              </div>
-
-              <div className="flex gap-3">
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fJoinDate')}{' '}
-                    <span className="font-normal">({t('emp.fOptional')})</span>
-                  </span>
-                  <input
-                    type="date"
-                    value={form.joinDate}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, joinDate: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fSssNo')}{' '}
-                    <span className="font-normal">({t('emp.fOptional')})</span>
-                  </span>
-                  <input
-                    type="text"
-                    value={form.sssNo}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, sssNo: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-              </div>
-
-              <div className="flex gap-3">
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fCanteenDebt')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.canteenDebt}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, canteenDebt: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fAdjustment')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.adjustment}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, adjustment: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fAdjustmentDeduction')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.adjustmentDeduction}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, adjustmentDeduction: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-              </div>
-
-              <div className="flex gap-3">
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fSssDeduction')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.sssDeduction}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, sssDeduction: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fPagibigDeduction')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.pagibigDeduction}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, pagibigDeduction: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <label className="block flex-1">
-                  <span className="mb-1 block text-xs font-semibold text-muted">
-                    {t('emp.fPhilhealthDeduction')}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    inputMode="numeric"
-                    value={form.philhealthDeduction}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, philhealthDeduction: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-line px-3 py-2 text-sm"
-                  />
-                </label>
-              </div>
+            <div className="grid grid-cols-2 gap-3">
+              {formFields.map((f, i) => renderFormField(f, i === 0))}
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
@@ -564,11 +561,7 @@ export default function Employees(): JSX.Element {
               >
                 {t('emp.cancel')}
               </button>
-              <button
-                className="btn"
-                disabled={saving}
-                onClick={submitWorker}
-              >
+              <button className="btn" disabled={saving} onClick={submitWorker}>
                 {saving ? t('emp.saving') : t('emp.save')}
               </button>
             </div>
@@ -618,6 +611,14 @@ export default function Employees(): JSX.Element {
                   <div className="text-xs text-muted truncate">
                     {emp.position} · <span className="crewtag">{emp.crewId}</span> · ₱{emp.ratePerDay}/일
                   </div>
+                  {mobileCustom.some((f) => emp.custom?.[f.key]) && (
+                    <div className="text-xs text-muted truncate">
+                      {mobileCustom
+                        .filter((f) => emp.custom?.[f.key])
+                        .map((f) => `${label(f)}: ${emp.custom?.[f.key]}`)
+                        .join(' · ')}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1 flex-shrink-0">
                   <button
@@ -644,30 +645,21 @@ export default function Employees(): JSX.Element {
             <thead>
               <tr>
                 <th>{t('emp.thEmpNo')}</th>
-                <th className="text-center">{t('emp.thPhoto')}</th>
-                <th className="freeze-col">{t('emp.thName')}</th>
-                <th>{t('emp.thNickname')}</th>
-                <th className="text-center">{t('emp.thAge')}</th>
-                <th className="text-center">{t('emp.thId')}</th>
-                <th>{t('emp.thPosition')}</th>
-                <th>{t('emp.thCrew')}</th>
-                <th className="text-right">{t('emp.thDailyRate')}</th>
-                <th className="text-right">{t('emp.thIncentive')}</th>
-                <th className="text-right">{t('emp.thCanteenDebt')}</th>
-                <th className="text-right">{t('emp.thAdjustment')}</th>
-                <th className="text-right">{t('emp.thAdjustmentDeduction')}</th>
-                <th className="text-right">{t('emp.thSssDeduction')}</th>
-                <th className="text-right">{t('emp.thPagibigDeduction')}</th>
-                <th className="text-right">{t('emp.thPhilhealthDeduction')}</th>
-                <th>{t('emp.thJoinDate')}</th>
-                <th>{t('emp.thSssNo')}</th>
+                {visibleFields.map((f) => (
+                  <th
+                    key={f.key}
+                    className={`${headerAlign(f)} ${f.key === 'name' ? 'freeze-col' : ''}`}
+                  >
+                    {label(f)}
+                  </th>
+                ))}
                 <th className="text-center">{t('emp.thActions')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={19} className="text-center text-muted py-8">
+                  <td colSpan={visibleFields.length + 2} className="text-center text-muted py-8">
                     {t('emp.noData')}
                   </td>
                 </tr>
@@ -675,85 +667,7 @@ export default function Employees(): JSX.Element {
               {filtered.map((emp, idx) => (
                 <tr key={emp.id}>
                   <td>{String(idx + 1).padStart(3, '0')}</td>
-                  <td className="text-center p-1">
-                    <button
-                      onClick={() => pickPhoto(emp.id)}
-                      title={t('skill.photoTitle')}
-                      className="mx-auto block h-11 w-9 overflow-hidden rounded border border-line bg-gray-50 hover:ring-2 hover:ring-primary"
-                    >
-                      {photos[emp.id] ? (
-                        <img
-                          src={photos[emp.id]}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-base leading-none text-muted">＋</span>
-                      )}
-                    </button>
-                  </td>
-                  <td className="freeze-col">{emp.name}</td>
-                  <td>{emp.nickname || '—'}</td>
-                  <td className="text-center p-0.5">
-                    <input
-                      type="number"
-                      min={0}
-                      inputMode="numeric"
-                      value={ages[emp.id] ?? ''}
-                      onChange={(ev) =>
-                        setAges((prev) => ({ ...prev, [emp.id]: ev.target.value }))
-                      }
-                      onBlur={() =>
-                        saveInfo(emp.id, {
-                          age: ages[emp.id]
-                            ? Math.max(0, Math.floor(Number(ages[emp.id])))
-                            : null,
-                        })
-                      }
-                      className="w-12 rounded border border-line bg-white px-1 py-1 text-center text-sm"
-                      placeholder="—"
-                    />
-                  </td>
-                  <td className="text-center p-0.5">
-                    <input
-                      type="text"
-                      value={idNos[emp.id] ?? ''}
-                      onChange={(ev) =>
-                        setIdNos((prev) => ({ ...prev, [emp.id]: ev.target.value }))
-                      }
-                      onBlur={() => saveInfo(emp.id, { idNo: idNos[emp.id]?.trim() || null })}
-                      className="w-24 rounded border border-line bg-white px-1 py-1 text-center text-sm"
-                      placeholder="—"
-                    />
-                  </td>
-                  <td>{emp.position}</td>
-                  <td>
-                    <span className="crewtag">{emp.crewId}</span>
-                  </td>
-                  <td className="text-right">₱{emp.ratePerDay}</td>
-                  <td className="text-right">
-                    {emp.incentiveDailyRate != null ? `₱${emp.incentiveDailyRate}` : '—'}
-                  </td>
-                  <td className="text-right">
-                    {emp.canteenDebt ? `₱${emp.canteenDebt}` : '—'}
-                  </td>
-                  <td className="text-right">
-                    {emp.adjustment ? `₱${emp.adjustment}` : '—'}
-                  </td>
-                  <td className="text-right">
-                    {emp.adjustmentDeduction ? `₱${emp.adjustmentDeduction}` : '—'}
-                  </td>
-                  <td className="text-right">
-                    {emp.sssDeduction ? `₱${emp.sssDeduction}` : '—'}
-                  </td>
-                  <td className="text-right">
-                    {emp.pagibigDeduction ? `₱${emp.pagibigDeduction}` : '—'}
-                  </td>
-                  <td className="text-right">
-                    {emp.philhealthDeduction ? `₱${emp.philhealthDeduction}` : '—'}
-                  </td>
-                  <td>{emp.joinDate || '—'}</td>
-                  <td>{emp.sssNo || '—'}</td>
+                  {visibleFields.map((f) => renderCell(emp, f))}
                   <td className="text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       <button

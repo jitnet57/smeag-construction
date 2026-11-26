@@ -1,11 +1,27 @@
 import { useState, useEffect } from 'react';
-import { DEFAULT_SKILLS, FOREMAN_TEAM_KEY, skillsOf } from '@brightem/shared';
-import type { PayrollConfig, OvertimeMultipliers, NightDifferential, SkillDef } from '@brightem/shared';
+import {
+  DEFAULT_EMPLOYEE_FIELDS,
+  DEFAULT_SKILLS,
+  FOREMAN_TEAM_KEY,
+  REQUIRED_EMPLOYEE_FIELDS,
+  employeeFieldsOf,
+  skillsOf,
+} from '@brightem/shared';
+import type {
+  PayrollConfig,
+  OvertimeMultipliers,
+  NightDifferential,
+  SkillDef,
+  EmployeeFieldDef,
+  EmployeeFieldType,
+} from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 
 // A skill row being edited; `isNew` rows get their key generated on save.
 type SkillRow = SkillDef & { isNew?: boolean };
+// An employee info field row being edited; `isNew` rows get a key on save.
+type FieldRow = EmployeeFieldDef & { isNew?: boolean };
 
 const slug = (s: string) =>
   s
@@ -19,6 +35,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [skills, setSkills] = useState<SkillRow[]>([]);
+  const [fields, setFields] = useState<FieldRow[]>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -27,6 +44,7 @@ export default function Settings() {
       .then((data) => {
         setConfig(data);
         setSkills(skillsOf(data).map((sk) => ({ ...sk })));
+        setFields(employeeFieldsOf(data).map((f) => ({ ...f })));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -107,16 +125,68 @@ export default function Settings() {
     });
   };
 
+  // --- Employee info fields ------------------------------------------------
+  const updateField = (i: number, patch: Partial<EmployeeFieldDef>) =>
+    setFields((prev) => prev.map((f, j) => (j === i ? { ...f, ...patch } : f)));
+
+  const moveField = (i: number, dir: -1 | 1) =>
+    setFields((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
+  const removeField = (i: number) => {
+    if (!fields[i].isNew && !window.confirm(t('set.fieldDeleteConfirm'))) return;
+    setFields((prev) => prev.filter((_, j) => j !== i));
+  };
+
+  const addField = () =>
+    setFields((prev) => [
+      ...prev,
+      { key: '', en: '', ko: '', visible: true, builtin: false, type: 'text', isNew: true },
+    ]);
+
+  const resetFields = () => {
+    if (!window.confirm(t('set.fieldResetConfirm'))) return;
+    setFields(DEFAULT_EMPLOYEE_FIELDS.map((f) => ({ ...f })));
+  };
+
+  const finalizeFields = (): EmployeeFieldDef[] | null => {
+    const rows = fields.map((f) => ({ ...f, en: f.en.trim(), ko: f.ko.trim() }));
+    if (rows.some((f) => !f.en && !f.ko)) {
+      alert(t('set.fieldNeedName'));
+      return null;
+    }
+    const used = new Set<string>([
+      ...DEFAULT_EMPLOYEE_FIELDS.map((f) => f.key),
+      ...rows.filter((f) => !f.isNew).map((f) => f.key),
+    ]);
+    return rows.map(({ isNew, ...f }) => {
+      if (!isNew) return f;
+      const base = `c_${slug(f.en) || 'field'}`;
+      let key = base;
+      for (let n = 2; used.has(key); n++) key = `${base}_${n}`;
+      used.add(key);
+      return { ...f, key };
+    });
+  };
+
   const handleSave = async () => {
     if (!config) return;
     const finalSkills = finalizeSkills();
     if (!finalSkills) return;
+    const finalFields = finalizeFields();
+    if (!finalFields) return;
     setSaving(true);
     try {
-      const next = { ...config, skills: finalSkills };
+      const next = { ...config, skills: finalSkills, employeeFields: finalFields };
       await api.updateConfig(next);
       setConfig(next);
       setSkills(finalSkills.map((sk) => ({ ...sk })));
+      setFields(finalFields.map((f) => ({ ...f })));
       alert(t('set.saved'));
     } catch (error) {
       alert(t('set.saveError'));
@@ -426,6 +496,120 @@ export default function Settings() {
           </table>
         </div>
         <div className="note">{t('set.skillsNote')}</div>
+      </div>
+
+      {/* Employee info fields */}
+      <div className="panel">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h3 className="text-sm font-bold text-dark">
+            <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
+            {t('set.fieldsTitle')} ({fields.length})
+          </h3>
+          <div className="flex gap-2">
+            <button type="button" className="btn ghost" onClick={resetFields}>
+              {t('set.skillReset')}
+            </button>
+            <button type="button" className="btn gray" onClick={addField}>
+              {t('set.fieldAdd')}
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th className="text-center">#</th>
+                <th>{t('set.skillKo')}</th>
+                <th>{t('set.skillEn')}</th>
+                <th>{t('set.fieldType')}</th>
+                <th className="text-center">{t('set.fieldVisible')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {fields.map((f, i) => {
+                const required = f.builtin && REQUIRED_EMPLOYEE_FIELDS.includes(f.key);
+                return (
+                  <tr key={f.isNew ? `new-${i}` : f.key} className={f.visible ? '' : 'opacity-60'}>
+                    <td className="text-center text-muted">{i + 1}</td>
+                    <td>
+                      <input
+                        type="text"
+                        value={f.ko}
+                        onChange={(e) => updateField(i, { ko: e.target.value })}
+                        className="border border-line rounded px-2 py-1 w-32"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={f.en}
+                        onChange={(e) => updateField(i, { en: e.target.value })}
+                        className="border border-line rounded px-2 py-1 w-36"
+                      />
+                    </td>
+                    <td className="whitespace-nowrap">
+                      {f.builtin ? (
+                        <span className="text-xs text-muted">{t('set.fieldBuiltin')}</span>
+                      ) : (
+                        <select
+                          value={f.type ?? 'text'}
+                          onChange={(e) =>
+                            updateField(i, { type: e.target.value as EmployeeFieldType })
+                          }
+                          className="border border-line rounded px-2 py-1 bg-white"
+                        >
+                          <option value="text">{t('set.fieldTypeText')}</option>
+                          <option value="number">{t('set.fieldTypeNumber')}</option>
+                          <option value="date">{t('set.fieldTypeDate')}</option>
+                        </select>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <input
+                        type="checkbox"
+                        checked={f.visible}
+                        disabled={required}
+                        title={required ? t('set.fieldRequired') : undefined}
+                        onChange={(e) => updateField(i, { visible: e.target.checked })}
+                      />
+                    </td>
+                    <td className="whitespace-nowrap text-right">
+                      <button
+                        type="button"
+                        className="btn ghost px-2"
+                        title={t('set.skillUp')}
+                        disabled={i === 0}
+                        onClick={() => moveField(i, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost px-2"
+                        title={t('set.skillDown')}
+                        disabled={i === fields.length - 1}
+                        onClick={() => moveField(i, 1)}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost px-2 text-red-600"
+                        title={f.builtin ? t('set.fieldBuiltinNoDelete') : t('set.skillDelete')}
+                        disabled={f.builtin}
+                        onClick={() => removeField(i)}
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="note">{t('set.fieldsNote')}</div>
       </div>
 
       {/* Save Button */}

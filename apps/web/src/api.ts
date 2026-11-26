@@ -337,6 +337,7 @@ const networkApi = {
     sssDeduction?: number | null;
     pagibigDeduction?: number | null;
     philhealthDeduction?: number | null;
+    custom?: Record<string, string>;
   }): Promise<Employee> {
     const created = await fetchApi<Employee>('/api/employees', {
       method: 'POST',
@@ -363,6 +364,7 @@ const networkApi = {
       sssDeduction?: number | null;
       pagibigDeduction?: number | null;
       philhealthDeduction?: number | null;
+      custom?: Record<string, string>;
     }
   ): Promise<Employee> {
     const updated = await fetchApi<Employee>(

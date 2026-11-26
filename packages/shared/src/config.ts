@@ -1,4 +1,4 @@
-import type { PayrollConfig, SkillDef } from "./types.js";
+import type { EmployeeFieldDef, PayrollConfig, SkillDef } from "./types.js";
 
 // Default trade catalog in TEAMS.xlsx column order. Editable in Settings; the
 // saved list lives in PayrollConfig.skills.
@@ -24,6 +24,55 @@ export const DEFAULT_SKILLS: SkillDef[] = [
 /** The skill catalog in effect for a config (saved list, else the defaults). */
 export function skillsOf(config: Pick<PayrollConfig, "skills"> | null | undefined): SkillDef[] {
   return config?.skills?.length ? config.skills : DEFAULT_SKILLS;
+}
+
+// Built-in Employees info columns in their default order. Keys are fixed (they
+// map to Employee properties); labels / visibility / order are editable.
+const bf = (key: string, en: string, ko: string): EmployeeFieldDef => ({
+  key,
+  en,
+  ko,
+  visible: true,
+  builtin: true,
+});
+export const DEFAULT_EMPLOYEE_FIELDS: EmployeeFieldDef[] = [
+  bf("photo", "Photo", "사진"),
+  bf("name", "Name", "성명"),
+  bf("nickname", "Nickname", "닉네임"),
+  bf("age", "Age", "나이"),
+  bf("idNo", "ID", "아이디"),
+  bf("position", "Position", "직급"),
+  bf("crewId", "Crew", "소속 조"),
+  bf("ratePerDay", "Daily Rate", "일당"),
+  bf("incentiveDailyRate", "Incentive", "인센티브"),
+  bf("canteenDebt", "Canteen debt", "식당 외상"),
+  bf("adjustment", "Adjustment +", "조정 가산"),
+  bf("adjustmentDeduction", "Adjustment −", "조정 공제"),
+  bf("sssDeduction", "SSS", "SSS"),
+  bf("pagibigDeduction", "Pag-IBIG", "Pag-IBIG"),
+  bf("philhealthDeduction", "PhilHealth", "PhilHealth"),
+  bf("joinDate", "Join Date", "입사일"),
+  bf("sssNo", "SSS No.", "SSS 번호"),
+];
+
+/** Built-in fields that payroll needs, so they can't be hidden. */
+export const REQUIRED_EMPLOYEE_FIELDS = ["name", "crewId", "position", "ratePerDay"];
+
+/**
+ * The Employees info columns in effect: the saved list (unknown built-ins
+ * dropped), with any built-in missing from it appended so new built-ins show up.
+ */
+export function employeeFieldsOf(
+  config: Pick<PayrollConfig, "employeeFields"> | null | undefined
+): EmployeeFieldDef[] {
+  const saved = config?.employeeFields;
+  if (!saved?.length) return DEFAULT_EMPLOYEE_FIELDS;
+  const builtinKeys = new Set(DEFAULT_EMPLOYEE_FIELDS.map((f) => f.key));
+  const list = saved
+    .filter((f) => !f.builtin || builtinKeys.has(f.key))
+    .map((f) => (REQUIRED_EMPLOYEE_FIELDS.includes(f.key) ? { ...f, visible: true } : f));
+  const have = new Set(list.map((f) => f.key));
+  return [...list, ...DEFAULT_EMPLOYEE_FIELDS.filter((f) => !have.has(f.key))];
 }
 
 // ============================================================================

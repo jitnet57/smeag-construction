@@ -83,6 +83,8 @@ function toEmployee(r: any): Employee {
       r.pagibig_deduction == null ? undefined : Number(r.pagibig_deduction),
     philhealthDeduction:
       r.philhealth_deduction == null ? undefined : Number(r.philhealth_deduction),
+    custom:
+      r.custom_fields && typeof r.custom_fields === 'object' ? r.custom_fields : undefined,
   };
 }
 
@@ -658,6 +660,7 @@ export const supabaseApi = {
     sssDeduction?: number | null;
     pagibigDeduction?: number | null;
     philhealthDeduction?: number | null;
+    custom?: Record<string, string>;
   }): Promise<Employee> {
     const base =
       input.name
@@ -685,6 +688,10 @@ export const supabaseApi = {
       sss_deduction: input.sssDeduction ?? 0,
       pagibig_deduction: input.pagibigDeduction ?? 0,
       philhealth_deduction: input.philhealthDeduction ?? 0,
+      // Only sent when there are custom values (needs the custom_fields column).
+      ...(input.custom && Object.keys(input.custom).length
+        ? { custom_fields: input.custom }
+        : {}),
     };
     const { data, error } = await sb()
       .from('employees')
@@ -715,6 +722,7 @@ export const supabaseApi = {
       sssDeduction?: number | null;
       pagibigDeduction?: number | null;
       philhealthDeduction?: number | null;
+      custom?: Record<string, string>;
     }
   ): Promise<Employee> {
     const row: any = {};
@@ -739,6 +747,7 @@ export const supabaseApi = {
       row.pagibig_deduction = patch.pagibigDeduction ?? 0;
     if (patch.philhealthDeduction !== undefined)
       row.philhealth_deduction = patch.philhealthDeduction ?? 0;
+    if (patch.custom !== undefined) row.custom_fields = patch.custom;
     const { data, error } = await sb()
       .from('employees')
       .update(row)
