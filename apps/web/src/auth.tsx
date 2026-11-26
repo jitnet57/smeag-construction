@@ -31,6 +31,7 @@ export interface Account {
   displayName: string;
   role: Role;
   crewId: string | null;
+  phone: string; // phone login uses its last 4 digits ('' = no phone login)
   active: boolean;
   createdAt?: string;
 }
@@ -44,6 +45,7 @@ export interface AccountInput {
   displayName: string;
   role: Role;
   crewId: string | null;
+  phone: string;
   password: string; // empty on update = keep current password
   active: boolean;
 }
@@ -53,6 +55,13 @@ const TOKEN_KEY = 'brightem.session';
 
 export const isAdmin = (s: Session | null) => s?.role === 'admin';
 export const isTeamLeader = (s: Session | null) => s?.role === 'team_leader';
+
+/** Last 4 digits of a phone number, or '' when it has fewer than 4. */
+export const phoneLast4 = (p: string | null | undefined) => {
+  const d = (p ?? '').replace(/\D/g, '');
+  return d.length >= 4 ? d.slice(-4) : '';
+};
+const PHONE_KEY = (digits: string) => `phone:${digits}`;
 
 // ---- Backend: Supabase RPCs ------------------------------------------------
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -75,6 +84,29 @@ const supabaseAuth = {
       throw e;
     }
   },
+  // Phone login (pelham-shift style): the last 4 digits are the whole
+  // credential. Admin accounts are never reachable this way.
+  async loginPhone(digits: string): Promise<Session | null> {
+    try {
+      const s = await rpc<Session | null>('app_login_phone', { p_digits: digits });
+      if (s) await rememberOfflineLogin(PHONE_KEY(digits), digits, s);
+      else forgetOfflineLogin(PHONE_KEY(digits));
+      return s;
+    } catch (e) {
+      if (isNetworkError(e)) return offlineLogin<Session>(PHONE_KEY(digits), digits);
+      throw e;
+    }
+  },
+  /** Name of the single account these 4 digits would log in as (null if none). */
+  async lookupPhone(digits: string): Promise<string | null> {
+    try {
+      return await rpc<string | null>('app_phone_lookup', { p_digits: digits });
+    } catch (e) {
+      if (isNetworkError(e))
+        return offlineLogin<Session>(PHONE_KEY(digits), digits).then((s) => s?.displayName ?? null);
+      throw e;
+    }
+  },
   async session(token: string): Promise<Session | null> {
     try {
       return await rpc<Session | null>('app_session', { p_token: token });
@@ -94,6 +126,7 @@ const supabaseAuth = {
       p_crew_id: a.crewId,
       p_password: a.password,
       p_active: a.active,
+      p_phone: a.phone,
     }),
   remove: (token: string, username: string) =>
     rpc<void>('app_delete_account', { p_token: token, p_username: username }),
@@ -117,14 +150,14 @@ async function hashPw(username: string, pw: string): Promise<string> {
 
 async function localAccounts(): Promise<LocalAccount[]> {
   const raw = localStorage.getItem(LOCAL_KEY);
-  if (raw) return JSON.parse(raw);
+  if (raw) return (JSON.parse(raw) as LocalAccount[]).map((a) => ({ ...a, phone: a.phone ?? '' }));
   const seed: Omit<LocalAccount, 'hash'>[] = [
-    { username: 'admin', displayName: 'Emmeline Hwang', role: 'admin', crewId: null, active: true },
-    { username: 'admin1', displayName: 'Jaesun Hwang', role: 'admin', crewId: null, active: true },
-    { username: 'manager', displayName: 'Carlo Ongos', role: 'manager', crewId: null, active: true },
+    { username: 'admin', displayName: 'Emmeline Hwang', role: 'admin', crewId: null, phone: '', active: true },
+    { username: 'admin1', displayName: 'Jaesun Hwang', role: 'admin', crewId: null, phone: '', active: true },
+    { username: 'carloongos23@gmail.com', displayName: 'Carlo Ongos', role: 'manager', crewId: null, phone: '', active: true },
     ...LOCAL_CREWS.map((c) => ({
       username: `tl.${c.toLowerCase()}`, displayName: `${c} Team Leader`,
-      role: 'team_leader' as Role, crewId: c, active: true,
+      role: 'team_leader' as Role, crewId: c, phone: '', active: true,
     })),
   ];
   const out: LocalAccount[] = [];
@@ -149,14 +182,32 @@ async function localAdmin(token: string): Promise<LocalAccount> {
   return me;
 }
 
+async function localPhoneMatch(digits: string): Promise<LocalAccount | null> {
+  if (!/^\d{4}$/.test(digits)) return null;
+  const hits = (await localAccounts()).filter(
+    (a) => a.active && a.role !== 'admin' && phoneLast4(a.phone) === digits
+  );
+  return hits.length === 1 ? hits[0] : null; // shared digits → refuse, never guess
+}
+function localStartSession(a: LocalAccount): Session {
+  const token = crypto.randomUUID();
+  localStorage.setItem(LOCAL_SESS, JSON.stringify({ ...localSessions(), [token]: a.username }));
+  return { ...strip(a), token };
+}
+
 const localAuth: typeof supabaseAuth = {
   async login(username, password) {
     const u = username.trim().toLowerCase();
     const a = (await localAccounts()).find((x) => x.username === u && x.active);
     if (!a || a.hash !== (await hashPw(u, password))) return null;
-    const token = crypto.randomUUID();
-    localStorage.setItem(LOCAL_SESS, JSON.stringify({ ...localSessions(), [token]: u }));
-    return { ...strip(a), token };
+    return localStartSession(a);
+  },
+  async loginPhone(digits) {
+    const a = await localPhoneMatch(digits.trim());
+    return a ? localStartSession(a) : null;
+  },
+  async lookupPhone(digits) {
+    return (await localPhoneMatch(digits.trim()))?.displayName ?? null;
   },
   async session(token) {
     try {
@@ -177,17 +228,22 @@ const localAuth: typeof supabaseAuth = {
   async save(token, input) {
     const me = await localAdmin(token);
     const u = input.username.trim().toLowerCase();
-    if (!/^[a-z0-9._-]{3,32}$/.test(u)) throw new Error('invalid username');
+    if (!/^[a-z0-9._@+-]{3,64}$/.test(u)) throw new Error('invalid username');
     if (input.role === 'team_leader' && !input.crewId) throw new Error('team leader needs a crew');
+    const phone = input.phone.trim();
+    if (phone && !phoneLast4(phone)) throw new Error('phone needs at least 4 digits');
     if (u === me.username && (input.role !== 'admin' || !input.active))
       throw new Error('cannot demote or disable yourself');
     const list = await localAccounts();
+    if (phone && input.active && list.some(
+      (a) => a.username !== u && a.active && phoneLast4(a.phone) === phoneLast4(phone)
+    )) throw new Error('phone last 4 digits already used');
     const i = list.findIndex((a) => a.username === u);
     const crewId = input.role === 'team_leader' ? input.crewId : null;
     if (i < 0 && input.password.length < 6) throw new Error('password too short');
     const hash = input.password ? await hashPw(u, input.password) : list[i].hash;
     const row: LocalAccount = {
-      username: u, displayName: input.displayName, role: input.role, crewId,
+      username: u, displayName: input.displayName, role: input.role, crewId, phone,
       active: input.active, hash, createdAt: list[i]?.createdAt ?? new Date().toISOString(),
     };
     if (i >= 0) list[i] = row;
@@ -219,6 +275,7 @@ interface AuthCtx {
   session: Session | null;
   ready: boolean;
   login: (username: string, password: string) => Promise<boolean>;
+  loginPhone: (digits: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -244,13 +301,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setReady(true));
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const s = await authApi.login(username, password);
+  const start = useCallback((s: Session | null) => {
     if (!s) return false;
     localStorage.setItem(TOKEN_KEY, s.token);
     setSession(s);
     return true;
   }, []);
+  const login = useCallback(
+    async (username: string, password: string) => start(await authApi.login(username, password)),
+    [start]
+  );
+  const loginPhone = useCallback(
+    async (digits: string) => start(await authApi.loginPhone(digits)),
+    [start]
+  );
 
   const logout = useCallback(async () => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -259,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) await authApi.logout(token).catch(() => undefined);
   }, []);
 
-  return <Ctx.Provider value={{ session, ready, login, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ session, ready, login, loginPhone, logout }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthCtx {
@@ -273,12 +337,43 @@ export function useAuth(): AuthCtx {
 // that date. After the cutoff only a team leader may change it.
 export const CHECKIN_CUTOFF_HOUR = 7;
 
+// Server clock: the lock is judged by the database's time, not the phone's.
+// We keep the server time at the last sync plus a monotonic timer
+// (performance.now), which changing the phone's clock does not affect.
+// Until the first sync succeeds (e.g. opened offline) the device clock is used;
+// the database enforces the rule on save regardless.
+let serverAnchor: { serverMs: number; perfMs: number } | null = null;
+
+export async function syncServerClock(): Promise<void> {
+  if (!USE_SUPABASE) return;
+  try {
+    const t0 = performance.now();
+    const iso = await rpc<string>('app_server_time', {});
+    const t1 = performance.now();
+    const serverMs = Date.parse(iso);
+    if (!Number.isNaN(serverMs)) serverAnchor = { serverMs, perfMs: (t0 + t1) / 2 };
+  } catch {
+    /* offline — keep the previous anchor */
+  }
+}
+
+function trustedNow(): Date {
+  if (!serverAnchor) return new Date();
+  return new Date(serverAnchor.serverMs + (performance.now() - serverAnchor.perfMs));
+}
+
+if (typeof window !== 'undefined' && USE_SUPABASE) {
+  void syncServerClock();
+  setInterval(() => void syncServerClock(), 10 * 60_000);
+  window.addEventListener('online', () => void syncServerClock());
+}
+
 /** Current date (YYYY-MM-DD) and decimal hour in the site's time zone. */
 function manilaNow(): { date: string; hour: number } {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-  }).formatToParts(new Date());
+  }).formatToParts(trustedNow());
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
   return {
     date: `${get('year')}-${get('month')}-${get('day')}`,

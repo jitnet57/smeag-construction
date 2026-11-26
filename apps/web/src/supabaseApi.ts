@@ -53,7 +53,18 @@ export function sb(): SupabaseClient {
   _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false },
     // Offline-first: cache reads, queue writes while the network is down.
-    global: { fetch: offlineFetch },
+    // Every request carries the app login token (x-app-token) so the database
+    // can check who is writing (e.g. the 07:00 check-in rule). Queued offline
+    // writes keep the header and replay as the same user.
+    global: {
+      fetch: (input, init = {}) => {
+        const token = localStorage.getItem('brightem.session');
+        if (!token) return offlineFetch(input, init);
+        const headers = new Headers(init.headers);
+        headers.set('x-app-token', token);
+        return offlineFetch(input, { ...init, headers });
+      },
+    },
   });
   return _client;
 }

@@ -90,7 +90,7 @@ declare me app_accounts; a app_accounts; u text := lower(trim(p_username));
 begin
   me := _app_account_for(p_token);
   if me.role is distinct from 'admin' then raise exception 'not authorized'; end if;
-  if u !~ '^[a-z0-9._-]{3,32}$' then raise exception 'invalid username'; end if;
+  if u !~ '^[a-z0-9._@+-]{3,64}$' then raise exception 'invalid username'; end if;
   if p_role = 'team_leader' and coalesce(p_crew_id, '') = '' then
     raise exception 'team leader needs a crew';
   end if;
@@ -156,7 +156,7 @@ grant execute on function public.app_login(text, text),
 insert into public.app_accounts(username, display_name, role, crew_id, password_hash) values
   ('admin',   'Emmeline Hwang', 'admin',   null, extensions.crypt('CHANGE_ME_INITIAL_PASSWORD', extensions.gen_salt('bf'))),
   ('admin1',  'Jaesun Hwang',   'admin',   null, extensions.crypt('CHANGE_ME_INITIAL_PASSWORD', extensions.gen_salt('bf'))),
-  ('manager', 'Carlo Ongos',    'manager', null, extensions.crypt('CHANGE_ME_INITIAL_PASSWORD', extensions.gen_salt('bf')))
+  ('carloongos23@gmail.com', 'Carlo Ongos',    'manager', null, extensions.crypt('CHANGE_ME_INITIAL_PASSWORD', extensions.gen_salt('bf')))
 on conflict (username) do nothing;
 
 -- One team leader login per crew: tl.<crew>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Crew } from '@brightem/shared';
 import { api } from '../api';
-import { authApi, useAuth } from '../auth';
+import { authApi, phoneLast4, useAuth } from '../auth';
 import type { Account, AccountInput, Role } from '../auth';
 import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
@@ -17,6 +17,7 @@ const EMPTY: AccountInput = {
   displayName: '',
   role: 'team_leader',
   crewId: null,
+  phone: '',
   password: '',
   active: true,
 };
@@ -50,7 +51,7 @@ export default function Accounts() {
     setError('');
   };
   const openEdit = (a: Account) => {
-    setForm({ ...a, password: '' });
+    setForm({ ...a, phone: a.phone ?? '', password: '' });
     setIsNew(false);
     setError('');
   };
@@ -67,6 +68,17 @@ export default function Accounts() {
     }
     if (isNew && accounts.some((a) => a.username === form.username.trim().toLowerCase())) {
       setError(t('acct.duplicate'));
+      return;
+    }
+    const last4 = phoneLast4(form.phone);
+    if (form.phone.trim() && !last4) {
+      setError(t('acct.phoneShort'));
+      return;
+    }
+    if (last4 && form.active && accounts.some(
+      (a) => a.username !== form.username.trim().toLowerCase() && a.active && phoneLast4(a.phone) === last4
+    )) {
+      setError(t('acct.phoneDup'));
       return;
     }
     try {
@@ -109,6 +121,7 @@ export default function Accounts() {
                 <th>{t('acct.name')}</th>
                 <th>{t('acct.role')}</th>
                 <th>{t('acct.crew')}</th>
+                <th>{t('acct.phone')}</th>
                 <th className="text-center">{t('acct.active')}</th>
                 <th />
               </tr>
@@ -120,6 +133,7 @@ export default function Accounts() {
                   <td>{a.displayName}</td>
                   <td>{t(ROLE_LABEL[a.role])}</td>
                   <td>{a.crewId ?? '—'}</td>
+                  <td className="font-mono">{a.phone || '—'}</td>
                   <td className="text-center">{a.active ? '✓' : '—'}</td>
                   <td className="text-right whitespace-nowrap">
                     <button className="btn ghost" onClick={() => openEdit(a)}>
@@ -199,6 +213,18 @@ export default function Accounts() {
                 </select>
               </label>
             )}
+            <label className="block text-sm">
+              <span className="font-bold text-dark">{t('acct.phone')}</span>
+              <input
+                type="tel"
+                inputMode="tel"
+                className="border border-line rounded px-3 py-2 w-full font-mono"
+                value={form.phone}
+                placeholder="0917 123 4567"
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+              <span className="text-xs text-muted">{t('acct.phoneHelp')}</span>
+            </label>
             <label className="block text-sm">
               <span className="font-bold text-dark">
                 {isNew ? t('auth.password') : t('acct.newPassword')}

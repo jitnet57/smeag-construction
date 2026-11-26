@@ -5,7 +5,7 @@ import { onDataChanged } from '../offline';
 import { useI18n } from '../i18n';
 import { parseCsv } from '../lib/csv';
 import { readXlsx } from '../lib/xlsx';
-import { useAuth, canEditCheckin, isTeamLeader, isAdmin } from '../auth';
+import { useAuth, canEditCheckin, isTeamLeader, isAdmin, syncServerClock } from '../auth';
 
 interface Props {
   period: PayPeriod | null;
@@ -195,8 +195,15 @@ export default function Attendance({ period }: Props) {
       await api.updateAttendance(records);
       alert(t(confirm ? 'att.confirmed' : 'att.draftSaved'));
       setReloadKey((n) => n + 1);
-    } catch {
-      alert(t('att.saveError'));
+    } catch (err) {
+      // The database rejects AM IN changes after 07:00 (server clock).
+      if (String((err as { message?: string })?.message ?? '').includes('CHECKIN_CLOSED')) {
+        await syncServerClock();
+        setTick((n) => n + 1);
+        alert(t('att.checkinLocked'));
+      } else {
+        alert(t('att.saveError'));
+      }
     }
   };
 
