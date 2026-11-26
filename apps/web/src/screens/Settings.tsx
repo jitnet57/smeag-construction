@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
-import type { PayrollConfig, OvertimeMultipliers, NightDifferential } from '@brightem/shared';
+import { DEFAULT_SKILLS, FOREMAN_TEAM_KEY, skillsOf } from '@brightem/shared';
+import type { PayrollConfig, OvertimeMultipliers, NightDifferential, SkillDef } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+
+// A skill row being edited; `isNew` rows get their key generated on save.
+type SkillRow = SkillDef & { isNew?: boolean };
+
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 
 export default function Settings() {
   const { t } = useI18n();
   const [config, setConfig] = useState<PayrollConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [skills, setSkills] = useState<SkillRow[]>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -15,6 +26,7 @@ export default function Settings() {
       .getConfig()
       .then((data) => {
         setConfig(data);
+        setSkills(skillsOf(data).map((sk) => ({ ...sk })));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -41,11 +53,70 @@ export default function Settings() {
     });
   };
 
+  const updateSkill = (i: number, patch: Partial<SkillDef>) =>
+    setSkills((prev) => prev.map((sk, j) => (j === i ? { ...sk, ...patch } : sk)));
+
+  const moveSkill = (i: number, dir: -1 | 1) =>
+    setSkills((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
+  const removeSkill = (i: number) => {
+    if (!skills[i].isNew && !window.confirm(t('set.skillDeleteConfirm'))) return;
+    setSkills((prev) => prev.filter((_, j) => j !== i));
+  };
+
+  const addSkill = () =>
+    setSkills((prev) => [...prev, { key: '', header: '', en: '', ko: '', isNew: true }]);
+
+  const resetSkills = () => {
+    if (!window.confirm(t('set.skillResetConfirm'))) return;
+    setSkills(DEFAULT_SKILLS.map((sk) => ({ ...sk })));
+  };
+
+  // Validate the skill list and give new rows a stable, unique key.
+  const finalizeSkills = (): SkillDef[] | null => {
+    const rows = skills.map((sk) => ({
+      ...sk,
+      header: sk.header.trim().toUpperCase(),
+      en: sk.en.trim(),
+      ko: sk.ko.trim(),
+    }));
+    if (rows.some((sk) => !sk.header && !sk.en && !sk.ko)) {
+      alert(t('set.skillNeedName'));
+      return null;
+    }
+    const heads = rows.map((sk) => sk.header).filter(Boolean);
+    const dup = heads.find((h, i) => heads.indexOf(h) !== i);
+    if (dup) {
+      alert(`${t('set.skillDupHeader')}: ${dup}`);
+      return null;
+    }
+    const used = new Set<string>([FOREMAN_TEAM_KEY, ...rows.filter((sk) => !sk.isNew).map((sk) => sk.key)]);
+    return rows.map(({ isNew, ...sk }) => {
+      if (!isNew) return sk;
+      const base = slug(sk.header || sk.en) || 'skill';
+      let key = base;
+      for (let n = 2; used.has(key); n++) key = `${base}_${n}`;
+      used.add(key);
+      return { ...sk, key };
+    });
+  };
+
   const handleSave = async () => {
     if (!config) return;
+    const finalSkills = finalizeSkills();
+    if (!finalSkills) return;
     setSaving(true);
     try {
-      await api.updateConfig(config);
+      const next = { ...config, skills: finalSkills };
+      await api.updateConfig(next);
+      setConfig(next);
+      setSkills(finalSkills.map((sk) => ({ ...sk })));
       alert(t('set.saved'));
     } catch (error) {
       alert(t('set.saveError'));
@@ -259,6 +330,102 @@ export default function Settings() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Skill catalog */}
+      <div className="panel">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h3 className="text-sm font-bold text-dark">
+            <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
+            {t('set.skillsTitle')} ({skills.length})
+          </h3>
+          <div className="flex gap-2">
+            <button type="button" className="btn ghost" onClick={resetSkills}>
+              {t('set.skillReset')}
+            </button>
+            <button type="button" className="btn gray" onClick={addSkill}>
+              {t('set.skillAdd')}
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table>
+            <thead>
+              <tr>
+                <th className="text-center">#</th>
+                <th>{t('set.skillHeader')}</th>
+                <th>{t('set.skillEn')}</th>
+                <th>{t('set.skillKo')}</th>
+                <th>{t('set.skillKey')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {skills.map((sk, i) => (
+                <tr key={sk.isNew ? `new-${i}` : sk.key}>
+                  <td className="text-center text-muted">{i + 1}</td>
+                  <td>
+                    <input
+                      type="text"
+                      value={sk.header}
+                      onChange={(e) => updateSkill(i, { header: e.target.value })}
+                      className="border border-line rounded px-2 py-1 w-40 uppercase"
+                      placeholder="CARPENTER"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      value={sk.en}
+                      onChange={(e) => updateSkill(i, { en: e.target.value })}
+                      className="border border-line rounded px-2 py-1 w-36"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      value={sk.ko}
+                      onChange={(e) => updateSkill(i, { ko: e.target.value })}
+                      className="border border-line rounded px-2 py-1 w-28"
+                    />
+                  </td>
+                  <td className="text-xs text-muted whitespace-nowrap">
+                    {sk.isNew ? slug(sk.header || sk.en) || '—' : sk.key}
+                  </td>
+                  <td className="whitespace-nowrap text-right">
+                    <button
+                      type="button"
+                      className="btn ghost px-2"
+                      title={t('set.skillUp')}
+                      disabled={i === 0}
+                      onClick={() => moveSkill(i, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost px-2"
+                      title={t('set.skillDown')}
+                      disabled={i === skills.length - 1}
+                      onClick={() => moveSkill(i, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="btn ghost px-2 text-red-600"
+                      title={t('set.skillDelete')}
+                      onClick={() => removeSkill(i)}
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="note">{t('set.skillsNote')}</div>
       </div>
 
       {/* Save Button */}

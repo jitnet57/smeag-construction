@@ -1,4 +1,30 @@
-import type { PayrollConfig } from "./types.js";
+import type { PayrollConfig, SkillDef } from "./types.js";
+
+// Default trade catalog in TEAMS.xlsx column order. Editable in Settings; the
+// saved list lives in PayrollConfig.skills.
+export const DEFAULT_SKILLS: SkillDef[] = [
+  { key: "carpentry", header: "CARPENTER", en: "Carpenter", ko: "목수" },
+  { key: "plastering", header: "MASON", en: "Mason", ko: "조적/미장" },
+  { key: "tile", header: "TILE", en: "Tile", ko: "타일" },
+  { key: "welding", header: "WELDER", en: "Welder", ko: "용접" },
+  { key: "paint", header: "PAINTER", en: "Painter", ko: "페인트" },
+  { key: "installer", header: "INSTALLER", en: "Installer", ko: "설치" },
+  { key: "window_frame", header: "FRAME INSTALLER", en: "Frame installer", ko: "창호 프레임" },
+  { key: "window_glass", header: "GLASS INSTALLER", en: "Glass installer", ko: "유리 시공" },
+  { key: "water_pipe", header: "WATER LINE", en: "Water line", ko: "급수 배관" },
+  { key: "sanitary_pipe", header: "SANITARY LINE", en: "Sanitary line", ko: "오·배수 배관" },
+  { key: "fire_protection", header: "FIREPRO", en: "Firepro", ko: "소방" },
+  { key: "ducting", header: "DUCTING", en: "Ducting", ko: "덕트" },
+  { key: "roofing", header: "ROOFING", en: "Roofing", ko: "지붕/방수" },
+  { key: "steelman", header: "STEELMAN", en: "Steelman", ko: "철근" },
+  { key: "scaffolding", header: "SCAFFOLDING", en: "Scaffolding", ko: "스카폴딩" },
+  { key: "electrician", header: "ELECTRICAL", en: "Electrical", ko: "전기" },
+];
+
+/** The skill catalog in effect for a config (saved list, else the defaults). */
+export function skillsOf(config: Pick<PayrollConfig, "skills"> | null | undefined): SkillDef[] {
+  return config?.skills?.length ? config.skills : DEFAULT_SKILLS;
+}
 
 // ============================================================================
 // DEFAULT PAYROLL CONFIG

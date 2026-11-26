@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { SKILL_KEYS, TEAMS_HEADERS, FOREMAN_TEAM_KEY } from '@brightem/shared';
+import { FOREMAN_TEAM_KEY } from '@brightem/shared';
 import type { Employee, EmployeeSkill } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
-import type { TKey } from '../i18n';
 import { parseCsv } from '../lib/csv';
 import { readXlsx, downloadXlsx } from '../lib/xlsx';
 import type { SheetData, XCell } from '../lib/xlsx';
+import { useSkills } from '../lib/skills';
 
 const ALL_CREWS = '__ALL__';
 const LEVELS = Array.from({ length: 11 }, (_, i) => i); // 0..10
@@ -38,7 +38,8 @@ interface ImportReport {
   usedMarks: boolean;
 }
 
-type SortCol = 'name' | 'crew' | 'avg' | (typeof SKILL_KEYS)[number];
+// 'name' | 'crew' | 'avg' or a skill key.
+type SortCol = string;
 
 // Cell background shading by proficiency (0 = neutral, 10 = strong blue).
 function cellStyle(level: number): React.CSSProperties {
@@ -49,6 +50,7 @@ function cellStyle(level: number): React.CSSProperties {
 
 export default function Skills() {
   const { t } = useI18n();
+  const { skills: skillDefs, keys: SKILL_KEYS, label: skillLabel } = useSkills();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [levels, setLevels] = useState<Record<string, number>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
@@ -136,7 +138,7 @@ export default function Skills() {
 
   const avgOf = (empId: string) => {
     const sum = SKILL_KEYS.reduce((s, k) => s + getLevel(empId, k), 0);
-    return sum / SKILL_KEYS.length;
+    return SKILL_KEYS.length ? sum / SKILL_KEYS.length : 0;
   };
 
   // Crew list for the filter dropdown.
@@ -226,7 +228,7 @@ export default function Skills() {
   // each "# | NAME | <trade columns…>" with the 0–10 score (blank = 0), plus
   // CREW and AVG at the end. The file can be edited and imported back.
   const handleExport = () => {
-    const header: XCell[] = ['', 'NAME', ...SKILL_KEYS.map((k) => TEAMS_HEADERS[k]), 'CREW', 'AVG'];
+    const header: XCell[] = ['', 'NAME', ...skillDefs.map((s) => s.header || s.en), 'CREW', 'AVG'];
     const byName = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
     const sheet = (name: string, list: Employee[]) => ({
       name,
@@ -240,7 +242,7 @@ export default function Skills() {
           Number(avgOf(e.id).toFixed(1)),
         ]),
       ],
-      colWidths: [5, 30, ...SKILL_KEYS.map((k) => Math.max(9, TEAMS_HEADERS[k].length + 2)), 12, 7],
+      colWidths: [5, 30, ...skillDefs.map((s) => Math.max(9, (s.header || s.en).length + 2)), 12, 7],
       freeze: { rows: 1, cols: 2 },
     });
     const crewTag = selectedCrew === ALL_CREWS ? 'all' : selectedCrew;
@@ -273,11 +275,14 @@ export default function Skills() {
     }
 
     const headAlias = new Map<string, string>();
-    SKILL_KEYS.forEach((k) => {
-      [TEAMS_HEADERS[k], k, t(`skill.${k}` as TKey)].forEach((a) => headAlias.set(normHead(a), k));
+    skillDefs.forEach((s) => {
+      [s.header, s.key, s.en, s.ko]
+        .filter(Boolean)
+        .forEach((a) => headAlias.set(normHead(a), s.key));
     });
     // Older TEAMS files / exports used ELECTRICIAN for the ELECTRICAL column.
-    ['ELECTRICIAN', 'Electrician', '전기'].forEach((a) => headAlias.set(normHead(a), 'electrician'));
+    if (SKILL_KEYS.includes('electrician') && !headAlias.has('ELECTRICIAN'))
+      headAlias.set('ELECTRICIAN', 'electrician');
     const NAME_HEADS = new Set(['NAME', normHead(t('skill.thName')), '성명', '이름']);
     const isForemanSheet = (n: string) => /FOREMAN|포맨/i.test(n);
     const hasForemanSheet = sheets.some((sh) => isForemanSheet(sh.name));
@@ -400,7 +405,7 @@ export default function Skills() {
     });
 
     const skillHead = SKILL_KEYS.map(
-      (k) => `<th class="sk">${esc(t(`skill.${k}` as TKey))}</th>`
+      (k) => `<th class="sk">${esc(skillLabel(k))}</th>`
     ).join('');
 
     const pages = Array.from(groups.entries())
@@ -653,7 +658,7 @@ export default function Skills() {
                           className="text-[10px] font-bold px-2 py-0.5 rounded"
                           style={cellStyle(s.lvl)}
                         >
-                          {t(`skill.${s.k}` as TKey)} {s.lvl}
+                          {skillLabel(s.k)} {s.lvl}
                         </span>
                       ))}
                     </div>
@@ -729,7 +734,7 @@ export default function Skills() {
                             style={cellStyle(lvl)}
                           >
                             <span className="text-xs font-bold truncate">
-                              {t(`skill.${k}` as TKey)}
+                              {skillLabel(k)}
                             </span>
                             <select
                               value={lvl}
@@ -793,7 +798,7 @@ export default function Skills() {
                     onClick={() => toggleSort(k)}
                     className="text-center whitespace-nowrap cursor-pointer select-none hover:text-primary"
                   >
-                    {t(`skill.${k}` as TKey)}
+                    {skillLabel(k)}
                     {arrow(k)}
                   </th>
                 ))}

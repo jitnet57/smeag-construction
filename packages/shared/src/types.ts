@@ -124,6 +124,8 @@ export interface PayrollConfig {
   overtime: OvertimeMultipliers;
   nightDifferential: NightDifferential;
   contributions: ContributionTable[];
+  /** Editable trade/skill catalog (Settings → Skills). Falls back to DEFAULT_SKILLS. */
+  skills?: SkillDef[];
   // deductions the employer applies per-employee (loans, cash advance, canteen)
   // are supplied per payroll run, not in global config.
 }
@@ -233,6 +235,18 @@ export const TEAMS_HEADERS: Record<(typeof SKILL_KEYS)[number], string> = {
 export const FOREMAN_TEAM_KEY = "team_foreman";
 
 export type SkillKey = (typeof SKILL_KEYS)[number];
+
+/**
+ * One trade in the editable skill catalog. `key` is the stable id stored in
+ * employee_skills / tasks; `header` is the TEAMS.xlsx column header used for
+ * import/export; `en` / `ko` are the on-screen names.
+ */
+export interface SkillDef {
+  key: string;
+  header: string;
+  en: string;
+  ko: string;
+}
 
 /** A single worker's proficiency (0–10) in one trade. */
 export interface EmployeeSkill {

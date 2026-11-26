@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { SKILL_KEYS } from '@brightem/shared';
 import type {
   PayPeriod,
   Employee,
@@ -11,6 +10,7 @@ import type {
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
+import { useSkills } from '../lib/skills';
 
 interface Props {
   period: PayPeriod | null;
@@ -44,6 +44,7 @@ const PROGRESS_STYLE: Record<TaskProgress, string> = {
 
 export default function TaskAssign({ period }: Props) {
   const { t } = useI18n();
+  const { keys: SKILL_KEYS, label: tradeLabel } = useSkills();
 
   const [workDate, setWorkDate] = useState<string>(
     period?.endDate ?? new Date().toISOString().slice(0, 10)
@@ -173,7 +174,7 @@ export default function TaskAssign({ period }: Props) {
         id: newLocalId(),
         workDate,
         name: '',
-        skillKey: SKILL_KEYS[0],
+        skillKey: SKILL_KEYS[0] ?? '',
         requiredManday: 1,
         requiredHeadcount: 1,
         status: 'draft',
@@ -320,7 +321,6 @@ export default function TaskAssign({ period }: Props) {
     return s;
   }, [activeTasks]);
 
-  const tradeLabel = (k: string) => t(`skill.${k}` as TKey);
 
   return (
     <div className="w-full">
@@ -385,7 +385,7 @@ export default function TaskAssign({ period }: Props) {
                       onChange={(e) => updateTask(tk.id, { skillKey: e.target.value })}
                       className="border border-line rounded px-2 py-1 text-sm bg-white w-full"
                     >
-                      {SKILL_KEYS.map((k) => (
+                      {(SKILL_KEYS.includes(tk.skillKey) ? SKILL_KEYS : [...SKILL_KEYS, tk.skillKey]).map((k) => (
                         <option key={k} value={k}>{tradeLabel(k)}</option>
                       ))}
                     </select>
@@ -471,7 +471,7 @@ export default function TaskAssign({ period }: Props) {
                       onChange={(e) => updateTask(tk.id, { skillKey: e.target.value })}
                       className="border border-line rounded px-2 py-1 text-sm bg-white"
                     >
-                      {SKILL_KEYS.map((k) => (
+                      {(SKILL_KEYS.includes(tk.skillKey) ? SKILL_KEYS : [...SKILL_KEYS, tk.skillKey]).map((k) => (
                         <option key={k} value={k}>
                           {tradeLabel(k)}
                         </option>
