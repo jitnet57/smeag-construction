@@ -1,15 +1,42 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { SKILL_KEYS } from '@brightem/shared';
+import { SKILL_KEYS, TEAMS_HEADERS, FOREMAN_TEAM_KEY } from '@brightem/shared';
 import type { Employee, EmployeeSkill } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import type { TKey } from '../i18n';
-import { downloadCsv } from '../lib/csv';
+import { parseCsv } from '../lib/csv';
+import { readXlsx, downloadXlsx } from '../lib/xlsx';
+import type { SheetData, XCell } from '../lib/xlsx';
 
 const ALL_CREWS = '__ALL__';
 const LEVELS = Array.from({ length: 11 }, (_, i) => i); // 0..10
+// Level given to a trade cell that holds a mark (O, ✓, X…) instead of a number.
+const MARK_LEVEL = 5;
 
 const keyOf = (empId: string, skill: string) => `${empId}::${skill}`;
+
+type Team = 'all' | 'workers' | 'foreman';
+
+// Normalise a worker name for matching across files: "RENDON, NIÑO " ==
+// "rendon nino" == "RENDON,NINO".
+const normName = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '');
+
+// Normalise a column header: "FRAME INSTALLER" == "frame_installer".
+const normHead = (s: string) => s.toUpperCase().replace(/[^A-Z0-9가-힣]/g, '');
+
+interface ImportReport {
+  file: string;
+  matched: number;
+  changed: number;
+  foremanChanged: number;
+  unmatched: string[];
+  usedMarks: boolean;
+}
 
 type SortCol = 'name' | 'crew' | 'avg' | (typeof SKILL_KEYS)[number];
 
@@ -26,6 +53,9 @@ export default function Skills() {
   const [levels, setLevels] = useState<Record<string, number>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [selectedCrew, setSelectedCrew] = useState(ALL_CREWS);
+  const [team, setTeam] = useState<Team>('all');
+  const [report, setReport] = useState<ImportReport | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [sortCol, setSortCol] = useState<SortCol>('name');
@@ -101,6 +131,9 @@ export default function Skills() {
     setDirty((prev) => new Set(prev).add(k));
   };
 
+  const isForeman = (empId: string) => getLevel(empId, FOREMAN_TEAM_KEY) > 0;
+  const setForeman = (empId: string, on: boolean) => setLevel(empId, FOREMAN_TEAM_KEY, on ? 1 : 0);
+
   const avgOf = (empId: string) => {
     const sum = SKILL_KEYS.reduce((s, k) => s + getLevel(empId, k), 0);
     return sum / SKILL_KEYS.length;
@@ -115,7 +148,8 @@ export default function Skills() {
       .sort((a, b) => b.count - a.count);
   }, [employees]);
 
-  const visible = useMemo(() => {
+  // Crew + search filter (shared by the on-screen tabs and the Excel export).
+  const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return employees.filter(
       (e) =>
@@ -123,6 +157,21 @@ export default function Skills() {
         (q === '' || e.name.toLowerCase().includes(q))
     );
   }, [employees, selectedCrew, query]);
+
+  const teamCounts = useMemo(() => {
+    const foreman = filtered.filter((e) => isForeman(e.id)).length;
+    return { all: filtered.length, foreman, workers: filtered.length - foreman };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, levels]);
+
+  const visible = useMemo(
+    () =>
+      filtered.filter((e) =>
+        team === 'all' ? true : team === 'foreman' ? isForeman(e.id) : !isForeman(e.id)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtered, team, levels]
+  );
 
   // Click a column header to sort by it; click again to flip direction.
   const toggleSort = (col: SortCol) => {
@@ -173,21 +222,149 @@ export default function Skills() {
     }
   };
 
+  // Export in the TEAMS.xlsx layout: a WORKERS sheet and a FOREMAN sheet,
+  // each "# | NAME | <trade columns…>" with the 0–10 score (blank = 0), plus
+  // CREW and AVG at the end. The file can be edited and imported back.
   const handleExport = () => {
-    const header = [
-      t('skill.thName'),
-      t('skill.thCrew'),
-      ...SKILL_KEYS.map((k) => t(`skill.${k}` as TKey)),
-      t('skill.thAvg'),
-    ];
-    const body = sorted.map((e) => [
-      e.name,
-      e.crewId,
-      ...SKILL_KEYS.map((k) => getLevel(e.id, k)),
-      avgOf(e.id).toFixed(1),
-    ]);
+    const header: XCell[] = ['', 'NAME', ...SKILL_KEYS.map((k) => TEAMS_HEADERS[k]), 'CREW', 'AVG'];
+    const byName = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    const sheet = (name: string, list: Employee[]) => ({
+      name,
+      rows: [
+        header,
+        ...list.map((e, i): XCell[] => [
+          i + 1,
+          e.name,
+          ...SKILL_KEYS.map((k) => getLevel(e.id, k) || null),
+          e.crewId,
+          Number(avgOf(e.id).toFixed(1)),
+        ]),
+      ],
+      colWidths: [5, 30, ...SKILL_KEYS.map((k) => Math.max(9, TEAMS_HEADERS[k].length + 2)), 12, 7],
+      freeze: { rows: 1, cols: 2 },
+    });
     const crewTag = selectedCrew === ALL_CREWS ? 'all' : selectedCrew;
-    downloadCsv(`skills_${crewTag}.csv`, [header, ...body]);
+    downloadXlsx(`TEAMS_skills_${crewTag}.xlsx`, [
+      sheet('WORKERS', byName.filter((e) => !isForeman(e.id))),
+      sheet('FOREMAN', byName.filter((e) => isForeman(e.id))),
+    ]);
+  };
+
+  // ---- Excel import (TEAMS.xlsx layout, or a CSV with a NAME column) --------
+  // Every sheet is scanned for a header row containing NAME; trade columns are
+  // matched by TEAMS header (CARPENTER, MASON…), skill key, or screen label.
+  // Numbers set the score (clamped 0–10); a non-numeric mark sets MARK_LEVEL
+  // when the worker had no score; blank cells leave the score unchanged.
+  // Names on a sheet called FOREMAN join the Foreman team; when the file has a
+  // FOREMAN sheet, names on the other sheets are moved to Workers.
+  const handleImportFile = async (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const file = ev.target.files?.[0];
+    ev.target.value = '';
+    if (!file) return;
+
+    let sheets: SheetData[];
+    try {
+      sheets = /\.csv$/i.test(file.name)
+        ? [{ name: file.name, rows: parseCsv(await file.text()) }]
+        : await readXlsx(await file.arrayBuffer());
+    } catch {
+      alert(t('skill.importError'));
+      return;
+    }
+
+    const headAlias = new Map<string, string>();
+    SKILL_KEYS.forEach((k) => {
+      [TEAMS_HEADERS[k], k, t(`skill.${k}` as TKey)].forEach((a) => headAlias.set(normHead(a), k));
+    });
+    const NAME_HEADS = new Set(['NAME', normHead(t('skill.thName')), '성명', '이름']);
+    const isForemanSheet = (n: string) => /FOREMAN|포맨/i.test(n);
+    const hasForemanSheet = sheets.some((sh) => isForemanSheet(sh.name));
+
+    const empByName = new Map(employees.map((e) => [normName(e.name), e]));
+    const nextLevels = { ...levels };
+    const touched = new Set<string>();
+    const matchedIds = new Set<string>();
+    const foremanIds = new Set<string>();
+    const workerIds = new Set<string>();
+    const unmatched: string[] = [];
+    let usedMarks = false;
+    let foundHeader = false;
+
+    for (const sh of sheets) {
+      const hi = sh.rows.slice(0, 15).findIndex((r) => r.some((c) => NAME_HEADS.has(normHead(c ?? ''))));
+      if (hi < 0) continue;
+      foundHeader = true;
+      const head = sh.rows[hi].map((c) => normHead(c ?? ''));
+      const nameCol = head.findIndex((h) => NAME_HEADS.has(h));
+      const skillCols = head
+        .map((h, i) => ({ i, k: headAlias.get(h) }))
+        .filter((c): c is { i: number; k: string } => !!c.k);
+      const foremanSheet = isForemanSheet(sh.name);
+
+      for (const row of sh.rows.slice(hi + 1)) {
+        const raw = (row[nameCol] ?? '').trim();
+        if (!raw) continue;
+        const emp = empByName.get(normName(raw));
+        if (!emp) {
+          unmatched.push(raw);
+          continue;
+        }
+        matchedIds.add(emp.id);
+        if (foremanSheet) foremanIds.add(emp.id);
+        else if (hasForemanSheet) workerIds.add(emp.id);
+
+        for (const { i, k } of skillCols) {
+          const cell = (row[i] ?? '').trim();
+          if (!cell) continue;
+          const key = keyOf(emp.id, k);
+          const cur = nextLevels[key] ?? 0;
+          const num = Number(cell);
+          let lvl: number;
+          if (Number.isFinite(num)) lvl = Math.max(0, Math.min(10, Math.round(num)));
+          else {
+            usedMarks = true;
+            lvl = cur > 0 ? cur : MARK_LEVEL;
+          }
+          if (lvl !== cur) {
+            nextLevels[key] = lvl;
+            touched.add(key);
+          }
+        }
+      }
+    }
+
+    if (!foundHeader) {
+      alert(t('skill.importNoName'));
+      return;
+    }
+
+    // Team membership: FOREMAN sheet wins if a name appears on both.
+    let foremanChanged = 0;
+    matchedIds.forEach((id) => {
+      const want = foremanIds.has(id) ? 1 : workerIds.has(id) ? 0 : null;
+      if (want === null) return;
+      const key = keyOf(id, FOREMAN_TEAM_KEY);
+      if ((nextLevels[key] ?? 0) !== want) {
+        nextLevels[key] = want;
+        touched.add(key);
+        foremanChanged++;
+      }
+    });
+
+    setLevels(nextLevels);
+    setDirty((prev) => {
+      const n = new Set(prev);
+      touched.forEach((k) => n.add(k));
+      return n;
+    });
+    setReport({
+      file: file.name,
+      matched: matchedIds.size,
+      changed: touched.size - foremanChanged,
+      foremanChanged,
+      unmatched: Array.from(new Set(unmatched)),
+      usedMarks,
+    });
   };
 
   // Build a printable A4-landscape sign-up sheet (one page per crew) with each
@@ -334,6 +511,22 @@ export default function Skills() {
           className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
         />
 
+        <div className="flex rounded-lg border border-line bg-white overflow-hidden text-sm">
+          {(['all', 'workers', 'foreman'] as Team[]).map((tm) => (
+            <button
+              key={tm}
+              type="button"
+              onClick={() => setTeam(tm)}
+              className={`px-3 py-2 font-bold ${
+                team === tm ? 'bg-primary text-white' : 'text-dark hover:bg-gray-50'
+              }`}
+            >
+              {t(tm === 'all' ? 'skill.tabAll' : tm === 'workers' ? 'skill.tabWorkers' : 'skill.tabForeman')}{' '}
+              ({teamCounts[tm]})
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1" />
 
         {dirty.size > 0 && (
@@ -343,6 +536,16 @@ export default function Skills() {
         )}
         <button className="btn gray" onClick={handlePrint}>
           {t('skill.printSignup')}
+        </button>
+        <input
+          ref={importRef}
+          type="file"
+          accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+          className="hidden"
+          onChange={handleImportFile}
+        />
+        <button className="btn gray" onClick={() => importRef.current?.click()}>
+          {t('skill.import')}
         </button>
         <button className="btn gray" onClick={handleExport}>
           {t('skill.export')}
@@ -362,6 +565,44 @@ export default function Skills() {
         onChange={onPhotoFile}
       />
 
+      {report && (
+        <div className="panel mb-3.5 border-l-4 border-primary">
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-sm text-dark">
+              <div className="font-bold mb-1">
+                {t('skill.importResult')} — {report.file}
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-1">
+                <span>
+                  {t('skill.importMatched')}: <b>{report.matched}</b>
+                </span>
+                <span>
+                  {t('skill.importChanged')}: <b>{report.changed}</b>
+                </span>
+                <span>
+                  {t('skill.importForeman')}: <b>{report.foremanChanged}</b>
+                </span>
+                <span>
+                  {t('skill.importUnmatched')}: <b>{report.unmatched.length}</b>
+                </span>
+              </div>
+              <div className="text-xs text-muted mt-1">
+                {t('skill.importHint')}
+                {report.usedMarks && <> {t('skill.importMarkNote')}</>}
+              </div>
+              {report.unmatched.length > 0 && (
+                <div className="mt-2 max-h-32 overflow-y-auto text-xs text-red-700 bg-red-50 rounded p-2">
+                  {report.unmatched.join(' · ')}
+                </div>
+              )}
+            </div>
+            <button className="btn ghost flex-shrink-0" onClick={() => setReport(null)}>
+              {t('skill.dismiss')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="panel">
         <h3 className="text-sm font-bold text-dark mb-3">
           <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
@@ -370,7 +611,7 @@ export default function Skills() {
 
         {/* Mobile card view — tap a card to expand and edit levels / info */}
         <div className="md:hidden space-y-3">
-          {sorted.map((e) => {
+          {sorted.map((e, idx) => {
             const skills = SKILL_KEYS.map((k) => ({ k, lvl: getLevel(e.id, k) }))
               .filter((s) => s.lvl > 0)
               .sort((a, b) => b.lvl - a.lvl);
@@ -384,7 +625,14 @@ export default function Skills() {
                   className="w-full text-left"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div className="font-bold text-sm text-dark truncate">{e.name}</div>
+                    <div className="font-bold text-sm text-dark truncate">
+                      {idx + 1}. {e.name}
+                      {isForeman(e.id) && (
+                        <span className="ml-1.5 text-[10px] font-bold text-primary">
+                          {t('skill.thForeman')}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className={`pill ${avg >= 6 ? 'ok' : 'half'}`}>
                         {t('skill.thAvg')} {avg.toFixed(1)}
@@ -459,6 +707,16 @@ export default function Skills() {
                       </label>
                     </div>
 
+                    <label className="flex items-center gap-2 text-sm text-dark">
+                      <input
+                        type="checkbox"
+                        checked={isForeman(e.id)}
+                        onChange={(ev) => setForeman(e.id, ev.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      {t('skill.thForeman')}
+                    </label>
+
                     <div className="grid grid-cols-2 gap-2">
                       {SKILL_KEYS.map((k) => {
                         const lvl = getLevel(e.id, k);
@@ -508,6 +766,7 @@ export default function Skills() {
           <table className="text-sm">
             <thead>
               <tr>
+                <th className="text-center">#</th>
                 <th className="text-center whitespace-nowrap">{t('skill.thPhoto')}</th>
                 <th
                   onClick={() => toggleSort('name')}
@@ -525,6 +784,7 @@ export default function Skills() {
                   {t('skill.thCrew')}
                   {arrow('crew')}
                 </th>
+                <th className="text-center whitespace-nowrap">{t('skill.thForeman')}</th>
                 {SKILL_KEYS.map((k) => (
                   <th
                     key={k}
@@ -545,8 +805,9 @@ export default function Skills() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((e) => (
+              {sorted.map((e, idx) => (
                 <tr key={e.id}>
+                  <td className="text-center text-muted">{idx + 1}</td>
                   <td className="text-center p-1">
                     <button
                       onClick={() => pickPhoto(e.id)}
@@ -596,6 +857,14 @@ export default function Skills() {
                     />
                   </td>
                   <td className="text-center text-muted">{e.crewId}</td>
+                  <td className="text-center">
+                    <input
+                      type="checkbox"
+                      checked={isForeman(e.id)}
+                      onChange={(ev) => setForeman(e.id, ev.target.checked)}
+                      className="h-4 w-4 cursor-pointer"
+                    />
+                  </td>
                   {SKILL_KEYS.map((k) => {
                     const lvl = getLevel(e.id, k);
                     return (

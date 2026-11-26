@@ -182,24 +182,55 @@ export interface PayslipResult {
 
 // ---- Multi-skill matrix ----------------------------------------------------
 
-/** Trade/skill categories tracked per worker. Extendable — add keys here. */
+/**
+ * Trade/skill categories tracked per worker, in the column order of the
+ * company TEAMS.xlsx roster (CARPENTER … SCAFFOLDING, ELECTRICIAN).
+ * Keys are stable DB ids; the TEAMS header for each lives in TEAMS_HEADERS.
+ */
 export const SKILL_KEYS = [
-  "tile",
-  "carpentry",
-  "plastering",
-  "paint",
-  "scaffolding",
-  "water_pipe",
-  "sanitary_pipe",
-  "fire_protection",
-  "window_frame",
-  "window_glass",
-  "ducting",
-  "roofing",
-  "installer",
-  "wall_panel",
-  "welding",
+  "carpentry",       // CARPENTER
+  "plastering",      // MASON
+  "tile",            // TILE
+  "welding",         // WELDER
+  "paint",           // PAINTER
+  "installer",       // INSTALLER
+  "window_frame",    // FRAME INSTALLER
+  "window_glass",    // GLASS INSTALLER
+  "water_pipe",      // WATER LINE
+  "sanitary_pipe",   // SANITARY LINE
+  "fire_protection", // FIREPRO
+  "ducting",         // DUCTING
+  "roofing",         // ROOFING
+  "steelman",        // STEELMAN
+  "scaffolding",     // SCAFFOLDING
+  "electrician",     // ELECTRICIAN
 ] as const;
+
+/** TEAMS.xlsx column header for each skill key (used for import/export). */
+export const TEAMS_HEADERS: Record<(typeof SKILL_KEYS)[number], string> = {
+  carpentry: "CARPENTER",
+  plastering: "MASON",
+  tile: "TILE",
+  welding: "WELDER",
+  paint: "PAINTER",
+  installer: "INSTALLER",
+  window_frame: "FRAME INSTALLER",
+  window_glass: "GLASS INSTALLER",
+  water_pipe: "WATER LINE",
+  sanitary_pipe: "SANITARY LINE",
+  fire_protection: "FIREPRO",
+  ducting: "DUCTING",
+  roofing: "ROOFING",
+  steelman: "STEELMAN",
+  scaffolding: "SCAFFOLDING",
+  electrician: "ELECTRICIAN",
+};
+
+/**
+ * Pseudo skill key stored in employee_skills (level 1 = member) marking a
+ * worker as part of the FOREMAN team (the FOREMAN sheet of TEAMS.xlsx).
+ */
+export const FOREMAN_TEAM_KEY = "team_foreman";
 
 export type SkillKey = (typeof SKILL_KEYS)[number];
 
