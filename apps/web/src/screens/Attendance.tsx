@@ -6,7 +6,7 @@ import { useI18n } from '../i18n';
 import { parseCsv } from '../lib/csv';
 import { readXlsx } from '../lib/xlsx';
 import { useAuth, canEditCheckin, isTeamLeader, isAdmin, syncServerClock, manilaNow } from '../auth';
-import CheckCameraModal, { KIND_SPEECH, speak } from '../components/CheckCameraModal';
+import CheckCameraModal, { KIND_SPEECH, speak, playKindSound, unlockSound } from '../components/CheckCameraModal';
 import { getDevicePhotos, addDevicePhoto } from '../lib/devicePhotos';
 
 // 10:00–10:15 (Manila) is break time: the camera buttons record the break.
@@ -214,16 +214,14 @@ export default function Attendance({ period }: Props) {
   const isToday = selectedDate === now.date;
   const breakTime = isToday && now.hour >= BREAK_START && now.hour < BREAK_END;
   // Break times are saved on the server row, so every phone agrees. A worker
-  // with Break in but no Break out is still on break: they keep a single
-  // "Break time out" button until they take it, even after 10:15, so a late
-  // return is still recorded with its real time.
+  // with Break in but no Break out is still on break: only "Break time out"
+  // is enabled for them until they come back.
   const onBreak = (row: AttendanceRow) => row.breakIn != null && row.breakOut == null;
-  const rowKinds = (row: AttendanceRow): AttendancePhotoKind[] =>
-    onBreak(row) ? ['break_out']
-      : breakTime && row.breakIn == null ? ['break_in']
-      : ['check_in', 'check_out'];
+  const ROW_KINDS: AttendancePhotoKind[] = ['check_in', 'break_in', 'break_out', 'check_out'];
   const camDisabled = (row: AttendanceRow, kind: AttendancePhotoKind) =>
-    !isToday || isLocked(row) || (kind === 'check_in' && amInLocked);
+    !isToday || isLocked(row) || (kind === 'check_in' && amInLocked)
+      || (kind === 'break_in' && onBreak(row))
+      || (kind === 'break_out' && !onBreak(row));
   const camTitle = (row: AttendanceRow, kind: AttendancePhotoKind) =>
     !isToday ? t('att.camOnlyToday')
       : isLocked(row) ? undefined
@@ -245,8 +243,8 @@ export default function Attendance({ period }: Props) {
     amIn: !canEditCheckin(session, selectedDate)
       ? row.record?.amIn ?? null
       : row.amIn ? parseFloat(row.amIn) : null,
-    amOut: row.amOut ? parseFloat(row.amOut) : null,
-    pmIn: row.pmIn ? parseFloat(row.pmIn) : null,
+    amOut: row.record?.amOut ?? null,
+    pmIn: row.record?.pmIn ?? null,
     pmOut: row.pmOut ? parseFloat(row.pmOut) : null,
     breakIn: row.breakIn,
     breakOut: row.breakOut,
@@ -261,6 +259,7 @@ export default function Attendance({ period }: Props) {
     if (!camera) return;
     const { employeeId, kind } = camera;
     setCamera(null);
+    playKindSound(kind);
     speak(KIND_SPEECH[kind]);
     const idx = rows.findIndex((r) => r.employee.id === employeeId);
     if (idx < 0) return;
@@ -294,14 +293,17 @@ export default function Attendance({ period }: Props) {
   };
 
   const camButtons = (row: AttendanceRow) => (
-    <div className="flex gap-1.5">
-      {rowKinds(row).map((kind) => (
+    <div className="flex flex-wrap gap-1.5">
+      {ROW_KINDS.map((kind) => (
         <button
           key={kind}
           className={`btn ${kind === 'check_out' ? 'ghost' : ''} ${kind.startsWith('break_') ? '!bg-amber-500 !border-amber-500' : ''} !px-2.5 !py-1.5 text-xs whitespace-nowrap disabled:opacity-40`}
           disabled={camDisabled(row, kind)}
           title={camTitle(row, kind)}
-          onClick={() => setCamera({ employeeId: row.employee.id, kind })}
+          onClick={() => {
+            unlockSound(); // phones only allow sound that starts from a tap
+            setCamera({ employeeId: row.employee.id, kind });
+          }}
         >
           📷 {t(KIND_LABEL[kind] as Parameters<typeof t>[0])}
         </button>
@@ -375,8 +377,8 @@ export default function Attendance({ period }: Props) {
   };
 
   // ---- Excel (.xlsx) / CSV import -------------------------------------------
-  // Expected columns (header row, case-insensitive): Name, AM IN, AM OUT,
-  // PM IN, PM OUT, OT IN, OT OUT. Rows are matched to workers by name.
+  // Expected columns (header row, case-insensitive): Name, CHECK IN,
+  // CHECK OUT, OT IN, OT OUT (AM IN / PM OUT are read as check in / out). Rows are matched to workers by name.
   // For .xlsx the first sheet is read. Confirmed (locked) rows are skipped.
   const handleImportClick = () => fileRef.current?.click();
 
@@ -398,10 +400,8 @@ export default function Attendance({ period }: Props) {
       const col = (...names: string[]) =>
         header.findIndex((h) => names.includes(h));
       const iName = col('name', '성명', '이름');
-      const iAmIn = col('am in', 'amin');
-      const iAmOut = col('am out', 'amout');
-      const iPmIn = col('pm in', 'pmin');
-      const iPmOut = col('pm out', 'pmout');
+      const iAmIn = col('check in', 'checkin', 'time in', 'in', '체크인', 'am in', 'amin');
+      const iPmOut = col('check out', 'checkout', 'time out', 'out', '체크아웃', 'pm out', 'pmout');
       const iOtIn = col('ot in', 'otin');
       const iOtOut = col('ot out', 'otout');
       if (iName < 0) {
@@ -424,16 +424,12 @@ export default function Attendance({ period }: Props) {
         }
         matched++;
         const amIn = amInLocked ? next[idx].amIn : at(r, iAmIn) || next[idx].amIn;
-        const amOut = at(r, iAmOut) || next[idx].amOut;
-        const pmIn = at(r, iPmIn) || next[idx].pmIn;
         const pmOut = at(r, iPmOut) || next[idx].pmOut;
         const otIn = at(r, iOtIn);
         const otOut = at(r, iOtOut);
         next[idx] = {
           ...next[idx],
           amIn,
-          amOut,
-          pmIn,
           pmOut,
           otIn: otIn || next[idx].otIn,
           otOut: otOut || next[idx].otOut,
@@ -556,25 +552,15 @@ export default function Attendance({ period }: Props) {
                   {isLocked(row) && '🔒 '}{row.status} · {row.workedHours.toFixed(1)}h
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-3">
+              <div className="grid grid-cols-2 gap-2 mt-3">
                 <label className="block">
-                  <span className="block text-[9px] text-muted mb-0.5">AM IN</span>
+                  <span className="block text-[9px] text-muted mb-0.5">CHECK IN</span>
                   <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.amIn}
                     disabled={amInLocked || isLocked(row)} title={amInLocked ? t('att.checkinLocked') : undefined}
                     onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)} />
                 </label>
                 <label className="block">
-                  <span className="block text-[9px] text-muted mb-0.5">AM OUT</span>
-                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.amOut} disabled={isLocked(row)}
-                    onChange={(e) => handleInputChange(idx, 'amOut', e.target.value)} />
-                </label>
-                <label className="block">
-                  <span className="block text-[9px] text-muted mb-0.5">PM IN</span>
-                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.pmIn} disabled={isLocked(row)}
-                    onChange={(e) => handleInputChange(idx, 'pmIn', e.target.value)} />
-                </label>
-                <label className="block">
-                  <span className="block text-[9px] text-muted mb-0.5">PM OUT</span>
+                  <span className="block text-[9px] text-muted mb-0.5">CHECK OUT</span>
                   <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.pmOut} disabled={isLocked(row)}
                     onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)} />
                 </label>
@@ -603,10 +589,8 @@ export default function Attendance({ period }: Props) {
                 <th>#</th>
                 <th className="freeze-col">{t('att.thName')}</th>
                 <th>{t('att.thPosition')}</th>
-                <th className="text-center">AM IN</th>
-                <th className="text-center">AM OUT</th>
-                <th className="text-center">PM IN</th>
-                <th className="text-center">PM OUT</th>
+                <th className="text-center">CHECK IN</th>
+                <th className="text-center">CHECK OUT</th>
                 <th className="text-center">OT IN</th>
                 <th className="text-center">OT OUT</th>
                 <th className="text-center">{t('att.thWorkedH')}</th>
@@ -627,22 +611,6 @@ export default function Attendance({ period }: Props) {
                       disabled={amInLocked || isLocked(row)}
                       title={amInLocked ? t('att.checkinLocked') : undefined}
                       onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)}
-                    />
-                  </td>
-                  <td className="text-center">
-                    <input
-                      className="in disabled:bg-gray-100 disabled:text-muted"
-                      value={row.amOut}
-                      disabled={isLocked(row)}
-                      onChange={(e) => handleInputChange(idx, 'amOut', e.target.value)}
-                    />
-                  </td>
-                  <td className="text-center">
-                    <input
-                      className="in disabled:bg-gray-100 disabled:text-muted"
-                      value={row.pmIn}
-                      disabled={isLocked(row)}
-                      onChange={(e) => handleInputChange(idx, 'pmIn', e.target.value)}
                     />
                   </td>
                   <td className="text-center">

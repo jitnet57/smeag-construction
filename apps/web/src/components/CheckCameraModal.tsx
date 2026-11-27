@@ -24,6 +24,65 @@ export function speak(text: string) {
   }
 }
 
+// Short chime played when a check photo is taken, so the worker hears it even
+// where speech is unavailable. Each kind has its own notes:
+// check in rises, check out falls, break in/out are two quick beeps.
+const KIND_NOTES: Record<AttendancePhotoKind, number[]> = {
+  check_in: [660, 880, 1175],
+  check_out: [1175, 880, 660],
+  break_in: [988, 988],
+  break_out: [784, 1047],
+};
+
+let audioCtx: AudioContext | null = null;
+
+function getAudio(): AudioContext | null {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx ??= new Ctx();
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+/** Call from a tap: phones (iOS) only let sound and speech start after a user gesture. */
+export function unlockSound() {
+  const ctx = getAudio();
+  if (ctx?.state === 'suspended') void ctx.resume().catch(() => undefined);
+  try {
+    const synth = window.speechSynthesis;
+    if (synth && !synth.speaking) synth.speak(new SpeechSynthesisUtterance(''));
+  } catch {
+    /* no speech */
+  }
+}
+
+export function playKindSound(kind: AttendancePhotoKind) {
+  const ctx = getAudio();
+  if (!ctx) return;
+  try {
+    if (ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
+    const start = ctx.currentTime + 0.02;
+    KIND_NOTES[kind].forEach((freq, i) => {
+      const t0 = start + i * 0.16;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.15);
+    });
+  } catch {
+    /* sound not supported — the photo is still saved */
+  }
+}
+
 const MAX_SIDE = 960;
 
 // Shrink a captured frame / picked image to a JPEG of at most MAX_SIDE px.

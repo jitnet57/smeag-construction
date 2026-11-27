@@ -583,8 +583,8 @@ const DICT = {
   'att.onBreak': { en: 'on break', ko: '휴식 중' },
   'att.thCamera': { en: 'Photo check', ko: '사진 체크' },
   'att.breakBanner': {
-    en: 'Break time (10:00–10:15): tap Break time in. Workers on break keep a Break time out button until they come back, even after 10:15.',
-    ko: '휴식 시간(10:00–10:15): 휴식 시작을 찍으세요. 휴식 중인 직원은 10:15가 지나도 복귀할 때까지 휴식 종료 버튼이 유지됩니다.',
+    en: 'Break time (10:00–10:15): tap Break time in, and Break time out when the worker comes back.',
+    ko: '휴식 시간(10:00–10:15): 휴식 시작을 찍고, 복귀할 때 휴식 종료를 찍으세요.',
   },
   'att.camOnlyToday': { en: 'Photo check-in works for today only.', ko: '사진 체크인은 오늘 날짜에서만 가능합니다.' },
   'att.cameraUnavailable': {
