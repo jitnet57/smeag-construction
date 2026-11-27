@@ -18,6 +18,7 @@ import Settings from './screens/Settings';
 import Accounts, { ROLE_LABEL } from './screens/Accounts';
 import Login from './screens/Login';
 import Messages from './screens/Messages';
+import WeeklyReport from './screens/WeeklyReport';
 import { useUnreadMessages } from './components/useUnreadMessages';
 import { authApi, useAuth } from './auth';
 import type { Role, Session } from './auth';
@@ -29,6 +30,7 @@ type ScreenKey =
   | 'attendance'
   | 'payroll'
   | 'payslip'
+  | 'report'
   | 'extras'
   | 'employees'
   | 'skills'
@@ -51,6 +53,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'attendance', icon: '🕑', labelKey: 'nav.attendance' },
   { key: 'payroll', icon: '₱', labelKey: 'nav.payroll' },
   { key: 'payslip', icon: '🧾', labelKey: 'nav.payslip' },
+  { key: 'report', icon: '📊', labelKey: 'nav.report' },
   { key: 'extras', icon: '🍱', labelKey: 'nav.extras' },
   { key: 'employees', icon: '👷', labelKey: 'nav.employees' },
   { key: 'skills', icon: '🛠', labelKey: 'nav.skills' },
@@ -107,6 +110,7 @@ const SCREEN_TITLES: Record<ScreenKey, TKey> = {
   attendance: 'nav.attendance',
   payroll: 'nav.payroll',
   payslip: 'nav.payslip',
+  report: 'nav.report',
   extras: 'nav.extras',
   employees: 'nav.employees',
   skills: 'nav.skills',
@@ -265,6 +269,8 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
         return <Attendance period={currentPeriod} />;
       case 'payroll':
         return <Payroll period={currentPeriod} periods={periods} />;
+      case 'report':
+        return <WeeklyReport period={currentPeriod} />;
       case 'payslip':
         return <Payslip period={currentPeriod} periods={periods} />;
       case 'extras':

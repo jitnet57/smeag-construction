@@ -281,8 +281,23 @@ input.in:focus {
     visibility: hidden;
   }
   .slip,
-  .slip * {
+  .slip *,
+  .wr-print,
+  .wr-print * {
     visibility: visible;
+  }
+  .wr-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border: 0 !important;
+  }
+  .wr-print .overflow-auto {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .wr-print .no-print {
+    display: none !important;
   }
   .slip {
     position: absolute;

@@ -34,6 +34,7 @@ const DICT = {
   'nav.more': { en: 'More', ko: '더보기' },
   'nav.accounts': { en: 'Accounts', ko: '계정 관리' },
   'nav.messages': { en: 'Messages', ko: '메시지' },
+  'nav.report': { en: 'Weekly Report', ko: '주간 리포트' },
 
   // --- Messages (wording from pelham-shift) ------------------------------------
   'msg.teamTitle': { en: 'Team messages', ko: '팀 메시지' },
