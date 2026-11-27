@@ -39,6 +39,74 @@ const HOL_CELL: Record<HolidayKind, string> = {
   legal: 'bg-red-50',
 };
 
+// Month calendar for the Holidays tab: each holiday's date number gets the
+// kind colour (special = yellow, legal = red). Clicking a day picks it for
+// the "add holiday" form.
+const HOL_DAY: Record<HolidayKind, string> = {
+  special: 'bg-yellow-300 text-yellow-950 font-bold',
+  legal: 'bg-red-500 text-white font-bold',
+};
+function HolidayMonth({
+  holidays,
+  selected,
+  onPick,
+  L,
+}: {
+  holidays: Holiday[];
+  selected: string;
+  onPick: (d: string) => void;
+  L: (en: string, ko: string) => string;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [ym, setYm] = useState(() => (selected || today).slice(0, 7)); // YYYY-MM
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const lead = first.getUTCDay();
+  const byDate = new Map(holidays.map((h) => [h.date, h]));
+  const shift = (n: number) => {
+    const d = new Date(Date.UTC(y, m - 1 + n, 1));
+    setYm(d.toISOString().slice(0, 7));
+  };
+  const cells: (string | null)[] = [
+    ...Array<null>(lead).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => `${ym}-${String(i + 1).padStart(2, '0')}`),
+  ];
+  return (
+    <div className="border border-line rounded-lg p-3 mb-3 max-w-sm bg-white">
+      <div className="flex items-center justify-between mb-2">
+        <button type="button" className="btn ghost px-2 py-1" onClick={() => shift(-1)}>‹</button>
+        <b className="text-dark text-sm">{ym}</b>
+        <button type="button" className="btn ghost px-2 py-1" onClick={() => shift(1)}>›</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-muted mb-1">
+        {DOW.map((d, i) => (
+          <span key={d} className={i === 0 ? 'text-red-600' : i === 6 ? 'text-blue-600' : ''}>{d}</span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center text-sm">
+        {cells.map((d, i) => {
+          if (!d) return <span key={`e${i}`} />;
+          const h = byDate.get(d);
+          return (
+            <button
+              key={d}
+              type="button"
+              title={h ? `${h.name} (${h.kind === 'legal' ? L('Legal', '법정') : L('Special', '특별')})` : undefined}
+              onClick={() => onPick(d)}
+              className={`h-8 rounded-md ${h ? HOL_DAY[h.kind] : 'hover:bg-bg text-dark'} ${
+                d === selected ? 'ring-2 ring-primary' : ''
+              } ${d === today ? 'underline' : ''}`}
+            >
+              {Number(d.slice(8))}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function daysFrom(from: string, to: string): string[] {
   const out: string[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) out.push(d);
@@ -729,6 +797,7 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
                 🇵🇭 {L('Load Philippine holidays', '필리핀 공휴일 불러오기')}
               </button>
             </div>
+            <HolidayMonth holidays={holidays} selected={hDate} onPick={setHDate} L={L} />
             <div className="overflow-x-auto">
               <table>
                 <thead>
