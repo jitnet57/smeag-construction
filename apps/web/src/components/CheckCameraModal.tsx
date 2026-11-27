@@ -221,6 +221,7 @@ export default function CheckCameraModal({
     let alive = true;
     let timer = 0;
     let lastTs = 0;
+    let errors = 0;
     loadFaceDetector()
       .then((detector) => {
         if (!alive) return;
@@ -239,9 +240,14 @@ export default function CheckCameraModal({
                 .sort((a, b) => b.width * b.height - a.width * a.height)[0];
               const r = v.getBoundingClientRect();
               setGuide(judgeFace(box, { w: v.videoWidth, h: v.videoHeight }, { w: r.width, h: r.height }));
+              errors = 0;
             } catch {
-              setGuide('off');
-              return;
+              // One bad frame (e.g. while the stream resizes) must not drop
+              // the guide; only give up after many failures in a row.
+              if (++errors >= 20) {
+                setGuide('off');
+                return;
+              }
             }
           }
           timer = window.setTimeout(tick, 150);
@@ -355,7 +361,7 @@ export default function CheckCameraModal({
               {facing === 'user' ? t('att.cameraFront') : t('att.cameraBack')}
             </span>
           )}
-          {!failed && live && guide !== 'off' && (
+          {!failed && (
             <>
               <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 300 400" preserveAspectRatio="none">
                 <defs>
@@ -371,7 +377,7 @@ export default function CheckCameraModal({
                   rx={OVAL.rx * 300}
                   ry={OVAL.ry * 400}
                   fill="none"
-                  stroke={guide === 'ok' ? '#22c55e' : guide === 'loading' ? '#d1d5db' : '#ef4444'}
+                  stroke={guide === 'ok' ? '#22c55e' : guide === 'loading' ? '#d1d5db' : guide === 'off' ? '#ffffff' : '#ef4444'}
                   strokeWidth="4"
                   strokeDasharray={guide === 'loading' ? '10 8' : undefined}
                   vectorEffect="non-scaling-stroke"
@@ -379,7 +385,7 @@ export default function CheckCameraModal({
               </svg>
               <div
                 className={`absolute inset-x-6 bottom-3 rounded-full px-3 py-1.5 text-center text-xs font-semibold text-white ${
-                  guide === 'ok' ? 'bg-green-600/90' : guide === 'loading' ? 'bg-black/60' : 'bg-red-600/90'
+                  guide === 'ok' ? 'bg-green-600/90' : guide === 'loading' || guide === 'off' ? 'bg-black/60' : 'bg-red-600/90'
                 }`}
               >
                 {t(`att.face.${guide}`)}

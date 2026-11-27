@@ -650,6 +650,7 @@ const DICT = {
   'att.face.center': { en: 'Move your face to the centre', ko: '얼굴을 가운데로 맞춰 주세요' },
   'att.face.closer': { en: 'Come a little closer', ko: '조금 더 가까이 와 주세요' },
   'att.face.back': { en: 'Move a little back', ko: '조금 뒤로 물러나 주세요' },
+  'att.face.off': { en: 'Fit your face inside the oval', ko: '얼굴을 타원 안에 맞춰 촬영하세요' },
   'att.face.ok': { en: 'Good — take the photo', ko: '좋아요 — 촬영하세요' },
   'att.photoError': { en: 'Could not save the photo check.', ko: '사진 체크를 저장하지 못했습니다.' },
   'att.note': {
