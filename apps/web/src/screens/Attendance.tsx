@@ -233,6 +233,18 @@ export default function Attendance({ period }: Props) {
     t(key).replace('{time}', hourClock(checkoutCloseHour(attTimes)));
   const amInLocked = !canEditCheckin(session, selectedDate);
   const pmOutLocked = !canEditCheckout(session, selectedDate);
+  // One check-in and one check-out per worker per day: once saved, the camera
+  // button stays off for that day. Only Emmeline / Carlo can still correct the
+  // time by hand.
+  const override = canOverrideTimes(session);
+  const checkedIn = (row: AttendanceRow) => row.record?.amIn != null;
+  const checkedOut = (row: AttendanceRow) => row.record?.pmOut != null;
+  const amInDisabled = (row: AttendanceRow) => amInLocked || isLocked(row) || (!override && checkedIn(row));
+  const pmOutDisabled = (row: AttendanceRow) => pmOutLocked || isLocked(row) || (!override && checkedOut(row));
+  const amInTitle = (row: AttendanceRow) =>
+    amInLocked ? checkinMsg('att.checkinLocked') : !override && checkedIn(row) ? t('att.alreadyCheckedIn') : undefined;
+  const pmOutTitle = (row: AttendanceRow) =>
+    pmOutLocked ? checkoutMsg('att.checkoutLocked') : !override && checkedOut(row) ? t('att.alreadyCheckedOut') : undefined;
   const isLocked = (row: AttendanceRow) => !!row.record?.confirmed;
   const now = manilaNow();
   const isToday = selectedDate === now.date;
@@ -243,15 +255,17 @@ export default function Attendance({ period }: Props) {
   const onBreak = (row: AttendanceRow) => row.breakIn != null && row.breakOut == null;
   const ROW_KINDS: AttendancePhotoKind[] = ['check_in', 'break_in', 'break_out', 'check_out'];
   const camDisabled = (row: AttendanceRow, kind: AttendancePhotoKind) =>
-    !isToday || isLocked(row) || (kind === 'check_in' && amInLocked)
-      || (kind === 'check_out' && pmOutLocked)
+    !isToday || isLocked(row) || (kind === 'check_in' && (amInLocked || checkedIn(row)))
+      || (kind === 'check_out' && (pmOutLocked || checkedOut(row)))
       || (kind === 'break_in' && onBreak(row))
       || (kind === 'break_out' && !onBreak(row));
   const camTitle = (row: AttendanceRow, kind: AttendancePhotoKind) =>
     !isToday ? t('att.camOnlyToday')
       : isLocked(row) ? undefined
       : kind === 'check_in' && amInLocked ? checkinMsg('att.checkinLocked')
-      : kind === 'check_out' && pmOutLocked ? checkoutMsg('att.checkoutLocked') : undefined;
+      : kind === 'check_in' && checkedIn(row) ? t('att.alreadyCheckedIn')
+      : kind === 'check_out' && pmOutLocked ? checkoutMsg('att.checkoutLocked')
+      : kind === 'check_out' && checkedOut(row) ? t('att.alreadyCheckedOut') : undefined;
   const lockedCount = rows.filter(isLocked).length;
   const allLocked = rows.length > 0 && lockedCount === rows.length;
 
@@ -266,12 +280,12 @@ export default function Attendance({ period }: Props) {
     employeeId: row.employee.id,
     date: selectedDate,
     status: row.workedHours >= 8 ? ('full' as const) : 'half' as const,
-    amIn: !canEditCheckin(session, selectedDate)
+    amIn: !canEditCheckin(session, selectedDate) || (!canOverrideTimes(session) && row.record?.amIn != null)
       ? row.record?.amIn ?? null
       : row.amIn ? parseFloat(row.amIn) : null,
     amOut: row.record?.amOut ?? null,
     pmIn: row.record?.pmIn ?? null,
-    pmOut: !canEditCheckout(session, selectedDate)
+    pmOut: !canEditCheckout(session, selectedDate) || (!canOverrideTimes(session) && row.record?.pmOut != null)
       ? row.record?.pmOut ?? null
       : row.pmOut ? parseFloat(row.pmOut) : null,
     breakIn: row.breakIn,
@@ -311,7 +325,11 @@ export default function Attendance({ period }: Props) {
       setPhotos((cur) => [...cur.filter((p) => p.id !== photo.id), photo]);
     } catch (err) {
       const msg = String((err as { message?: string })?.message ?? '');
-      if (msg.includes('CHECKIN_CLOSED') || msg.includes('CHECKOUT_CLOSED')) {
+      if (msg.includes('CHECKIN_DONE') || msg.includes('CHECKOUT_DONE')) {
+        // Another phone already recorded it: show the saved time.
+        setReloadKey((n) => n + 1);
+        alert(t(msg.includes('CHECKOUT_DONE') ? 'att.alreadyCheckedOut' : 'att.alreadyCheckedIn'));
+      } else if (msg.includes('CHECKIN_CLOSED') || msg.includes('CHECKOUT_CLOSED')) {
         await syncServerClock();
         setTick((n) => n + 1);
         alert(msg.includes('CHECKOUT_CLOSED') ? checkoutMsg('att.checkoutLocked') : checkinMsg('att.checkinLocked'));
@@ -380,7 +398,11 @@ export default function Attendance({ period }: Props) {
     } catch (err) {
       // The database rejects AM IN changes after 07:00 (server clock).
       const msg = String((err as { message?: string })?.message ?? '');
-      if (msg.includes('CHECKIN_CLOSED') || msg.includes('CHECKOUT_CLOSED')) {
+      if (msg.includes('CHECKIN_DONE') || msg.includes('CHECKOUT_DONE')) {
+        // Another phone already recorded it: show the saved time.
+        setReloadKey((n) => n + 1);
+        alert(t(msg.includes('CHECKOUT_DONE') ? 'att.alreadyCheckedOut' : 'att.alreadyCheckedIn'));
+      } else if (msg.includes('CHECKIN_CLOSED') || msg.includes('CHECKOUT_CLOSED')) {
         await syncServerClock();
         setTick((n) => n + 1);
         alert(msg.includes('CHECKOUT_CLOSED') ? checkoutMsg('att.checkoutLocked') : checkinMsg('att.checkinLocked'));
@@ -453,8 +475,8 @@ export default function Attendance({ period }: Props) {
           continue;
         }
         matched++;
-        const amIn = amInLocked ? next[idx].amIn : at(r, iAmIn) || next[idx].amIn;
-        const pmOut = pmOutLocked ? next[idx].pmOut : at(r, iPmOut) || next[idx].pmOut;
+        const amIn = amInDisabled(next[idx]) ? next[idx].amIn : at(r, iAmIn) || next[idx].amIn;
+        const pmOut = pmOutDisabled(next[idx]) ? next[idx].pmOut : at(r, iPmOut) || next[idx].pmOut;
         const otIn = at(r, iOtIn);
         const otOut = at(r, iOtOut);
         next[idx] = {
@@ -593,13 +615,13 @@ export default function Attendance({ period }: Props) {
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">CHECK IN</span>
                   <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.amIn}
-                    disabled={amInLocked || isLocked(row)} title={amInLocked ? checkinMsg('att.checkinLocked') : undefined}
+                    disabled={amInDisabled(row)} title={amInTitle(row)}
                     onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)} />
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">CHECK OUT</span>
-                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.pmOut} disabled={pmOutLocked || isLocked(row)}
-                    title={pmOutLocked ? checkoutMsg('att.checkoutLocked') : undefined}
+                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.pmOut} disabled={pmOutDisabled(row)}
+                    title={pmOutTitle(row)}
                     onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)} />
                 </label>
                 <label className="block">
@@ -646,8 +668,8 @@ export default function Attendance({ period }: Props) {
                     <input
                       className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.amIn}
-                      disabled={amInLocked || isLocked(row)}
-                      title={amInLocked ? checkinMsg('att.checkinLocked') : undefined}
+                      disabled={amInDisabled(row)}
+                      title={amInTitle(row)}
                       onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)}
                     />
                   </td>
@@ -655,8 +677,8 @@ export default function Attendance({ period }: Props) {
                     <input
                       className="in disabled:bg-gray-100 disabled:text-muted"
                       value={row.pmOut}
-                      disabled={pmOutLocked || isLocked(row)}
-                      title={pmOutLocked ? checkoutMsg('att.checkoutLocked') : undefined}
+                      disabled={pmOutDisabled(row)}
+                      title={pmOutTitle(row)}
                       onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)}
                     />
                   </td>

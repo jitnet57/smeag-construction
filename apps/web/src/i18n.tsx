@@ -94,6 +94,8 @@ const DICT = {
     en: 'Check-out closed at {time} — only Emmeline Hwang or Carlo can change PM OUT for this date.',
     ko: '퇴근 체크아웃은 {time}에 마감되었습니다 — 이 날짜의 PM OUT은 Emmeline Hwang, Carlo만 수정할 수 있습니다.',
   },
+  'att.alreadyCheckedIn': { en: 'Already checked in today.', ko: '오늘은 이미 체크인했습니다.' },
+  'att.alreadyCheckedOut': { en: 'Already checked out today.', ko: '오늘은 이미 체크아웃했습니다.' },
   'att.checkoutOpen': {
     en: 'Check-out (PM OUT) is open until {time}.',
     ko: '퇴근 체크아웃(PM OUT)은 {time}까지 가능합니다.',
