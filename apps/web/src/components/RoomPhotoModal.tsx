@@ -23,6 +23,24 @@ export default function RoomPhotoModal({
   const [busy, setBusy] = useState(false);
   const [viewer, setViewer] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Which camera the phone opens for "Add photo" (remembered on this phone).
+  const [facing, setFacing] = useState<'user' | 'environment'>(() => {
+    try {
+      return localStorage.getItem('roomPhoto.facing') === 'user' ? 'user' : 'environment';
+    } catch {
+      return 'environment';
+    }
+  });
+  const flipFacing = () =>
+    setFacing((f) => {
+      const next = f === 'user' ? 'environment' : 'user';
+      try {
+        localStorage.setItem('roomPhoto.facing', next);
+      } catch {
+        /* not remembered */
+      }
+      return next;
+    });
 
   useEffect(() => {
     let alive = true;
@@ -133,18 +151,26 @@ export default function RoomPhotoModal({
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="environment"
+            capture={facing}
             multiple
             onChange={onPick}
             className="hidden"
           />
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={busy}
-            className="rounded-md border border-primary bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-          >
-            {busy ? t('photo.uploading') : `＋ ${t('photo.add')}`}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={flipFacing}
+              className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-dark hover:bg-bg"
+            >
+              🔄 {facing === 'user' ? t('att.cameraFront') : t('att.cameraBack')}
+            </button>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+              className="rounded-md border border-primary bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? t('photo.uploading') : `＋ ${t('photo.add')}`}
+            </button>
+          </div>
         </div>
       </div>
 

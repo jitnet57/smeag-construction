@@ -113,6 +113,60 @@ export function playKindSound(kind: AttendancePhotoKind) {
   }
 }
 
+type Facing = 'user' | 'environment';
+
+// The side last used on this phone is remembered, so a team leader who
+// photographs the crew with the back camera does not have to flip every time.
+const FACING_KEY = 'checkCamera.facing';
+function loadFacing(): Facing {
+  try {
+    return localStorage.getItem(FACING_KEY) === 'environment' ? 'environment' : 'user';
+  } catch {
+    return 'user';
+  }
+}
+function saveFacing(f: Facing) {
+  try {
+    localStorage.setItem(FACING_KEY, f);
+  } catch {
+    /* private mode — just not remembered */
+  }
+}
+
+/**
+ * Open the camera on the wanted side. Some phones ignore `facingMode`, so when
+ * flipping (`avoidId` = the camera being left) a stream that comes back on the
+ * same camera is dropped and the other cameras are tried one by one.
+ */
+async function openCamera(want: Facing, avoidId?: string): Promise<MediaStream> {
+  const md = navigator.mediaDevices;
+  const attempts: MediaTrackConstraints[] = [{ facingMode: { exact: want } }, { facingMode: want }];
+  for (const video of attempts) {
+    try {
+      const stream = await md.getUserMedia({ video, audio: false });
+      const id = stream.getVideoTracks()[0]?.getSettings().deviceId;
+      if (avoidId && id === avoidId) {
+        stream.getTracks().forEach((tr) => tr.stop());
+        continue;
+      }
+      return stream;
+    } catch {
+      /* try the next way */
+    }
+  }
+  if (avoidId) {
+    const cams = (await md.enumerateDevices()).filter((d) => d.kind === 'videoinput' && d.deviceId !== avoidId);
+    for (const cam of cams) {
+      try {
+        return await md.getUserMedia({ video: { deviceId: { exact: cam.deviceId } }, audio: false });
+      } catch {
+        /* try the next camera */
+      }
+    }
+  }
+  throw new Error('camera unavailable');
+}
+
 const MAX_SIDE = 960;
 
 // Shrink a captured frame / picked image to a JPEG of at most MAX_SIDE px.
@@ -146,9 +200,17 @@ export default function CheckCameraModal({
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [facing, setFacing] = useState<'user' | 'environment'>('user');
+  const [facing, setFacing] = useState<Facing>(loadFacing);
+  // Which way the open camera really points (phones may ignore facingMode);
+  // only the front camera is shown mirrored.
+  const [actual, setActual] = useState<Facing>(facing);
   const [live, setLive] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [flipFailed, setFlipFailed] = useState(false);
+  // Set by flip(): the camera we are leaving and the side to go back to if
+  // the other camera cannot be opened.
+  const flipRef = useRef<{ from?: string; back: Facing } | null>(null);
+  const deviceRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let alive = true;
@@ -157,27 +219,53 @@ export default function CheckCameraModal({
       setFailed(true);
       return;
     }
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: facing }, audio: false })
+    const flip = flipRef.current;
+    flipRef.current = null;
+    openCamera(facing, flip?.from)
       .then((stream) => {
         if (!alive) {
           stream.getTracks().forEach((tr) => tr.stop());
           return;
         }
+        const settings = stream.getVideoTracks()[0]?.getSettings();
+        deviceRef.current = settings?.deviceId;
+        setActual(settings?.facingMode === 'user' || settings?.facingMode === 'environment' ? settings.facingMode : facing);
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           void videoRef.current.play().catch(() => undefined);
         }
+        saveFacing(facing);
+        setFailed(false);
         setLive(true);
       })
-      .catch(() => alive && setFailed(true));
+      .catch(() => {
+        if (!alive) return;
+        if (flip) {
+          // The other camera would not open: go back to the one that worked.
+          setFlipFailed(true);
+          setFacing(flip.back);
+        } else {
+          setFailed(true);
+        }
+      });
     return () => {
       alive = false;
       streamRef.current?.getTracks().forEach((tr) => tr.stop());
       streamRef.current = null;
     };
   }, [facing]);
+
+  const flipCamera = () => {
+    setFlipFailed(false);
+    if (failed) {
+      // Live camera unavailable: the phone's camera app opens on the other side.
+      setFacing((f) => (f === 'user' ? 'environment' : 'user'));
+      return;
+    }
+    flipRef.current = { from: deviceRef.current, back: facing };
+    setFacing((f) => (f === 'user' ? 'environment' : 'user'));
+  };
 
   const shoot = async () => {
     const v = videoRef.current;
@@ -212,8 +300,18 @@ export default function CheckCameraModal({
               ref={videoRef}
               playsInline
               muted
-              className={`h-full w-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`}
+              className={`h-full w-full object-cover ${actual === 'user' ? '-scale-x-100' : ''}`}
             />
+          )}
+          {!failed && (
+            <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white">
+              {facing === 'user' ? t('att.cameraFront') : t('att.cameraBack')}
+            </span>
+          )}
+          {flipFailed && (
+            <div className="absolute inset-x-2 bottom-2 rounded-md bg-black/70 px-3 py-2 text-center text-xs text-white">
+              {t('att.cameraFlipFailed')}
+            </div>
           )}
           {failed && (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-white">
@@ -223,12 +321,8 @@ export default function CheckCameraModal({
         </div>
         <input ref={fileRef} type="file" accept="image/*" capture={facing} className="hidden" onChange={onPick} />
         <div className="flex items-center justify-between gap-2 px-4 py-3">
-          <button
-            className="btn ghost"
-            onClick={() => setFacing((f) => (f === 'user' ? 'environment' : 'user'))}
-            disabled={failed}
-          >
-            🔄 {t('att.cameraFlip')}
+          <button className="btn ghost" onClick={flipCamera} disabled={!failed && !live}>
+            🔄 {facing === 'user' ? t('att.cameraToBack') : t('att.cameraToFront')}
           </button>
           {failed ? (
             <button className="btn" onClick={() => fileRef.current?.click()}>
