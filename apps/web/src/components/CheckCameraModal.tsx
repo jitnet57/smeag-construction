@@ -10,14 +10,44 @@ export const KIND_SPEECH: Record<AttendancePhotoKind, string> = {
   break_out: 'Baydream break time out',
 };
 
+// Prefer Google's friendly English voice: "Google US English" (Chrome on a
+// computer, a warm female voice), else any Google English voice (Android
+// Chrome), else the best English voice the phone has (e.g. iPhone Samantha).
+let chosenVoice: SpeechSynthesisVoice | null = null;
+function pickVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis?.getVoices() ?? [];
+  if (!voices.length) return null;
+  const en = voices.filter((v) => /^en[-_]/i.test(v.lang));
+  const isGoogle = (v: SpeechSynthesisVoice) => /google/i.test(v.name) || /google/i.test(v.voiceURI);
+  return (
+    en.find((v) => v.name === 'Google US English') ??
+    en.find((v) => isGoogle(v) && /en[-_]US/i.test(v.lang)) ??
+    en.find(isGoogle) ??
+    en.find((v) => /samantha|female/i.test(v.name)) ??
+    en.find((v) => /en[-_]US/i.test(v.lang)) ??
+    en[0] ??
+    null
+  );
+}
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  chosenVoice = pickVoice();
+  // Voices load late in Chrome.
+  window.speechSynthesis.addEventListener?.('voiceschanged', () => {
+    chosenVoice = pickVoice();
+  });
+}
+
 export function speak(text: string) {
   try {
     const synth = window.speechSynthesis;
     if (!synth) return;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US';
-    u.rate = 0.95;
+    const voice = chosenVoice ?? pickVoice();
+    if (voice) u.voice = voice;
+    u.lang = voice?.lang ?? 'en-US';
+    u.rate = 1;
+    u.pitch = 1.1; // a little brighter / friendlier
     synth.speak(u);
   } catch {
     /* speech not supported — the photo is still saved */
