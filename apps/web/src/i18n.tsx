@@ -578,6 +578,8 @@ const DICT = {
   'att.checkOut': { en: 'Check out', ko: '체크아웃' },
   'att.breakIn': { en: 'Break time in', ko: '휴식 시작' },
   'att.breakOut': { en: 'Break time out', ko: '휴식 종료' },
+  'att.mobileView': { en: 'Mobile view', ko: '모바일 보기' },
+  'att.tableView': { en: 'Table view', ko: '표 보기' },
   'att.onBreak': { en: 'on break', ko: '휴식 중' },
   'att.thCamera': { en: 'Photo check', ko: '사진 체크' },
   'att.breakBanner': {

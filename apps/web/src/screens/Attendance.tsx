@@ -177,6 +177,15 @@ export default function Attendance({ period }: Props) {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // On a computer, show the phone-style cards (with the camera check buttons)
+  // instead of the table when chosen. Remembered on this device.
+  const [cardView, setCardView] = useState(() => localStorage.getItem('brightem.att.cardView') === '1');
+  const toggleCardView = () =>
+    setCardView((v) => {
+      localStorage.setItem('brightem.att.cardView', v ? '0' : '1');
+      return !v;
+    });
+
   // Camera check-in / check-out (and break) photos for the selected date.
   const [photos, setPhotos] = useState<AttendancePhoto[]>([]);
   const [camera, setCamera] = useState<{ employeeId: string; kind: AttendancePhotoKind } | null>(null);
@@ -480,6 +489,10 @@ export default function Attendance({ period }: Props) {
 
         <div className="flex-1" />
 
+        <button className="btn ghost hidden md:inline-flex" onClick={toggleCardView}>
+          {cardView ? `🖥 ${t('att.tableView')}` : `📱 ${t('att.mobileView')}`}
+        </button>
+
         <input
           ref={fileRef}
           type="file"
@@ -529,7 +542,7 @@ export default function Attendance({ period }: Props) {
           </div>
         )}
         {/* Mobile card view */}
-        <div className="md:hidden space-y-3">
+        <div className={cardView ? 'grid gap-3 sm:grid-cols-2 xl:grid-cols-3' : 'md:hidden space-y-3'}>
           {rows.map((row, idx) => (
             <div key={row.employee.id} className="bg-white border border-line rounded-xl p-3 shadow-sm">
               <div className="flex items-center justify-between gap-2">
@@ -583,7 +596,7 @@ export default function Attendance({ period }: Props) {
         </div>
 
         {/* Desktop table view */}
-        <div className="overflow-x-auto hidden md:block">
+        <div className={cardView ? 'hidden' : 'overflow-x-auto hidden md:block'}>
           <table>
             <thead>
               <tr>
