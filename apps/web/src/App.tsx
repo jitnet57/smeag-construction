@@ -78,8 +78,15 @@ function isKenneth(s: Session): boolean {
   return digits.endsWith('0000') || /kenneth/i.test(`${s.username} ${s.displayName}`);
 }
 
-function canOpen(role: Role, key: ScreenKey, view: View = 'admin', kenneth = false): boolean {
-  if (KENNETH_ONLY.includes(key) && !kenneth) return false;
+// Settings is also open to Emmeline (admin), Jaesun (admin1) and Carlo.
+const SETTINGS_USERS = ['admin', 'admin1', 'carloongos23@gmail.com'];
+function unlockedScreens(s: Session): ScreenKey[] {
+  if (isKenneth(s)) return KENNETH_ONLY;
+  return SETTINGS_USERS.includes(s.username) ? ['settings'] : [];
+}
+
+function canOpen(role: Role, key: ScreenKey, view: View = 'admin', unlocked: ScreenKey[] = []): boolean {
+  if (KENNETH_ONLY.includes(key) && !unlocked.includes(key)) return false;
   if (view === 'staff') return TEAM_LEADER_SCREENS.includes(key);
   if (role === 'admin') return true;
   if (role === 'manager') return key !== 'accounts';
@@ -211,9 +218,9 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
   const { t, lang, setLang } = useI18n();
   const { session, logout } = useAuth();
   const role = session!.role;
-  const kenneth = isKenneth(session!);
-  const navItems = NAV_ITEMS.filter((n) => canOpen(role, n.key, view, kenneth));
-  const bottomTabs = BOTTOM_TABS.filter((n) => canOpen(role, n.key, view, kenneth));
+  const unlocked = unlockedScreens(session!);
+  const navItems = NAV_ITEMS.filter((n) => canOpen(role, n.key, view, unlocked));
+  const bottomTabs = BOTTOM_TABS.filter((n) => canOpen(role, n.key, view, unlocked));
   const [pwOpen, setPwOpen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<ScreenKey>(
     role === 'team_leader' || view === 'staff' ? 'attendance' : 'dashboard'
@@ -235,7 +242,7 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
   }, []);
 
   const renderScreen = () => {
-    if (!canOpen(role, currentScreen, view, kenneth)) return null;
+    if (!canOpen(role, currentScreen, view, unlocked)) return null;
     if (
       !currentPeriod &&
       currentScreen !== 'settings' &&
