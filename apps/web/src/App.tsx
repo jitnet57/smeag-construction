@@ -20,6 +20,7 @@ import Login from './screens/Login';
 import { authApi, useAuth } from './auth';
 import type { Role } from './auth';
 import SyncBadge from './components/SyncBadge';
+import WorkBell from './components/WorkBell';
 
 type ScreenKey =
   | 'dashboard'
@@ -344,6 +345,7 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
               </span>
             )}
             <SyncBadge />
+            <WorkBell />
             {/* Language toggle — English is the default */}
             <div className="flex items-center rounded-full border border-line overflow-hidden flex-shrink-0">
               {(['en', 'ko'] as Lang[]).map((l) => (
