@@ -300,6 +300,7 @@ async function fetchDailyEntries(
     date: r.date,
     otHours: r.ot_hours == null ? null : Number(r.ot_hours),
     canteen: r.canteen == null ? null : Number(r.canteen),
+    canteenItems: Array.isArray(r.canteen_items) ? r.canteen_items.map(Number) : null,
   }));
 }
 
@@ -514,17 +515,20 @@ export const supabaseApi = {
     const keep = entries.filter((e) => e.otHours != null || e.canteen != null);
     const drop = entries.filter((e) => e.otHours == null && e.canteen == null);
     if (keep.length) {
-      const { error } = await sb()
-        .from('pay_daily_entries')
-        .upsert(
-          keep.map((e) => ({
-            employee_id: e.employeeId,
-            date: e.date,
-            ot_hours: e.otHours ?? null,
-            canteen: e.canteen ?? null,
-          })),
-          { onConflict: 'employee_id,date' }
-        );
+      const rows = keep.map((e) => ({
+        employee_id: e.employeeId,
+        date: e.date,
+        ot_hours: e.otHours ?? null,
+        canteen: e.canteen ?? null,
+        canteen_items: e.canteenItems?.length ? e.canteenItems : null,
+      }));
+      const upsert = (r: object[]) =>
+        sb().from('pay_daily_entries').upsert(r, { onConflict: 'employee_id,date' });
+      let { error } = await upsert(rows);
+      // DB without 20261204_canteen_items.sql: keep saving the day totals
+      if (error && /canteen_items/.test(error.message ?? '')) {
+        ({ error } = await upsert(rows.map(({ canteen_items: _, ...r }) => r)));
+      }
       if (error) throw error;
     }
     for (const e of drop) {

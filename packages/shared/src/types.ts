@@ -168,7 +168,8 @@ export interface PayDailyEntry {
   employeeId: string;
   date: string;          // ISO "YYYY-MM-DD"
   otHours?: number | null;  // overtime hours (sheet OVERTIME); overrides attendance OT for that day
-  canteen?: number | null;  // canteen charge ₱ (sheet CANTEEN)
+  canteen?: number | null;  // canteen charge ₱ (sheet CANTEEN) = sum of canteenItems
+  canteenItems?: number[] | null; // individual canteen purchases ₱ of that day
 }
 
 export interface PayrollConfig {
