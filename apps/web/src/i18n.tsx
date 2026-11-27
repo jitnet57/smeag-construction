@@ -621,6 +621,12 @@ const DICT = {
   },
   'att.cameraOpen': { en: 'Open camera', ko: '카메라 열기' },
   'att.cameraShoot': { en: 'Take photo', ko: '촬영' },
+  'att.face.loading': { en: 'Starting face guide…', ko: '얼굴 가이드 준비 중…' },
+  'att.face.none': { en: 'Put your face inside the oval', ko: '얼굴을 타원 안에 맞춰 주세요' },
+  'att.face.center': { en: 'Move your face to the centre', ko: '얼굴을 가운데로 맞춰 주세요' },
+  'att.face.closer': { en: 'Come a little closer', ko: '조금 더 가까이 와 주세요' },
+  'att.face.back': { en: 'Move a little back', ko: '조금 뒤로 물러나 주세요' },
+  'att.face.ok': { en: 'Good — take the photo', ko: '좋아요 — 촬영하세요' },
   'att.photoError': { en: 'Could not save the photo check.', ko: '사진 체크를 저장하지 못했습니다.' },
   'att.note': {
     en: '※ Enter times in 24-hour format (e.g. 7 = 07:00, 13 = 13:00). On save, worked hours, tardiness, OT and night differential are auto-aggregated into payroll.',

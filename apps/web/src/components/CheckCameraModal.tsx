@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AttendancePhotoKind } from '@brightem/shared';
 import { useI18n } from '../i18n';
+import { OVAL, judgeFace, loadFaceDetector, type FaceFix } from '../lib/faceGuide';
 
 // What the phone says out loud when the photo is taken.
 export const KIND_SPEECH: Record<AttendancePhotoKind, string> = {
@@ -211,6 +212,52 @@ export default function CheckCameraModal({
   // the other camera cannot be opened.
   const flipRef = useRef<{ from?: string; back: Facing } | null>(null);
   const deviceRef = useRef<string | undefined>(undefined);
+  // Face guide: 'loading' while the detector loads, 'off' when it cannot be
+  // loaded (then the photo may be taken without it), else the latest verdict.
+  const [guide, setGuide] = useState<'loading' | 'off' | FaceFix>('loading');
+
+  useEffect(() => {
+    if (!live) return;
+    let alive = true;
+    let timer = 0;
+    let lastTs = 0;
+    loadFaceDetector()
+      .then((detector) => {
+        if (!alive) return;
+        setGuide('none');
+        const tick = () => {
+          if (!alive) return;
+          const v = videoRef.current;
+          if (v && v.readyState >= 2 && v.videoWidth) {
+            try {
+              const ts = Math.max(performance.now(), lastTs + 1);
+              lastTs = ts;
+              const faces = detector.detectForVideo(v, ts).detections;
+              const box = faces
+                .map((d) => d.boundingBox)
+                .filter((b): b is NonNullable<typeof b> => !!b)
+                .sort((a, b) => b.width * b.height - a.width * a.height)[0];
+              const r = v.getBoundingClientRect();
+              setGuide(judgeFace(box, { w: v.videoWidth, h: v.videoHeight }, { w: r.width, h: r.height }));
+            } catch {
+              setGuide('off');
+              return;
+            }
+          }
+          timer = window.setTimeout(tick, 150);
+        };
+        tick();
+      })
+      .catch(() => {
+        if (alive) setGuide('off');
+      });
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      setGuide('loading');
+    };
+  }, [live]);
+  const canShoot = live && (guide === 'ok' || guide === 'off');
 
   useEffect(() => {
     let alive = true;
@@ -269,7 +316,7 @@ export default function CheckCameraModal({
 
   const shoot = async () => {
     const v = videoRef.current;
-    if (!v || !v.videoWidth) return;
+    if (!v || !v.videoWidth || !canShoot) return;
     onCapture(await toJpeg(v, v.videoWidth, v.videoHeight));
   };
 
@@ -308,6 +355,37 @@ export default function CheckCameraModal({
               {facing === 'user' ? t('att.cameraFront') : t('att.cameraBack')}
             </span>
           )}
+          {!failed && live && guide !== 'off' && (
+            <>
+              <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 300 400" preserveAspectRatio="none">
+                <defs>
+                  <mask id="face-oval-mask">
+                    <rect width="300" height="400" fill="white" />
+                    <ellipse cx={OVAL.cx * 300} cy={OVAL.cy * 400} rx={OVAL.rx * 300} ry={OVAL.ry * 400} fill="black" />
+                  </mask>
+                </defs>
+                <rect width="300" height="400" fill="rgba(0,0,0,0.35)" mask="url(#face-oval-mask)" />
+                <ellipse
+                  cx={OVAL.cx * 300}
+                  cy={OVAL.cy * 400}
+                  rx={OVAL.rx * 300}
+                  ry={OVAL.ry * 400}
+                  fill="none"
+                  stroke={guide === 'ok' ? '#22c55e' : guide === 'loading' ? '#d1d5db' : '#ef4444'}
+                  strokeWidth="4"
+                  strokeDasharray={guide === 'loading' ? '10 8' : undefined}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              <div
+                className={`absolute inset-x-6 bottom-3 rounded-full px-3 py-1.5 text-center text-xs font-semibold text-white ${
+                  guide === 'ok' ? 'bg-green-600/90' : guide === 'loading' ? 'bg-black/60' : 'bg-red-600/90'
+                }`}
+              >
+                {t(`att.face.${guide}`)}
+              </div>
+            </>
+          )}
           {flipFailed && (
             <div className="absolute inset-x-2 bottom-2 rounded-md bg-black/70 px-3 py-2 text-center text-xs text-white">
               {t('att.cameraFlipFailed')}
@@ -329,7 +407,7 @@ export default function CheckCameraModal({
               📷 {t('att.cameraOpen')}
             </button>
           ) : (
-            <button className="btn" onClick={shoot} disabled={!live}>
+            <button className="btn" onClick={shoot} disabled={!canShoot}>
               📸 {t('att.cameraShoot')}
             </button>
           )}
