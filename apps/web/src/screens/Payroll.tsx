@@ -161,6 +161,11 @@ export default function Payroll({ period }: Props) {
       ? slip.earnings.find((x) => x.key === key)?.amount
       : slip.deductions.find((x) => x.key === key)?.amount) ?? 0;
 
+  // Rates the engine actually used (employee's own value, or the config
+  // fallback for incentive) — read from the payslip line, not re-derived.
+  const lineRate = (slip: PayslipResult, key: string) =>
+    slip.earnings.find((x) => x.key === key)?.rate ?? 0;
+
   const holidayAmt = (slip: PayslipResult) =>
     amt(slip, 'e', 'specialHolidayPay') + amt(slip, 'e', 'legalHolidayPay');
 
@@ -170,10 +175,12 @@ export default function Payroll({ period }: Props) {
       t('pay.thPosition'),
       'Crew',
       t('pay.thWorkDays'),
+      'Daily Rate',
       t('pay.thBasic'),
       'OT',
       'Night',
       'Holiday',
+      'Incentive/day',
       'Incentive',
       'Gross',
       'SSS',
@@ -191,10 +198,12 @@ export default function Payroll({ period }: Props) {
         e?.position ?? 'SKILLED',
         e?.crewId ?? '',
         slip.workedDays,
+        lineRate(slip, 'basic') || (e?.ratePerDay ?? 0),
         amt(slip, 'e', 'basic'),
         amt(slip, 'e', 'otRegular'),
         amt(slip, 'e', 'nightDifferential'),
         holidayAmt(slip),
+        lineRate(slip, 'incentive'),
         amt(slip, 'e', 'incentive'),
         slip.grossPay,
         e?.sssDeduction ?? 0,
@@ -211,6 +220,8 @@ export default function Payroll({ period }: Props) {
       '',
       '',
       totals.workedDays,
+      '',
+      '',
       '',
       '',
       '',
@@ -306,7 +317,9 @@ export default function Payroll({ period }: Props) {
                     <div className="font-bold text-sm text-dark truncate">
                       {idx + 1}. {emp?.name ?? slip.employeeId}
                     </div>
-                    <div className="text-xs text-muted truncate">{emp?.position ?? 'SKILLED'}</div>
+                    <div className="text-xs text-muted truncate">
+                      {emp?.position ?? 'SKILLED'} · {t('pay.thDailyRate')} ₱{(lineRate(slip, 'basic') || (emp?.ratePerDay ?? 0)).toLocaleString()} · {t('pay.thIncentiveRate')} ₱{lineRate(slip, 'incentive').toLocaleString()}
+                    </div>
                   </div>
                   <div className="text-lg font-extrabold text-dark flex-shrink-0">
                     ₱ {slip.netPay.toLocaleString()}
@@ -332,10 +345,12 @@ export default function Payroll({ period }: Props) {
                 <th className="freeze-col">{t('pay.thName')}</th>
                 <th>{t('pay.thPosition')}</th>
                 <th className="text-center">{t('pay.thWorkDays')}</th>
+                <th className="text-right">{t('pay.thDailyRate')}</th>
                 <th className="text-right">{t('pay.thBasic')}</th>
                 <th className="text-right">{t('pay.thOt')}</th>
                 <th className="text-right">{t('pay.thNight')}</th>
                 <th className="text-right">{t('pay.thHoliday')}</th>
+                <th className="text-right">{t('pay.thIncentiveRate')}</th>
                 <th className="text-right">{t('pay.thIncentive')}</th>
                 <th className="text-right">{t('pay.thGross')}</th>
                 <th className="text-right">SSS</th>
@@ -355,6 +370,9 @@ export default function Payroll({ period }: Props) {
                   <td>{empMap.get(slip.employeeId)?.position ?? 'SKILLED'}</td>
                   <td className="text-center">{slip.workedDays}</td>
                   <td className="text-right">
+                    {(lineRate(slip, 'basic') || (empMap.get(slip.employeeId)?.ratePerDay ?? 0)).toLocaleString()}
+                  </td>
+                  <td className="text-right">
                     {(slip.earnings.find((e) => e.key === 'basic')?.amount ?? 0).toLocaleString()}
                   </td>
                   <td className="text-right">
@@ -366,6 +384,7 @@ export default function Payroll({ period }: Props) {
                   <td className="text-right">
                     {holidayAmt(slip).toLocaleString()}
                   </td>
+                  <td className="text-right">{lineRate(slip, 'incentive').toLocaleString()}</td>
                   <td className="text-right">
                     {(slip.earnings.find((e) => e.key === 'incentive')?.amount ?? 0).toLocaleString()}
                   </td>
@@ -459,7 +478,7 @@ export default function Payroll({ period }: Props) {
                 </tr>
               ))}
               <tr className="totrow">
-                <td colSpan={9}>{t('pay.total')} ({totals.employees}{t('pay.totalUnit')})</td>
+                <td colSpan={11}>{t('pay.total')} ({totals.employees}{t('pay.totalUnit')})</td>
                 <td className="text-right">₱ {totals.grossPay.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.sss.toLocaleString()}</td>
                 <td className="text-right">₱ {totals.phil.toLocaleString()}</td>

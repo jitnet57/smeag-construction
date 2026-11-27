@@ -644,6 +644,8 @@ const DICT = {
   'pay.thName': { en: 'Name', ko: '성명' },
   'pay.thPosition': { en: 'Position', ko: '직급' },
   'pay.thWorkDays': { en: 'Work Days', ko: '근무일' },
+  'pay.thDailyRate': { en: 'Daily Rate', ko: '일당' },
+  'pay.thIncentiveRate': { en: 'Incentive/day', ko: '인센/일' },
   'pay.thBasic': { en: 'Basic', ko: '기본급' },
   'pay.thOt': { en: 'OT', ko: 'OT' },
   'pay.thNight': { en: 'Night', ko: '야간' },
