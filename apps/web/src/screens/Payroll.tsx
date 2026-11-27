@@ -114,7 +114,7 @@ export default function Payroll({ period }: Props) {
       sss: acc.sss + (empMap.get(p.employeeId)?.sssDeduction ?? 0),
       phil: acc.phil + (empMap.get(p.employeeId)?.philhealthDeduction ?? 0),
       pagibig: acc.pagibig + (empMap.get(p.employeeId)?.pagibigDeduction ?? 0),
-      canteen: acc.canteen + (empMap.get(p.employeeId)?.canteenDebt ?? 0),
+      canteen: acc.canteen + (p.deductions.find((x) => x.key === 'canteen')?.amount ?? 0),
       adjPlus: acc.adjPlus + (empMap.get(p.employeeId)?.adjustment ?? 0),
       adjMinus: acc.adjMinus + (empMap.get(p.employeeId)?.adjustmentDeduction ?? 0),
     }),
@@ -161,6 +161,9 @@ export default function Payroll({ period }: Props) {
       ? slip.earnings.find((x) => x.key === key)?.amount
       : slip.deductions.find((x) => x.key === key)?.amount) ?? 0;
 
+  const holidayAmt = (slip: PayslipResult) =>
+    amt(slip, 'e', 'specialHolidayPay') + amt(slip, 'e', 'legalHolidayPay');
+
   const handleExport = () => {
     const header = [
       t('pay.thName'),
@@ -189,15 +192,15 @@ export default function Payroll({ period }: Props) {
         e?.crewId ?? '',
         slip.workedDays,
         amt(slip, 'e', 'basic'),
-        amt(slip, 'e', 'ot'),
-        amt(slip, 'e', 'night'),
-        amt(slip, 'e', 'holiday'),
+        amt(slip, 'e', 'otRegular'),
+        amt(slip, 'e', 'nightDifferential'),
+        holidayAmt(slip),
         amt(slip, 'e', 'incentive'),
         slip.grossPay,
         e?.sssDeduction ?? 0,
         e?.philhealthDeduction ?? 0,
         e?.pagibigDeduction ?? 0,
-        e?.canteenDebt ?? 0,
+        amt(slip, 'd', 'canteen'),
         e?.adjustment ?? 0,
         e?.adjustmentDeduction ?? 0,
         slip.netPay,
@@ -355,13 +358,13 @@ export default function Payroll({ period }: Props) {
                     {(slip.earnings.find((e) => e.key === 'basic')?.amount ?? 0).toLocaleString()}
                   </td>
                   <td className="text-right">
-                    {(slip.earnings.find((e) => e.key === 'ot')?.amount ?? 0).toLocaleString()}
+                    {amt(slip, 'e', 'otRegular').toLocaleString()}
                   </td>
                   <td className="text-right">
-                    {(slip.earnings.find((e) => e.key === 'night')?.amount ?? 0).toLocaleString()}
+                    {amt(slip, 'e', 'nightDifferential').toLocaleString()}
                   </td>
                   <td className="text-right">
-                    {(slip.earnings.find((e) => e.key === 'holiday')?.amount ?? 0).toLocaleString()}
+                    {holidayAmt(slip).toLocaleString()}
                   </td>
                   <td className="text-right">
                     {(slip.earnings.find((e) => e.key === 'incentive')?.amount ?? 0).toLocaleString()}
@@ -418,6 +421,11 @@ export default function Payroll({ period }: Props) {
                       className="w-16 rounded border border-line bg-white px-1 py-1 text-right text-sm"
                       placeholder="0"
                     />
+                    {amt(slip, 'd', 'canteen') !== (empMap.get(slip.employeeId)?.canteenDebt ?? 0) && (
+                      <div className="text-[10px] text-red-600" title="canteen deducted this run (incl. 2-week canteen charges)">
+                        = ₱{amt(slip, 'd', 'canteen').toLocaleString()}
+                      </div>
+                    )}
                   </td>
                   <td className="text-right p-0.5">
                     <input

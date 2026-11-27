@@ -33,8 +33,11 @@ import type {
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
+  Holiday,
+  PayDailyEntry,
 } from '@brightem/shared';
 import { calcPayslip } from '@brightem/engine';
+import { applyExtras, extrasRange, type PayExtras } from './lib/payExtras';
 import { INTENT_HEADER, offlineFetch, resolvePhotoUrl } from './offline';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -274,6 +277,64 @@ async function fetchDeductions(
   return map;
 }
 
+async function fetchHolidays(from?: string, to?: string): Promise<Holiday[]> {
+  let q = sb().from('holidays').select('*').order('date', { ascending: true });
+  if (from) q = q.gte('date', from);
+  if (to) q = q.lte('date', to);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({ date: r.date, name: r.name ?? '', kind: r.kind }));
+}
+
+async function fetchDailyEntries(
+  from: string,
+  to: string,
+  employeeId?: string
+): Promise<PayDailyEntry[]> {
+  let q = sb().from('pay_daily_entries').select('*').gte('date', from).lte('date', to);
+  if (employeeId) q = q.eq('employee_id', employeeId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    employeeId: r.employee_id,
+    date: r.date,
+    otHours: r.ot_hours == null ? null : Number(r.ot_hours),
+    canteen: r.canteen == null ? null : Number(r.canteen),
+  }));
+}
+
+async function fetchExtras(
+  p: PayPeriod,
+  config: PayrollConfig,
+  employeeId?: string
+): Promise<PayExtras> {
+  const r = extrasRange(p, config);
+  const [holidays, entries] = await Promise.all([
+    fetchHolidays(p.startDate, p.endDate),
+    fetchDailyEntries(r.from, r.to, employeeId),
+  ]);
+  return { holidays, entries };
+}
+
+function buildInput(
+  employee: Employee,
+  p: PayPeriod,
+  attendance: AttendanceRecord[],
+  deductions: EmployeeDeductions,
+  config: PayrollConfig,
+  extras: PayExtras
+): PayrollCalcInput {
+  const x = applyExtras(employee.id, p, attendance, mergeStanding(deductions, employee), config, extras);
+  return {
+    employee,
+    period: p,
+    attendance: x.attendance,
+    deductions: x.deductions,
+    config,
+    extraOtHours: x.extraOtHours,
+  };
+}
+
 // --- exported API (drop-in shape identical to network/local api) ------------
 export const supabaseApi = {
   async getEmployees(): Promise<Employee[]> {
@@ -364,18 +425,19 @@ export const supabaseApi = {
       arr.push(rec);
       byEmp.set(rec.employeeId, arr);
     }
-    return active.map((employee) => {
-      const input: PayrollCalcInput = {
-        employee,
-        period: p,
-        attendance: (byEmp.get(employee.id) ?? []).sort((a, b) =>
-          a.date.localeCompare(b.date)
-        ),
-        deductions: mergeStanding(deductions.get(employee.id) ?? {}, employee),
-        config,
-      };
-      return calcPayslip(input);
-    });
+    const extras = await fetchExtras(p, config);
+    return active.map((employee) =>
+      calcPayslip(
+        buildInput(
+          employee,
+          p,
+          (byEmp.get(employee.id) ?? []).sort((a, b) => a.date.localeCompare(b.date)),
+          deductions.get(employee.id) ?? {},
+          config,
+          extras
+        )
+      )
+    );
   },
 
   async getPayslip(employeeId: string, period: string): Promise<PayslipResult> {
@@ -409,18 +471,70 @@ export const supabaseApi = {
       .order('date', { ascending: true });
     if (attErr) throw attErr;
     const employee = toEmployee(empRow);
-    const input: PayrollCalcInput = {
-      employee,
-      period: p,
-      attendance: (att ?? []).map(toAttendance),
-      deductions: mergeStanding(deductions.get(employeeId) ?? {}, employee),
-      config,
-    };
-    return calcPayslip(input);
+    const extras = await fetchExtras(p, config, employeeId);
+    return calcPayslip(
+      buildInput(
+        employee,
+        p,
+        (att ?? []).map(toAttendance),
+        deductions.get(employeeId) ?? {},
+        config,
+        extras
+      )
+    );
   },
 
   async getConfig(): Promise<PayrollConfig> {
     return fetchConfig();
+  },
+
+  // --- OT · Canteen · Holidays (admin / manager) ---------------------------
+  async getHolidays(): Promise<Holiday[]> {
+    return fetchHolidays();
+  },
+
+  async saveHoliday(h: Holiday): Promise<void> {
+    const { error } = await sb()
+      .from('holidays')
+      .upsert({ date: h.date, name: h.name, kind: h.kind }, { onConflict: 'date' });
+    if (error) throw error;
+  },
+
+  async deleteHoliday(date: string): Promise<void> {
+    const { error } = await sb().from('holidays').delete().eq('date', date);
+    if (error) throw error;
+  },
+
+  async getDailyEntries(from: string, to: string): Promise<PayDailyEntry[]> {
+    return fetchDailyEntries(from, to);
+  },
+
+  /** Upsert entries; an entry with neither OT nor canteen is deleted. */
+  async saveDailyEntries(entries: PayDailyEntry[]): Promise<void> {
+    const keep = entries.filter((e) => e.otHours != null || e.canteen != null);
+    const drop = entries.filter((e) => e.otHours == null && e.canteen == null);
+    if (keep.length) {
+      const { error } = await sb()
+        .from('pay_daily_entries')
+        .upsert(
+          keep.map((e) => ({
+            employee_id: e.employeeId,
+            date: e.date,
+            ot_hours: e.otHours ?? null,
+            canteen: e.canteen ?? null,
+          })),
+          { onConflict: 'employee_id,date' }
+        );
+      if (error) throw error;
+    }
+    for (const e of drop) {
+      const { error } = await sb()
+        .from('pay_daily_entries')
+        .delete()
+        .eq('employee_id', e.employeeId)
+        .eq('date', e.date);
+      if (error) throw error;
+    }
   },
 
   async updateConfig(next: PayrollConfig): Promise<void> {

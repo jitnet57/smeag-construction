@@ -4,3 +4,4 @@ dist/
 *.db
 .vercel
 TEAMS.xlsx
+BRIGHTEM-*.xlsx

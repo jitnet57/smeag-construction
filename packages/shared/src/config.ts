@@ -1,4 +1,5 @@
-import type { AttendanceTimes, EmployeeFieldDef, PayPeriod, PayrollConfig, SkillDef } from "./types.js";
+import type {
+  CanteenCycle, AttendanceTimes, EmployeeFieldDef, PayPeriod, PayrollConfig, SkillDef } from "./types.js";
 
 // Default check-in / check-out windows. Editable in Settings; the saved value
 // lives in PayrollConfig.attendanceTimes and the database guard reads it too.
@@ -160,7 +161,7 @@ const MONTHS = [
   "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
 ];
 
-function addDays(iso: string, n: number): string {
+export function addDays(iso: string, n: number): string {
   const d = new Date(iso + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
@@ -187,4 +188,70 @@ export function weeklyPeriodFor(date: string): PayPeriod {
         : `${S} ${sd}, ${sy} - ${E} ${ed}, ${ey}`;
   const id = label.replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
   return { id, label, startDate: start, endDate: end, payDate, status: "open" };
+}
+
+// ============================================================================
+// CANTEEN DEDUCTION CYCLE
+// ----------------------------------------------------------------------------
+// Canteen charges are deducted every 2nd pay week (sheet CANTEEN). Weeks are
+// counted from the anchor week; a deduction week takes all charges from the
+// last `cycleWeeks` pay weeks.
+// ============================================================================
+
+export const DEFAULT_CANTEEN_CYCLE: CanteenCycle = {
+  cycleWeeks: 2,
+  anchorStart: "2026-11-20", // pay week NOV 20-26, 2026 (paid NOV 28) deducted canteen
+};
+
+export function canteenCycleOf(
+  config: Pick<PayrollConfig, "canteenCycle"> | null | undefined
+): CanteenCycle {
+  const c = config?.canteenCycle;
+  const weeks = Math.round(Number(c?.cycleWeeks));
+  return {
+    cycleWeeks: weeks >= 1 && weeks <= 8 ? weeks : DEFAULT_CANTEEN_CYCLE.cycleWeeks,
+    anchorStart:
+      c?.anchorStart && /^\d{4}-\d{2}-\d{2}$/.test(c.anchorStart)
+        ? weeklyPeriodFor(c.anchorStart).startDate
+        : DEFAULT_CANTEEN_CYCLE.anchorStart,
+  };
+}
+
+export interface CanteenWindow {
+  /** True when this pay week deducts canteen charges. */
+  deduct: boolean;
+  /** Charges dated from..to (inclusive) belong to the deduction this week starts or ends. */
+  from: string;
+  to: string;
+  /** Start date of the pay week on which the charges in from..to are deducted. */
+  deductWeekStart: string;
+}
+
+const DAY_MS = 86400000;
+function daysBetween(a: string, b: string): number {
+  return Math.round(
+    (Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / DAY_MS
+  );
+}
+
+/**
+ * The canteen collection window the pay week starting `weekStart` falls in.
+ * On a deduction week `deduct` is true and from..to is what gets deducted.
+ */
+export function canteenWindowFor(
+  weekStart: string,
+  config: Pick<PayrollConfig, "canteenCycle"> | null | undefined
+): CanteenWindow {
+  const { cycleWeeks, anchorStart } = canteenCycleOf(config);
+  const start = weeklyPeriodFor(weekStart).startDate;
+  const weeks = Math.round(daysBetween(anchorStart, start) / 7);
+  const pos = ((weeks % cycleWeeks) + cycleWeeks) % cycleWeeks; // 0 = deduction week
+  const ahead = pos === 0 ? 0 : cycleWeeks - pos; // weeks until the deduction week
+  const deductWeekStart = addDays(start, 7 * ahead);
+  return {
+    deduct: pos === 0,
+    from: addDays(deductWeekStart, -7 * (cycleWeeks - 1)),
+    to: addDays(deductWeekStart, 6),
+    deductWeekStart,
+  };
 }

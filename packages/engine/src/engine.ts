@@ -63,7 +63,8 @@ export function calcPayslip(input: PayrollCalcInput): PayslipResult {
 
   let workedDays = 0;
   let absentDays = 0;
-  let totalOtHours = 0;
+  // OT hours entered on dates without an attendance record (OT entry grid)
+  let totalOtHours = Math.max(0, Number(input.extraOtHours) || 0);
   let totalNightHours = 0;
   let totalLateMinutes = 0;
   let restDayCount = 0;

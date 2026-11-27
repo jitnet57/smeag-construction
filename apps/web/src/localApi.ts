@@ -26,8 +26,11 @@ import type {
   PayslipResult,
   PayrollConfig,
   PayrollCalcInput,
+  Holiday,
+  PayDailyEntry,
 } from '@brightem/shared';
 import { calcPayslip } from '@brightem/engine';
+import { applyExtras } from './lib/payExtras';
 import seed from './seed.json';
 
 // --- helpers (mirror db.ts) -------------------------------------------------
@@ -165,6 +168,28 @@ const roomPhotos = new Map<string, RoomPhoto>();
 let roomPhotoSeq = 1;
 let config: PayrollConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
+const holidays = new Map<string, Holiday>(); // key: date
+const dailyEntries = new Map<string, PayDailyEntry>(); // key: `${employeeId}|${date}`
+
+function calcInput(employee: Employee, p: PayPeriod): PayrollCalcInput {
+  const x = applyExtras(
+    employee.id,
+    p,
+    employeeAttendance(employee.id, p.id),
+    mergeStanding(deductionsByKey.get(`${employee.id}|${p.id}`) || {}, employee),
+    config,
+    { holidays: [...holidays.values()], entries: [...dailyEntries.values()] }
+  );
+  return {
+    employee,
+    period: p,
+    attendance: x.attendance,
+    deductions: x.deductions,
+    config,
+    extraOtHours: x.extraOtHours,
+  };
+}
+
 // --- query helpers ----------------------------------------------------------
 function periodById(id: string): PayPeriod | undefined {
   return periods.find((p) => p.id === id);
@@ -246,17 +271,7 @@ export const localApi = {
     if (!p) return [];
     const out: PayslipResult[] = [];
     for (const employee of employees.filter((e) => e.active)) {
-      const input: PayrollCalcInput = {
-        employee,
-        period: p,
-        attendance: employeeAttendance(employee.id, period),
-        deductions: mergeStanding(
-          deductionsByKey.get(`${employee.id}|${period}`) || {},
-          employee
-        ),
-        config,
-      };
-      out.push(calcPayslip(input));
+      out.push(calcPayslip(calcInput(employee, p)));
     }
     return out;
   },
@@ -279,23 +294,32 @@ export const localApi = {
         absentDays: 0,
       };
     }
-    const input: PayrollCalcInput = {
-      employee,
-      period: p,
-      attendance: employeeAttendance(employeeId, period),
-      deductions: mergeStanding(
-        deductionsByKey.get(`${employeeId}|${period}`) || {},
-        employee
-      ),
-      config,
-    };
-    return calcPayslip(input);
+    return calcPayslip(calcInput(employee, p));
   },
   async getConfig(): Promise<PayrollConfig> {
     return config;
   },
   async updateConfig(next: PayrollConfig): Promise<void> {
     config = next;
+  },
+  async getHolidays(): Promise<Holiday[]> {
+    return [...holidays.values()].sort((a, b) => a.date.localeCompare(b.date));
+  },
+  async saveHoliday(h: Holiday): Promise<void> {
+    holidays.set(h.date, { ...h });
+  },
+  async deleteHoliday(date: string): Promise<void> {
+    holidays.delete(date);
+  },
+  async getDailyEntries(from: string, to: string): Promise<PayDailyEntry[]> {
+    return [...dailyEntries.values()].filter((e) => e.date >= from && e.date <= to);
+  },
+  async saveDailyEntries(entries: PayDailyEntry[]): Promise<void> {
+    for (const e of entries) {
+      const k = `${e.employeeId}|${e.date}`;
+      if (e.otHours == null && e.canteen == null) dailyEntries.delete(k);
+      else dailyEntries.set(k, { ...e });
+    }
   },
   async getEmployeeSkills(): Promise<EmployeeSkill[]> {
     return Array.from(skills.values());

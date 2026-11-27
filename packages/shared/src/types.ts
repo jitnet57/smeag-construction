@@ -150,6 +150,27 @@ export interface AttendanceTimes {
   checkOutGraceMin: number; // 15
 }
 
+/**
+ * Canteen charges are written down per worker per day and deducted from pay
+ * once every `cycleWeeks` pay weeks (sheet CANTEEN: up to 14 daily slots,
+ * total in col AC → PAYROLL SHEET col BG). `anchorStart` is the start date
+ * (Friday) of one pay week on which the deduction happens; every
+ * `cycleWeeks`-th week from it deducts the charges of the last `cycleWeeks`
+ * weeks.
+ */
+export interface CanteenCycle {
+  cycleWeeks: number;   // 2
+  anchorStart: string;  // "2026-11-20"
+}
+
+/** Per-worker, per-day payroll entries kept outside attendance (OT hours, canteen charges). */
+export interface PayDailyEntry {
+  employeeId: string;
+  date: string;          // ISO "YYYY-MM-DD"
+  otHours?: number | null;  // overtime hours (sheet OVERTIME); overrides attendance OT for that day
+  canteen?: number | null;  // canteen charge ₱ (sheet CANTEEN)
+}
+
 export interface PayrollConfig {
   currency: string;               // "PHP"
   standardHoursPerDay: number;    // 8
@@ -163,6 +184,8 @@ export interface PayrollConfig {
   employeeFields?: EmployeeFieldDef[];
   /** Check-in / check-out windows (Settings → Attendance times). Falls back to DEFAULT_ATTENDANCE_TIMES. */
   attendanceTimes?: AttendanceTimes;
+  /** Canteen deduction cycle (OT·Canteen·Holidays screen). Falls back to DEFAULT_CANTEEN_CYCLE. */
+  canteenCycle?: CanteenCycle;
   // deductions the employer applies per-employee (loans, cash advance, canteen)
   // are supplied per payroll run, not in global config.
 }
@@ -195,6 +218,8 @@ export interface PayrollCalcInput {
   attendance: AttendanceRecord[];   // this employee's records within the period
   deductions: EmployeeDeductions;   // per-run manual deductions
   config: PayrollConfig;
+  /** OT hours on dates with no attendance record (from the OT entry grid). */
+  extraOtHours?: number;
 }
 
 /** One line item on the payslip (label + hours/qty + amount). */

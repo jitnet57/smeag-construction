@@ -7,6 +7,7 @@ import Dashboard from './screens/Dashboard';
 import Attendance from './screens/Attendance';
 import Payroll from './screens/Payroll';
 import Payslip from './screens/Payslip';
+import PayExtras from './screens/PayExtras';
 import Employees from './screens/Employees';
 import Skills from './screens/Skills';
 import TaskAssign from './screens/TaskAssign';
@@ -25,6 +26,7 @@ type ScreenKey =
   | 'attendance'
   | 'payroll'
   | 'payslip'
+  | 'extras'
   | 'employees'
   | 'skills'
   | 'tasks'
@@ -45,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'attendance', icon: '🕑', labelKey: 'nav.attendance' },
   { key: 'payroll', icon: '₱', labelKey: 'nav.payroll' },
   { key: 'payslip', icon: '🧾', labelKey: 'nav.payslip' },
+  { key: 'extras', icon: '🍱', labelKey: 'nav.extras' },
   { key: 'employees', icon: '👷', labelKey: 'nav.employees' },
   { key: 'skills', icon: '🛠', labelKey: 'nav.skills' },
   { key: 'tasks', icon: '📋', labelKey: 'nav.tasks' },
@@ -82,6 +85,7 @@ const SCREEN_TITLES: Record<ScreenKey, TKey> = {
   attendance: 'nav.attendance',
   payroll: 'nav.payroll',
   payslip: 'nav.payslip',
+  extras: 'nav.extras',
   employees: 'nav.employees',
   skills: 'nav.skills',
   tasks: 'nav.tasks',
@@ -237,6 +241,8 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
         return <Payroll period={currentPeriod} periods={periods} />;
       case 'payslip':
         return <Payslip period={currentPeriod} periods={periods} />;
+      case 'extras':
+        return <PayExtras period={currentPeriod} />;
       case 'employees':
         return <Employees />;
       case 'skills':

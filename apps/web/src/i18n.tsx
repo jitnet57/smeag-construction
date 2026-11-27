@@ -22,6 +22,7 @@ const DICT = {
   'nav.attendance': { en: 'Attendance', ko: '출퇴근 입력' },
   'nav.payroll': { en: 'Payroll', ko: '급여표' },
   'nav.payslip': { en: 'Payslip', ko: '급여명세서' },
+  'nav.extras': { en: 'OT · Canteen · Holidays', ko: 'OT · 식당 · 휴일' },
   'nav.employees': { en: 'Employees', ko: '인부 관리' },
   'nav.skills': { en: 'Skills', ko: '멀티 스킬' },
   'nav.tasks': { en: 'Task Assign', ko: '작업 배정' },

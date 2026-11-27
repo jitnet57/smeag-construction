@@ -165,6 +165,13 @@ const networkApi = {
     }
   },
 
+  // OT · Canteen · Holidays — no Express endpoints; kept in the browser.
+  getHolidays: localApi.getHolidays,
+  saveHoliday: localApi.saveHoliday,
+  deleteHoliday: localApi.deleteHoliday,
+  getDailyEntries: localApi.getDailyEntries,
+  saveDailyEntries: localApi.saveDailyEntries,
+
   // Configuration
   async getConfig(): Promise<PayrollConfig> {
     try {
