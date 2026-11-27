@@ -29,6 +29,15 @@ type Tab = 'ot' | 'canteen' | 'holidays';
 type Field = 'otHours' | 'canteen';
 const ALL = '__ALL__';
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+// holiday colours: special = yellow, legal / regular = red
+const HOL_HEAD: Record<HolidayKind, string> = {
+  special: 'bg-yellow-200 text-yellow-900',
+  legal: 'bg-red-200 text-red-800',
+};
+const HOL_CELL: Record<HolidayKind, string> = {
+  special: 'bg-yellow-50',
+  legal: 'bg-red-50',
+};
 
 function daysFrom(from: string, to: string): string[] {
   const out: string[] = [];
@@ -215,7 +224,7 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
               {days.map((d) => (
                 <th
                   key={d}
-                  className={`text-center ${holidayKind.has(d) ? 'text-red-600' : ''}`}
+                  className={`text-center ${holidayKind.has(d) ? HOL_HEAD[holidayKind.get(d)!] : ''}`}
                   title={holidays.find((h) => h.date === d)?.name}
                 >
                   <div className="text-[10px]">{dow(d)}</div>
@@ -246,7 +255,10 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
                       const items = itemsOf(e.id, d);
                       const changed = ekey(e.id, d) in cDraft;
                       return (
-                        <td key={d} className="p-0.5 text-center">
+                        <td
+                          key={d}
+                          className={`p-0.5 text-center ${holidayKind.has(d) ? HOL_CELL[holidayKind.get(d)!] : ''}`}
+                        >
                           <button
                             type="button"
                             onClick={() => {
@@ -273,7 +285,10 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
                       );
                     }
                     return (
-                      <td key={d} className="p-0.5 text-center">
+                      <td
+                        key={d}
+                        className={`p-0.5 text-center ${holidayKind.has(d) ? HOL_CELL[holidayKind.get(d)!] : ''}`}
+                      >
                         <input
                           type="number"
                           min={0}
@@ -378,6 +393,31 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
       return;
     try {
       for (const h of missing) await api.saveHoliday(h);
+      await load();
+    } catch (e) {
+      alert(`${L('Save failed', '저장 실패')}: ${String((e as Error)?.message ?? e)}`);
+      await load();
+    }
+  };
+  // inline edit of one calendar row; date is the key, so a moved date is
+  // saved as the new row first and the old one removed after
+  const [hEdit, setHEdit] = useState<{ orig: string; h: Holiday } | null>(null);
+  const saveEdit = async () => {
+    if (!hEdit) return;
+    const { orig, h } = hEdit;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(h.date)) return alert(L('Pick a date.', '날짜를 선택하세요.'));
+    if (
+      h.date !== orig &&
+      holidays.some((x) => x.date === h.date) &&
+      !window.confirm(
+        L(`${h.date} is already a holiday. Replace it?`, `${h.date}에 이미 휴일이 있습니다. 덮어쓸까요?`)
+      )
+    )
+      return;
+    try {
+      await api.saveHoliday({ ...h, name: h.name.trim() });
+      if (h.date !== orig) await api.deleteHoliday(orig);
+      setHEdit(null);
       await load();
     } catch (e) {
       alert(`${L('Save failed', '저장 실패')}: ${String((e as Error)?.message ?? e)}`);
@@ -642,6 +682,13 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
                 `휴일에 출근한 인부에게 기본 일당 외에 추가 지급: 특별공휴일 = 일당 × ${config?.overtime.specialHoliday ?? 0.3}, 법정공휴일 = 일당 × ${config?.overtime.legalHoliday ?? 1}.`
               )}
             </p>
+            <div className="flex gap-3 items-center text-xs mb-3">
+              <span className="pill bg-yellow-200 text-yellow-900">{L('Special +30%', '특별공휴일 +30%')}</span>
+              <span className="pill bg-red-200 text-red-800">{L('Legal / regular +100%', '법정(정규)공휴일 +100%')}</span>
+              <span className="text-muted">
+                {L('Bold, blue edge = this pay week', '굵은 글씨·파란 줄 = 이번 급여주')}
+              </span>
+            </div>
             <div className="flex gap-2 flex-wrap items-center mb-3">
               <input
                 type="date"
@@ -701,28 +748,82 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
                       </td>
                     </tr>
                   )}
-                  {holidays.map((h) => (
-                    <tr
-                      key={h.date}
-                      className={
-                        h.date >= period.startDate && h.date <= period.endDate ? 'bg-yellow-50' : ''
-                      }
-                    >
-                      <td>{h.date}</td>
-                      <td>{dow(h.date)}</td>
-                      <td>{h.name}</td>
-                      <td>
-                        <span className={`pill ${h.kind === 'legal' ? 'abs' : 'half'}`}>
-                          {h.kind === 'legal' ? L('Legal', '법정') : L('Special', '특별')}
-                        </span>
-                      </td>
-                      <td className="text-right">
-                        <button className="btn ghost" onClick={() => removeHoliday(h)}>
-                          {L('Delete', '삭제')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {holidays.map((h) => {
+                    const inWeek = h.date >= period.startDate && h.date <= period.endDate;
+                    const rowCls = `${h.kind === 'legal' ? 'bg-red-50' : 'bg-yellow-50'} ${
+                      inWeek ? 'font-bold shadow-[inset_4px_0_0_#2563eb]' : ''
+                    }`;
+                    if (hEdit?.orig === h.date) {
+                      const e = hEdit.h;
+                      const set = (p: Partial<Holiday>) => setHEdit({ orig: hEdit.orig, h: { ...e, ...p } });
+                      return (
+                        <tr key={h.date} className="bg-blue-50">
+                          <td>
+                            <input
+                              type="date"
+                              value={e.date}
+                              onChange={(ev) => set({ date: ev.target.value })}
+                              className="border border-line rounded px-2 py-1 text-sm bg-white"
+                            />
+                          </td>
+                          <td>{/^\d{4}-\d{2}-\d{2}$/.test(e.date) ? dow(e.date) : ''}</td>
+                          <td>
+                            <input
+                              value={e.name}
+                              onChange={(ev) => set({ name: ev.target.value })}
+                              onKeyDown={(ev) => {
+                                if (ev.key === 'Enter') saveEdit();
+                                if (ev.key === 'Escape') setHEdit(null);
+                              }}
+                              className="border border-line rounded px-2 py-1 text-sm bg-white w-full min-w-[180px]"
+                            />
+                          </td>
+                          <td>
+                            <select
+                              value={e.kind}
+                              onChange={(ev) => set({ kind: ev.target.value as HolidayKind })}
+                              className="border border-line rounded px-2 py-1 text-sm bg-white"
+                            >
+                              <option value="special">{L('Special (+30%)', '특별 (+30%)')}</option>
+                              <option value="legal">{L('Legal (+100%)', '법정 (+100%)')}</option>
+                            </select>
+                          </td>
+                          <td className="text-right whitespace-nowrap">
+                            <button className="btn" onClick={saveEdit}>
+                              {L('Save', '저장')}
+                            </button>{' '}
+                            <button className="btn ghost" onClick={() => setHEdit(null)}>
+                              {L('Cancel', '취소')}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return (
+                      <tr key={h.date} className={rowCls}>
+                        <td>{h.date}</td>
+                        <td>{dow(h.date)}</td>
+                        <td>{h.name}</td>
+                        <td>
+                          <span
+                            className={`pill ${
+                              h.kind === 'legal' ? 'bg-red-200 text-red-800' : 'bg-yellow-200 text-yellow-900'
+                            }`}
+                          >
+                            {h.kind === 'legal' ? L('Legal', '법정') : L('Special', '특별')}
+                          </span>
+                        </td>
+                        <td className="text-right whitespace-nowrap">
+                          <button className="btn ghost" onClick={() => setHEdit({ orig: h.date, h: { ...h } })}>
+                            {L('Edit', '편집')}
+                          </button>{' '}
+                          <button className="btn ghost" onClick={() => removeHoliday(h)}>
+                            {L('Delete', '삭제')}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
