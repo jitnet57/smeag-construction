@@ -24,7 +24,7 @@ const SYNC_INTERVAL_MS = 30_000;
 const FAILED_KEY = 'brightem.sync.failed';
 
 /** RPCs whose answers are safe to cache and replay offline (read-only). */
-const CACHEABLE_RPC = new Set(['app_session', 'app_list_accounts']);
+const CACHEABLE_RPC = new Set(['app_session', 'app_list_accounts', 'app_messages', 'app_message_recipients']);
 
 const nativeFetch: typeof fetch = (...args) => fetch(...args);
 

@@ -189,6 +189,13 @@ async function localMe(token: string): Promise<LocalAccount> {
   if (!me) throw new Error('not authorized');
   return me;
 }
+/** Dev store: the account behind a token, and every account (for messages). */
+export async function localWhoAmI(token: string): Promise<Account> {
+  return strip(await localMe(token));
+}
+export async function localDirectory(): Promise<Account[]> {
+  return (await localAccounts()).map(strip);
+}
 async function localAdmin(token: string): Promise<LocalAccount> {
   const me = await localMe(token);
   if (me.role !== 'admin') throw new Error('not authorized');

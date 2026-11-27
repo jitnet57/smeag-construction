@@ -17,6 +17,8 @@ import MaterialStock from './screens/MaterialStock';
 import Settings from './screens/Settings';
 import Accounts, { ROLE_LABEL } from './screens/Accounts';
 import Login from './screens/Login';
+import Messages from './screens/Messages';
+import { useUnreadMessages } from './components/useUnreadMessages';
 import { authApi, useAuth } from './auth';
 import type { Role, Session } from './auth';
 import SyncBadge from './components/SyncBadge';
@@ -35,7 +37,8 @@ type ScreenKey =
   | 'materials'
   | 'stock'
   | 'settings'
-  | 'accounts';
+  | 'accounts'
+  | 'messages';
 
 interface NavItem {
   key: ScreenKey;
@@ -55,12 +58,13 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'units', icon: '🏢', labelKey: 'nav.units' },
   { key: 'materials', icon: '📦', labelKey: 'nav.materials' },
   { key: 'stock', icon: '🧱', labelKey: 'nav.stock' },
+  { key: 'messages', icon: '💬', labelKey: 'nav.messages' },
   { key: 'settings', icon: '⚙', labelKey: 'nav.settings' },
   { key: 'accounts', icon: '🔐', labelKey: 'nav.accounts' },
 ];
 
 // Screens each role may open. Team leaders get the field screens only.
-const TEAM_LEADER_SCREENS: ScreenKey[] = ['attendance', 'skills', 'tasks', 'units', 'materials', 'stock'];
+const TEAM_LEADER_SCREENS: ScreenKey[] = ['attendance', 'messages', 'skills', 'tasks', 'units', 'materials', 'stock'];
 // An admin picks a view after login: 'staff' shows the same field screens a
 // team leader sees (with admin rights kept), 'admin' shows every menu.
 type View = 'staff' | 'admin';
@@ -88,6 +92,7 @@ const BOTTOM_TABS: NavItem[] = [
   { key: 'attendance', icon: '🕑', labelKey: 'nav.attendance' },
   { key: 'payroll', icon: '₱', labelKey: 'nav.payroll' },
   { key: 'employees', icon: '👷', labelKey: 'nav.employees' },
+  { key: 'messages', icon: '💬', labelKey: 'nav.messages' },
 ];
 
 const SCREEN_TITLES: Record<ScreenKey, TKey> = {
@@ -104,6 +109,7 @@ const SCREEN_TITLES: Record<ScreenKey, TKey> = {
   stock: 'nav.stock',
   settings: 'nav.settings',
   accounts: 'nav.accounts',
+  messages: 'nav.messages',
 };
 
 export default function App() {
@@ -214,6 +220,7 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
   );
   const [currentPeriod, setCurrentPeriod] = useState<PayPeriod | null>(null);
   const [periods, setPeriods] = useState<PayPeriod[]>([]);
+  const unread = useUnreadMessages(session!.token);
   // Mobile navigation drawer (closed by default; only shown on < md screens)
   const [navOpen, setNavOpen] = useState(false);
 
@@ -233,6 +240,7 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
       !currentPeriod &&
       currentScreen !== 'settings' &&
       currentScreen !== 'accounts' &&
+      currentScreen !== 'messages' &&
       currentScreen !== 'employees' &&
       currentScreen !== 'skills' &&
       currentScreen !== 'tasks' &&
@@ -270,6 +278,8 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
         return <Settings />;
       case 'accounts':
         return <Accounts />;
+      case 'messages':
+        return <Messages />;
       default:
         return null;
     }
@@ -324,7 +334,8 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
               }`}
             >
               <span className="w-4.5 text-center text-base">{item.icon}</span>
-              <span>{t(item.labelKey)}</span>
+              <span className="flex-1 text-left">{t(item.labelKey)}</span>
+              {item.key === 'messages' && unread > 0 && <UnreadBadge n={unread} />}
             </button>
           ))}
         </nav>
@@ -422,7 +433,12 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
                   active ? 'text-primary font-bold' : 'text-muted'
                 }`}
               >
-                <span className="text-lg leading-none">{item.icon}</span>
+                <span className="text-lg leading-none relative">
+                  {item.icon}
+                  {item.key === 'messages' && unread > 0 && (
+                    <span className="absolute -top-1.5 -right-3"><UnreadBadge n={unread} /></span>
+                  )}
+                </span>
                 <span>{t(item.labelKey)}</span>
               </button>
             );
@@ -437,5 +453,13 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
         </nav>
       </div>
     </div>
+  );
+}
+
+function UnreadBadge({ n }: { n: number }) {
+  return (
+    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400 text-dark text-[10px] font-bold leading-[18px] text-center inline-block">
+      {n > 99 ? '99+' : n}
+    </span>
   );
 }
