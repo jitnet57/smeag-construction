@@ -1,10 +1,11 @@
 // Applies the admin-entered payroll extras (OT hours, holiday calendar,
 // canteen charges) to one employee's period attendance before the engine runs.
 // Mirrors the BRIGHTEM workbook sheets OVERTIME, HOLIDAYS and CANTEEN:
-//   * an OT entry for a day replaces the attendance OT hours of that day
+//   * OT of a day = hours past the check-out time by the worker's own PM OUT;
+//     an OT entry for that day replaces it
 //   * a worker present on a calendar holiday gets that holiday's premium
 //   * canteen charges are deducted every `cycleWeeks` pay weeks (2), all at once
-import { canteenWindowFor } from '@brightem/shared';
+import { canteenWindowFor, otFromCheckout } from '@brightem/shared';
 import type {
   AttendanceRecord,
   EmployeeDeductions,
@@ -53,6 +54,11 @@ export function applyExtras(
     seen.add(r.date);
     const next = { ...r };
     if (otByDate.has(r.date)) next.otHours = otByDate.get(r.date);
+    else {
+      // no manual entry: OT follows the worker's own check-out time
+      const ot = otFromCheckout(r.pmOut, config);
+      if (ot != null) next.otHours = ot || undefined;
+    }
     const kind = holidayKind.get(r.date);
     if (kind && r.status !== 'absent') next.holiday = kind;
     return next;

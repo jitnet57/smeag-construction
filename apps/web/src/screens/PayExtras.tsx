@@ -7,8 +7,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addDays,
+  attendanceTimesOf,
   canteenCycleOf,
   canteenWindowFor,
+  otFromCheckout,
+  PH_HOLIDAYS,
 } from '@brightem/shared';
 import type {
   AttendanceRecord,
@@ -48,6 +51,10 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
   const [entries, setEntries] = useState<Map<string, PayDailyEntry>>(new Map());
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({}); // `${field}:${emp}|${date}`
+  // canteen purchases being edited, per `${emp}|${date}` (the cell shows their sum)
+  const [cDraft, setCDraft] = useState<Record<string, number[]>>({});
+  const [openCell, setOpenCell] = useState<{ emp: Employee; date: string } | null>(null);
+  const [addAmt, setAddAmt] = useState('');
   const [crew, setCrew] = useState(ALL);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
@@ -80,17 +87,33 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
     setEntries(new Map(ents.map((e) => [ekey(e.employeeId, e.date), e])));
     setHolidays(hols);
     setDraft({});
+    setCDraft({});
   }, [period]);
 
   useEffect(() => {
     load().catch((e) => alert(String(e?.message ?? e)));
   }, [load]);
 
+  // OT from each worker's own check-out (PM OUT) time; days without a
+  // check-out fall back to the OT stored on the attendance record.
   const attOt = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of attendance) if (r.otHours) m.set(ekey(r.employeeId, r.date), r.otHours);
+    for (const r of attendance) {
+      const ot = otFromCheckout(r.pmOut, config) ?? r.otHours ?? 0;
+      if (ot) m.set(ekey(r.employeeId, r.date), ot);
+    }
+    return m;
+  }, [attendance, config]);
+  const pmOutOf = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of attendance) if (r.pmOut != null) m.set(ekey(r.employeeId, r.date), r.pmOut);
     return m;
   }, [attendance]);
+  const hhmm = (h: number) => {
+    const t = Math.round(h * 60);
+    return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+  };
+  const checkOutAt = attendanceTimesOf(config).checkOut;
 
   const crews = useMemo(
     () => Array.from(new Set(employees.map((e) => e.crewId))).sort(),
@@ -113,8 +136,18 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
     const v = saved(f, empId, date);
     return v == null ? '' : String(v);
   };
+  /** Canteen purchases of a worker's day (draft included). */
+  const itemsOf = (empId: string, date: string): number[] => {
+    const k = ekey(empId, date);
+    if (k in cDraft) return cDraft[k];
+    const e = entries.get(k);
+    if (e?.canteenItems?.length) return e.canteenItems;
+    return e?.canteen != null ? [e.canteen] : [];
+  };
+  const sum = (xs: number[]) => Math.round(xs.reduce((a, b) => a + b, 0) * 100) / 100;
   /** Effective number used by payroll for this cell (draft included). */
   const cellNum = (f: Field, empId: string, date: string) => {
+    if (f === 'canteen') return sum(itemsOf(empId, date));
     const txt = cellText(f, empId, date);
     if (txt !== '') return Number(txt) || 0;
     if (f === 'otHours') return attOt.get(ekey(empId, date)) ?? 0;
@@ -123,7 +156,11 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
   const rowTotal = (f: Field, empId: string, days: string[]) =>
     days.reduce((s, d) => s + cellNum(f, empId, d), 0);
 
-  const dirty = Object.keys(draft).length;
+  const dirty = Object.keys(draft).length + Object.keys(cDraft).length;
+  const resetDrafts = () => {
+    setDraft({});
+    setCDraft({});
+  };
 
   const save = async () => {
     if (!dirty) return;
@@ -140,6 +177,16 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
         return;
       }
       changed.set(rest, { ...cur, [f]: val });
+    }
+    for (const [k, items] of Object.entries(cDraft)) {
+      const [employeeId, date] = k.split('|');
+      const cur = changed.get(k) ??
+        entries.get(k) ?? { employeeId, date, otHours: null, canteen: null };
+      changed.set(k, {
+        ...cur,
+        canteen: items.length ? sum(items) : null,
+        canteenItems: items.length ? items : null,
+      });
     }
     setBusy(true);
     try {
@@ -194,6 +241,37 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
                   {days.map((d) => {
                     const k = dk(f, e.id, d);
                     const fromAtt = f === 'otHours' ? attOt.get(ekey(e.id, d)) : undefined;
+                    const out = f === 'otHours' ? pmOutOf.get(ekey(e.id, d)) : undefined;
+                    if (f === 'canteen') {
+                      const items = itemsOf(e.id, d);
+                      const changed = ekey(e.id, d) in cDraft;
+                      return (
+                        <td key={d} className="p-0.5 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddAmt('');
+                              setOpenCell({ emp: e, date: d });
+                            }}
+                            title={
+                              items.length
+                                ? items.map((x) => `₱${money(x)}`).join(' + ')
+                                : L('Add purchase', '구매 추가')
+                            }
+                            className={`w-16 h-8 rounded border px-1 text-right text-sm relative ${
+                              changed ? 'border-primary bg-yellow-50' : 'border-line bg-white hover:bg-blue-50'
+                            }`}
+                          >
+                            {items.length ? money(sum(items)) : ''}
+                            {items.length > 1 && (
+                              <span className="absolute -top-1.5 -right-1.5 rounded-full bg-primary text-white text-[9px] leading-none px-1 py-0.5">
+                                {items.length}
+                              </span>
+                            )}
+                          </button>
+                        </td>
+                      );
+                    }
                     return (
                       <td key={d} className="p-0.5 text-center">
                         <input
@@ -205,9 +283,14 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
                           value={cellText(f, e.id, d)}
                           placeholder={fromAtt ? String(fromAtt) : ''}
                           title={
-                            fromAtt
-                              ? L(`Attendance OT: ${fromAtt} h`, `출퇴근 기록 OT: ${fromAtt}시간`)
-                              : undefined
+                            out != null
+                              ? L(
+                                  `Check-out ${hhmm(out)} → OT ${fromAtt ?? 0} h`,
+                                  `퇴근 ${hhmm(out)} → OT ${fromAtt ?? 0}시간`
+                                )
+                              : fromAtt
+                                ? L(`Attendance OT: ${fromAtt} h`, `출퇴근 기록 OT: ${fromAtt}시간`)
+                                : undefined
                           }
                           onChange={(ev) => setDraft((p) => ({ ...p, [k]: ev.target.value }))}
                           className={`w-12 rounded border px-1 py-1 text-right text-sm ${
@@ -272,6 +355,35 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
       alert(`${L('Save failed', '저장 실패')}: ${String((e as Error)?.message ?? e)}`);
     }
   };
+  // Philippine national holidays (Presidential proclamation) for a year;
+  // dates already in the calendar are kept as entered.
+  const phYears = Object.keys(PH_HOLIDAYS).map(Number).sort();
+  const [phYear, setPhYear] = useState(() => {
+    const y = Number((period?.startDate ?? new Date().toISOString()).slice(0, 4));
+    return phYears.includes(y) ? y : phYears[phYears.length - 1];
+  });
+  const importPh = async () => {
+    const have = new Set(holidays.map((h) => h.date));
+    const missing = (PH_HOLIDAYS[phYear] ?? []).filter((h) => !have.has(h.date));
+    if (missing.length === 0)
+      return alert(L(`All ${phYear} Philippine holidays are already in.`, `${phYear}년 필리핀 공휴일이 이미 모두 등록되어 있습니다.`));
+    if (
+      !window.confirm(
+        L(
+          `Add ${missing.length} Philippine holidays for ${phYear}?`,
+          `${phYear}년 필리핀 공휴일 ${missing.length}개를 추가할까요?`
+        )
+      )
+    )
+      return;
+    try {
+      for (const h of missing) await api.saveHoliday(h);
+      await load();
+    } catch (e) {
+      alert(`${L('Save failed', '저장 실패')}: ${String((e as Error)?.message ?? e)}`);
+      await load();
+    }
+  };
   const removeHoliday = async (h: Holiday) => {
     if (!window.confirm(L(`Delete holiday ${h.date}?`, `${h.date} 휴일을 삭제할까요?`))) return;
     try {
@@ -310,7 +422,7 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
       type="button"
       onClick={() => {
         if (dirty && !window.confirm(L('Discard unsaved changes?', '저장하지 않은 변경을 버릴까요?'))) return;
-        setDraft({});
+        resetDrafts();
         setTab(k);
       }}
       className={`px-4 py-2 text-sm font-bold rounded-lg border ${
@@ -355,7 +467,7 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
               {L(`${dirty} unsaved`, `저장 안 됨 ${dirty}칸`)}
             </span>
           )}
-          <button className="btn ghost" disabled={!dirty || busy} onClick={() => setDraft({})}>
+          <button className="btn ghost" disabled={!dirty || busy} onClick={resetDrafts}>
             {L('Undo', '되돌리기')}
           </button>
           <button className="btn" disabled={!dirty || busy} onClick={save}>
@@ -371,8 +483,8 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
           </h3>
           <p className="text-xs text-muted mb-3">
             {L(
-              `Hours per day. A value here replaces the attendance OT of that day (grey = from attendance). OT pay = daily rate ÷ ${config?.standardHoursPerDay ?? 8} × hours × ${config?.overtime.regularDay ?? 1.25}.`,
-              `하루 OT 시간을 입력합니다. 입력값은 그날 출퇴근 기록 OT를 대체합니다(회색 = 출퇴근 기록값). OT 수당 = 일당 ÷ ${config?.standardHoursPerDay ?? 8} × 시간 × ${config?.overtime.regularDay ?? 1.25}.`
+              `OT is set from each worker's own check-out time: hours past ${checkOutAt}, in half-hour steps (grey = from check-out; hover a cell to see the time). A value typed here replaces it for that day. OT pay = daily rate ÷ ${config?.standardHoursPerDay ?? 8} × hours × ${config?.overtime.regularDay ?? 1.25}.`,
+              `OT는 인부별 퇴근(PM OUT) 시각으로 자동 책정됩니다: ${checkOutAt} 이후 근무시간, 30분 단위 내림(회색 = 퇴근시각 기준값, 칸에 마우스를 올리면 퇴근시각 표시). 직접 입력하면 그날 값을 대체합니다. OT 수당 = 일당 ÷ ${config?.standardHoursPerDay ?? 8} × 시간 × ${config?.overtime.regularDay ?? 1.25}.`
             )}
           </p>
           {grid('otHours', otDays)}
@@ -425,9 +537,100 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
               />
             </label>
           </div>
+          <p className="text-xs text-muted mb-2">
+            {L(
+              'Click a cell to see or add individual purchases; the cell shows their total.',
+              '칸을 클릭하면 개별 구매 금액을 보고 추가할 수 있습니다. 칸에는 합계가 표시됩니다.'
+            )}
+          </p>
           {grid('canteen', canteenDays)}
         </div>
       )}
+
+      {openCell && (() => {
+        const { emp, date } = openCell;
+        const k = ekey(emp.id, date);
+        const items = itemsOf(emp.id, date);
+        const setItems = (next: number[]) => setCDraft((p) => ({ ...p, [k]: next }));
+        const add = () => {
+          const v = Number(addAmt.replace(/,/g, ''));
+          if (!addAmt.trim() || !Number.isFinite(v) || v <= 0) return;
+          setItems([...items, Math.round(v * 100) / 100]);
+          setAddAmt('');
+        };
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+            onClick={() => setOpenCell(null)}
+          >
+            <div
+              className="bg-white rounded-xl shadow-xl w-[320px] max-w-[92vw] p-4"
+              onClick={(ev) => ev.stopPropagation()}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="font-bold text-dark">{emp.name}</div>
+                  <div className="text-xs text-muted">
+                    {date} ({dow(date)}) · {L('Canteen purchases', '식당 구매 내역')}
+                  </div>
+                </div>
+                <button className="btn ghost" onClick={() => setOpenCell(null)}>
+                  ✕
+                </button>
+              </div>
+              {items.length === 0 ? (
+                <p className="text-sm text-muted mb-3">{L('No purchases.', '구매 내역이 없습니다.')}</p>
+              ) : (
+                <ul className="mb-3 divide-y divide-line border border-line rounded-lg">
+                  {items.map((x, i) => (
+                    <li key={i} className="flex items-center justify-between px-3 py-1.5 text-sm">
+                      <span className="text-muted">#{i + 1}</span>
+                      <span className="flex-1 text-right mr-3">₱{money(x)}</span>
+                      <button
+                        type="button"
+                        className="text-red-600 text-xs"
+                        onClick={() => setItems(items.filter((_, j) => j !== i))}
+                      >
+                        {L('Delete', '삭제')}
+                      </button>
+                    </li>
+                  ))}
+                  <li className="flex justify-between px-3 py-1.5 text-sm font-bold bg-blue-50">
+                    <span>{L('Total', '합계')}</span>
+                    <span>₱{money(sum(items))}</span>
+                  </li>
+                </ul>
+              )}
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  value={addAmt}
+                  onChange={(ev) => setAddAmt(ev.target.value)}
+                  onKeyDown={(ev) => {
+                    if (ev.key === 'Enter') add();
+                    if (ev.key === 'Escape') setOpenCell(null);
+                  }}
+                  placeholder={L('Amount ₱', '금액 ₱')}
+                  className="flex-1 border border-line rounded-lg px-3 py-2 text-sm"
+                />
+                <button className="btn" onClick={add}>
+                  {L('Add', '추가')}
+                </button>
+              </div>
+              <p className="text-[11px] text-muted mt-2">
+                {L(
+                  'Enter adds the amount. Press Save on the screen to keep changes.',
+                  'Enter로 금액 추가. 화면의 저장 버튼을 눌러야 반영됩니다.'
+                )}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {tab === 'holidays' && (
         <div className="space-y-3.5">
@@ -462,6 +665,21 @@ export default function PayExtras({ period }: { period: PayPeriod | null }) {
               </select>
               <button className="btn" onClick={addHoliday}>
                 {L('Add', '추가')}
+              </button>
+              <span className="flex-1" />
+              <select
+                value={phYear}
+                onChange={(e) => setPhYear(Number(e.target.value))}
+                className="border border-line rounded-lg px-3 py-2 text-sm bg-white"
+              >
+                {phYears.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <button className="btn ghost" onClick={importPh}>
+                🇵🇭 {L('Load Philippine holidays', '필리핀 공휴일 불러오기')}
               </button>
             </div>
             <div className="overflow-x-auto">

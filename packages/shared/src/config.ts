@@ -33,6 +33,21 @@ export function hhmmToHour(s: string): number {
   return h + m / 60;
 }
 
+/**
+ * Overtime hours earned by a worker's own check-out (PM OUT) time: the time
+ * past the configured check-out hour, rounded down to whole half-hours
+ * (17:10 → 0, 18:40 → 1.5). Null when the worker has no check-out.
+ */
+export function otFromCheckout(
+  pmOut: number | null | undefined,
+  config: Pick<PayrollConfig, "attendanceTimes"> | null | undefined
+): number | null {
+  if (pmOut == null || !Number.isFinite(pmOut)) return null;
+  const over = pmOut - hhmmToHour(attendanceTimesOf(config).checkOut);
+  // small epsilon so 18:30 stored as 18.4999… still counts as 1.5 h
+  return over > 0 ? Math.min(24, Math.floor(over * 2 + 1e-6) / 2) : 0;
+}
+
 // Default trade catalog in TEAMS.xlsx column order. Editable in Settings; the
 // saved list lives in PayrollConfig.skills.
 export const DEFAULT_SKILLS: SkillDef[] = [
