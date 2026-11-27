@@ -5,6 +5,7 @@ import type {
   PayslipResult,
   EmployeeDeductions,
 } from "@brightem/shared";
+import { earlyOutBreakHours, lateHoursCharged, lateMinutesOf } from "@brightem/shared";
 import { computeContribution } from "./contributions.js";
 
 /**
@@ -47,7 +48,8 @@ const MONTHLYIZE_DAYS = 26;
  * 6. Legal Holiday Pay
  * 7. Night Differential
  * 8. Absent/LWOP (always shown for reporting, but amount = 0 since basic already reflects worked days)
- * 9. Late/Undertime (negative)
+ * 9. Late/Undertime (negative; any lateness rounds up to whole hours per day,
+ *    plus the 15-min break on each early check-out day)
  *
  * DEDUCTIONS:
  * - SSS, PhilHealth, Pag-IBIG (statutory, scaled weekly)
@@ -67,6 +69,8 @@ export function calcPayslip(input: PayrollCalcInput): PayslipResult {
   let totalOtHours = Math.max(0, Number(input.extraOtHours) || 0);
   let totalNightHours = 0;
   let totalLateMinutes = 0;
+  let totalLateHours = 0; // charged: each late day rounds UP to whole hours (+ early-out breaks)
+  let earlyOutDays = 0;
   let restDayCount = 0;
   let specialHolidayDays = 0;
   let legalHolidayDays = 0;
@@ -90,9 +94,14 @@ export function calcPayslip(input: PayrollCalcInput): PayslipResult {
       totalNightHours += record.nightHours;
     }
 
-    // Late minutes
-    if (record.lateMinutes) {
-      totalLateMinutes += record.lateMinutes;
+    // Late: even 1 minute late costs a full hour (per day, rounded up)
+    totalLateMinutes += lateMinutesOf(record, config);
+    totalLateHours += lateHoursCharged(record, config);
+    // Early leave (check-out before the scheduled time): the paid 15-min break is deducted
+    const breakHrs = earlyOutBreakHours(record, config);
+    if (breakHrs > 0) {
+      earlyOutDays += 1;
+      totalLateHours += breakHrs;
     }
 
     // Rest day (DRD) worked — day-based premium (sheet col Q/R), one per DRD worked
@@ -235,13 +244,13 @@ export function calcPayslip(input: PayrollCalcInput): PayslipResult {
     amount: 0,
   });
 
-  // 9. LATE/UNDERTIME (negative)
-  const lateAmount = round2(-1 * (totalLateMinutes / 60) * hourlyRate);
+  // 9. LATE/UNDERTIME (negative) — whole hours per late day + 0.25 h per early check-out day
+  const lateAmount = round2(-1 * totalLateHours * hourlyRate);
   if (lateAmount !== 0) {
     earnings.push({
       key: "lateUndertime",
       label: "Late/Undertime",
-      qty: totalLateMinutes / 60, // in hours
+      qty: totalLateHours, // in hours
       rate: -1 * hourlyRate,
       amount: lateAmount,
     });
@@ -410,6 +419,7 @@ export function calcPayslip(input: PayrollCalcInput): PayslipResult {
       totalOtHours,
       totalNightHours,
       totalLateMinutes,
+      earlyOutDays,
     },
   };
 }

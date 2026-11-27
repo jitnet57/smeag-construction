@@ -425,14 +425,65 @@ describe("calcPayslip", () => {
       config,
     });
 
-    // Late: -(90 min / 60) × hourlyRate = -1.5 × 67.5 = -101.25
+    // Late rounds UP to whole hours per day: 30 min → 1 h, 60 min → 1 h
+    // = -2 × 67.5 = -135
     const lateLine = result.earnings.find((e) => e.key === "lateUndertime");
     expect(lateLine).toBeDefined();
-    expect(lateLine!.amount).toBe(-101.25);
+    expect(lateLine!.qty).toBe(2);
+    expect(lateLine!.amount).toBe(-135);
 
     // Gross should be reduced by the late amount
     const expectedBasic = 540 * 3;
     expect(result.grossPay).toBeLessThan(expectedBasic);
+  });
+
+  it("charges a full hour for even 1 minute late, from the AM IN time", () => {
+    const config = createTestConfig(); // check-in 07:00 (default)
+    const day = (date: string, amIn: number): AttendanceRecord => ({
+      employeeId: "emp-001", date, status: "full", amIn,
+    });
+    const result = calcPayslip({
+      employee: createTestEmployee(),
+      period: createTestPeriod(),
+      attendance: [
+        day("2026-06-19", 7),            // on time → 0 h
+        day("2026-06-20", 7 + 1 / 60),   // 07:01 → 1 h
+        day("2026-06-21", 8),            // 07:60 = 60 min → 1 h
+        day("2026-06-22", 8 + 1 / 60),   // 08:01 → 2 h
+        day("2026-06-23", 6.5),          // early → 0 h
+      ],
+      deductions: createEmptyDeductions(),
+      config,
+    });
+    const lateLine = result.earnings.find((e) => e.key === "lateUndertime");
+    expect(lateLine!.qty).toBe(4);
+    expect(lateLine!.amount).toBe(-270); // 4 × 67.5
+    expect(result.meta!.totalLateMinutes).toBe(1 + 60 + 61);
+  });
+
+  it("deducts the 15-min break on each early check-out day", () => {
+    const config = createTestConfig(); // check-out 17:00 (default)
+    const day = (date: string, pmOut: number | null, amIn = 7): AttendanceRecord => ({
+      employeeId: "emp-001", date, status: "full", amIn, pmOut,
+    });
+    const result = calcPayslip({
+      employee: createTestEmployee(),
+      period: createTestPeriod(),
+      attendance: [
+        day("2026-06-19", 17),          // on time → 0
+        day("2026-06-20", 18.5),        // stayed late → 0
+        day("2026-06-21", 16.5),        // left 16:30 → 0.25 h
+        day("2026-06-22", null),        // no check-out → 0
+        day("2026-06-23", 15, 7.5),     // late 30 min (1 h) + early (0.25 h)
+        { employeeId: "emp-001", date: "2026-06-24", status: "absent", pmOut: 12 }, // absent → 0
+      ],
+      deductions: createEmptyDeductions(),
+      config,
+    });
+    const lateLine = result.earnings.find((e) => e.key === "lateUndertime");
+    expect(lateLine!.qty).toBe(1.5);
+    expect(lateLine!.amount).toBe(-101.25); // 1.5 × 67.5
+    expect(result.meta!.earlyOutDays).toBe(2);
   });
 
   // ========================================================================

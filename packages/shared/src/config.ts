@@ -1,5 +1,5 @@
 import type {
-  CanteenCycle, AttendanceTimes, EmployeeFieldDef, PayPeriod, PayrollConfig, SkillDef } from "./types.js";
+  AttendanceRecord, CanteenCycle, AttendanceTimes, EmployeeFieldDef, PayPeriod, PayrollConfig, SkillDef } from "./types.js";
 
 // Default check-in / check-out windows. Editable in Settings; the saved value
 // lives in PayrollConfig.attendanceTimes and the database guard reads it too.
@@ -46,6 +46,60 @@ export function otFromCheckout(
   const over = pmOut - hhmmToHour(attendanceTimesOf(config).checkOut);
   // small epsilon so 18:30 stored as 18.4999… still counts as 1.5 h
   return over > 0 ? Math.min(24, Math.floor(over * 2 + 1e-6) / 2) : 0;
+}
+
+/**
+ * Minutes a worker was late on one day: the explicit `lateMinutes` when set
+ * (e.g. imported from the workbook), else whole minutes of the check-in
+ * (AM IN) past the configured check-in time. 0 for absent days.
+ */
+export function lateMinutesOf(
+  record: Pick<AttendanceRecord, "status" | "amIn" | "lateMinutes">,
+  config: Pick<PayrollConfig, "attendanceTimes"> | null | undefined
+): number {
+  if (record.status === "absent") return 0;
+  if (record.lateMinutes != null && Number.isFinite(record.lateMinutes)) {
+    return Math.max(0, record.lateMinutes);
+  }
+  const amIn = record.amIn;
+  if (amIn == null || !Number.isFinite(amIn)) return 0;
+  const over = (amIn - hhmmToHour(attendanceTimesOf(config).checkIn)) * 60;
+  // epsilon: 07:30 stored as 7.4999… must not read as 29 minutes
+  return over > 0 ? Math.floor(over + 1e-6) : 0;
+}
+
+/**
+ * Late hours charged for one day: any lateness counts as a full started hour
+ * (1 min → 1 h, 60 min → 1 h, 61 min → 2 h), capped at a standard day.
+ */
+export function lateHoursCharged(
+  record: Pick<AttendanceRecord, "status" | "amIn" | "lateMinutes">,
+  config: Pick<PayrollConfig, "attendanceTimes" | "standardHoursPerDay"> | null | undefined
+): number {
+  const min = lateMinutesOf(record, config);
+  if (min <= 0) return 0;
+  const cap = config?.standardHoursPerDay || 8;
+  return Math.min(cap, Math.ceil(min / 60 - 1e-9));
+}
+
+/** Paid 10:00–10:15 break, in minutes; forfeited on a day the worker leaves early. */
+export const BREAK_MINUTES = 15;
+
+/**
+ * Break hours deducted for one day: a worker who checks out (PM OUT) before
+ * the configured check-out time loses the paid 15-minute break (0.25 h).
+ * 0 for absent days and days without a check-out.
+ */
+export function earlyOutBreakHours(
+  record: Pick<AttendanceRecord, "status" | "pmOut">,
+  config: Pick<PayrollConfig, "attendanceTimes"> | null | undefined
+): number {
+  if (record.status === "absent") return 0;
+  const pmOut = record.pmOut;
+  if (pmOut == null || !Number.isFinite(pmOut)) return 0;
+  // epsilon: 17:00 stored as 16.9999… is not an early leave
+  const early = hhmmToHour(attendanceTimesOf(config).checkOut) - pmOut > 1e-6;
+  return early ? BREAK_MINUTES / 60 : 0;
 }
 
 // Default trade catalog in TEAMS.xlsx column order. Editable in Settings; the
