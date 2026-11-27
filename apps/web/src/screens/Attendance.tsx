@@ -47,11 +47,12 @@ const DOW_KEYS = ['dow.sun', 'dow.mon', 'dow.tue', 'dow.wed', 'dow.thu', 'dow.fr
 function buildDateList(start?: string, end?: string): string[] {
   if (!start || !end) return [];
   const out: string[] = [];
-  const cur = new Date(start + 'T00:00:00');
-  const last = new Date(end + 'T00:00:00');
+  // UTC on both sides, so the device's time zone can't shift the dates.
+  const cur = new Date(start + 'T00:00:00Z');
+  const last = new Date(end + 'T00:00:00Z');
   while (cur <= last) {
     out.push(cur.toISOString().slice(0, 10));
-    cur.setDate(cur.getDate() + 1);
+    cur.setUTCDate(cur.getUTCDate() + 1);
   }
   return out;
 }
@@ -128,10 +129,14 @@ export default function Attendance({ period }: Props) {
     );
   }, [selectedCrew, allEmployees]);
 
-  // All dates within the current pay period, defaulting selection to the last day.
+  // All dates within the current pay period; select today when it is in the
+  // period, else the last day.
   const periodDates = buildDateList(period?.startDate, period?.endDate);
   useEffect(() => {
-    if (periodDates.length && !periodDates.includes(selectedDate)) {
+    if (!periodDates.length) return;
+    const today = manilaNow().date;
+    if (periodDates.includes(today)) setSelectedDate(today);
+    else if (!periodDates.includes(selectedDate)) {
       setSelectedDate(periodDates[periodDates.length - 1]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -12,7 +12,7 @@
 //   VITE_SUPABASE_ANON_KEY  = <anon public key>
 // ============================================================================
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_CONFIG } from '@brightem/shared';
+import { DEFAULT_CONFIG, weeklyPeriodFor } from '@brightem/shared';
 import type {
   Employee,
   Position,
@@ -294,7 +294,20 @@ export const supabaseApi = {
     return (data ?? []).map(toCrew);
   },
 
+  // Also opens this week's Friday–Thursday pay period (paid Saturday) the
+  // first time anyone loads the app in a new week.
   async getPeriods(): Promise<PayPeriod[]> {
+    const list = await fetchPeriods();
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
+    if (list.some((p) => p.startDate <= today && today <= p.endDate)) return list;
+    const p = weeklyPeriodFor(today);
+    const { error } = await sb()
+      .from('pay_periods')
+      .upsert(
+        { id: p.id, label: p.label, start_date: p.startDate, end_date: p.endDate, pay_date: p.payDate, status: p.status },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+    if (error) return list; // offline / not allowed: keep what we have
     return fetchPeriods();
   },
 

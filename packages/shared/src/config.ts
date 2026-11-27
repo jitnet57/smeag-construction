@@ -1,4 +1,4 @@
-import type { AttendanceTimes, EmployeeFieldDef, PayrollConfig, SkillDef } from "./types.js";
+import type { AttendanceTimes, EmployeeFieldDef, PayPeriod, PayrollConfig, SkillDef } from "./types.js";
 
 // Default check-in / check-out windows. Editable in Settings; the saved value
 // lives in PayrollConfig.attendanceTimes and the database guard reads it too.
@@ -148,3 +148,43 @@ export const DEFAULT_CONFIG: PayrollConfig = {
   // engine already supports both) with the company's official figures.
   contributions: [],
 };
+
+// ============================================================================
+// WEEKLY PAY PERIOD
+// ----------------------------------------------------------------------------
+// BRIGHTEM pays weekly: work Friday → Thursday, paid on the Saturday after.
+// ============================================================================
+
+const MONTHS = [
+  "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+  "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
+];
+
+function addDays(iso: string, n: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The Friday–Thursday pay week containing `date` (YYYY-MM-DD), paid on the
+ * following Saturday. Same-month weeks get the sheet's style ("JUNE 19-25, 2026").
+ */
+export function weeklyPeriodFor(date: string): PayPeriod {
+  const dow = new Date(date + "T00:00:00Z").getUTCDay(); // 0 Sun … 5 Fri
+  const start = addDays(date, -((dow - 5 + 7) % 7));
+  const end = addDays(start, 6);
+  const payDate = addDays(end, 2);
+  const [sy, sm, sd] = start.split("-").map(Number);
+  const [ey, em, ed] = end.split("-").map(Number);
+  const S = MONTHS[sm - 1];
+  const E = MONTHS[em - 1];
+  const label =
+    sm === em
+      ? `${S} ${sd}-${ed}, ${sy}`
+      : sy === ey
+        ? `${S} ${sd} - ${E} ${ed}, ${sy}`
+        : `${S} ${sd}, ${sy} - ${E} ${ed}, ${ey}`;
+  const id = label.replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return { id, label, startDate: start, endDate: end, payDate, status: "open" };
+}
