@@ -8,7 +8,7 @@ import { readXlsx } from '../lib/xlsx';
 import { attendanceTimesOf } from '@brightem/shared';
 import {
   useAuth, canEditCheckin, canEditCheckout, canOverrideTimes, isTeamLeader, isAdmin, syncServerClock, manilaNow,
-  setAttendanceTimes, getAttendanceTimes, checkoutCloseHour,
+  setAttendanceTimes, getAttendanceTimes, checkoutCloseHour, phoneLast4,
 } from '../auth';
 import CheckCameraModal, { KIND_SPEECH, speak, playKindSound, unlockSound } from '../components/CheckCameraModal';
 import { getDevicePhotos, addDevicePhoto } from '../lib/devicePhotos';
@@ -239,12 +239,48 @@ export default function Attendance({ period }: Props) {
   const override = canOverrideTimes(session);
   const checkedIn = (row: AttendanceRow) => row.record?.amIn != null;
   const checkedOut = (row: AttendanceRow) => row.record?.pmOut != null;
-  const amInDisabled = (row: AttendanceRow) => amInLocked || isLocked(row) || (!override && checkedIn(row));
-  const pmOutDisabled = (row: AttendanceRow) => pmOutLocked || isLocked(row) || (!override && checkedOut(row));
-  const amInTitle = (row: AttendanceRow) =>
-    amInLocked ? checkinMsg('att.checkinLocked') : !override && checkedIn(row) ? t('att.alreadyCheckedIn') : undefined;
-  const pmOutTitle = (row: AttendanceRow) =>
-    pmOutLocked ? checkoutMsg('att.checkoutLocked') : !override && checkedOut(row) ? t('att.alreadyCheckedOut') : undefined;
+  // Time inputs: staff never type times (camera buttons only). Emmeline,
+  // Jaesun and Carlo click an input and enter their own 4-digit login PIN to
+  // unlock editing on this page.
+  const [timeEditUnlocked, setTimeEditUnlocked] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const myPin = phoneLast4(session?.phone);
+  const openPin = () => {
+    setPin('');
+    setPinError(myPin ? '' : t('att.pinNoPhone'));
+    setPinOpen(true);
+  };
+  const enterPin = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 4);
+    setPin(d);
+    if (d.length < 4) return setPinError('');
+    if (myPin && d === myPin) {
+      setTimeEditUnlocked(true);
+      setPinOpen(false);
+    } else {
+      setPin('');
+      setPinError(t(myPin ? 'att.pinWrong' : 'att.pinNoPhone'));
+    }
+  };
+  type TimeField = 'amIn' | 'pmOut' | 'otIn' | 'otOut';
+  const timeInput = (row: AttendanceRow, idx: number, field: TimeField, cls: string) => {
+    const locked = isLocked(row);
+    const canEdit = override && timeEditUnlocked && !locked;
+    const needsPin = override && !timeEditUnlocked && !locked;
+    return (
+      <input
+        className={`${cls} disabled:bg-gray-100 disabled:text-muted ${needsPin ? 'bg-gray-100 text-muted cursor-pointer' : ''}`}
+        value={row[field]}
+        disabled={!canEdit && !needsPin}
+        readOnly={needsPin}
+        title={needsPin ? t('att.pinClickToEdit') : !canEdit && !locked ? t('att.timeInputsLocked') : undefined}
+        onClick={needsPin ? openPin : undefined}
+        onChange={(e) => canEdit && handleInputChange(idx, field, e.target.value)}
+      />
+    );
+  };
   const isLocked = (row: AttendanceRow) => !!row.record?.confirmed;
   const now = manilaNow();
   const isToday = selectedDate === now.date;
@@ -475,8 +511,8 @@ export default function Attendance({ period }: Props) {
           continue;
         }
         matched++;
-        const amIn = amInDisabled(next[idx]) ? next[idx].amIn : at(r, iAmIn) || next[idx].amIn;
-        const pmOut = pmOutDisabled(next[idx]) ? next[idx].pmOut : at(r, iPmOut) || next[idx].pmOut;
+        const amIn = at(r, iAmIn) || next[idx].amIn;
+        const pmOut = at(r, iPmOut) || next[idx].pmOut;
         const otIn = at(r, iOtIn);
         const otOut = at(r, iOtOut);
         next[idx] = {
@@ -553,7 +589,8 @@ export default function Attendance({ period }: Props) {
             🔓 {t('att.unlock')}
           </button>
         )}
-        <button className="btn gray disabled:opacity-50" onClick={handleImportClick} disabled={allLocked}>
+        <button className="btn gray disabled:opacity-50" onClick={handleImportClick} disabled={allLocked || !override}
+          title={!override ? t('att.timeInputsLocked') : undefined}>
           {t('att.excelImport')}
         </button>
         <button className="btn ghost disabled:opacity-50" onClick={() => handleSave(false)} disabled={allLocked}>
@@ -614,25 +651,19 @@ export default function Attendance({ period }: Props) {
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">CHECK IN</span>
-                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.amIn}
-                    disabled={amInDisabled(row)} title={amInTitle(row)}
-                    onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)} />
+                  {timeInput(row, idx, 'amIn', 'in w-full')}
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">CHECK OUT</span>
-                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.pmOut} disabled={pmOutDisabled(row)}
-                    title={pmOutTitle(row)}
-                    onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)} />
+                  {timeInput(row, idx, 'pmOut', 'in w-full')}
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">OT IN</span>
-                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.otIn} disabled={isLocked(row)}
-                    onChange={(e) => handleInputChange(idx, 'otIn', e.target.value)} />
+                  {timeInput(row, idx, 'otIn', 'in w-full')}
                 </label>
                 <label className="block">
                   <span className="block text-[9px] text-muted mb-0.5">OT OUT</span>
-                  <input className="in w-full disabled:bg-gray-100 disabled:text-muted" value={row.otOut} disabled={isLocked(row)}
-                    onChange={(e) => handleInputChange(idx, 'otOut', e.target.value)} />
+                  {timeInput(row, idx, 'otOut', 'in w-full')}
                 </label>
               </div>
               <div className="mt-3">{camButtons(row)}</div>
@@ -665,38 +696,16 @@ export default function Attendance({ period }: Props) {
                   <td className="freeze-col">{row.employee.name}</td>
                   <td>{row.employee.position}</td>
                   <td className="text-center">
-                    <input
-                      className="in disabled:bg-gray-100 disabled:text-muted"
-                      value={row.amIn}
-                      disabled={amInDisabled(row)}
-                      title={amInTitle(row)}
-                      onChange={(e) => handleInputChange(idx, 'amIn', e.target.value)}
-                    />
+                    {timeInput(row, idx, 'amIn', 'in')}
                   </td>
                   <td className="text-center">
-                    <input
-                      className="in disabled:bg-gray-100 disabled:text-muted"
-                      value={row.pmOut}
-                      disabled={pmOutDisabled(row)}
-                      title={pmOutTitle(row)}
-                      onChange={(e) => handleInputChange(idx, 'pmOut', e.target.value)}
-                    />
+                    {timeInput(row, idx, 'pmOut', 'in')}
                   </td>
                   <td className="text-center">
-                    <input
-                      className="in disabled:bg-gray-100 disabled:text-muted"
-                      value={row.otIn}
-                      disabled={isLocked(row)}
-                      onChange={(e) => handleInputChange(idx, 'otIn', e.target.value)}
-                    />
+                    {timeInput(row, idx, 'otIn', 'in')}
                   </td>
                   <td className="text-center">
-                    <input
-                      className="in disabled:bg-gray-100 disabled:text-muted"
-                      value={row.otOut}
-                      disabled={isLocked(row)}
-                      onChange={(e) => handleInputChange(idx, 'otOut', e.target.value)}
-                    />
+                    {timeInput(row, idx, 'otOut', 'in')}
                   </td>
                   <td className="text-center">{row.workedHours.toFixed(1)}</td>
                   <td className="text-center">
@@ -728,6 +737,28 @@ export default function Attendance({ period }: Props) {
       {viewer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setViewer(null)}>
           <img src={viewer} alt="" className="max-h-full max-w-full rounded-lg" />
+        </div>
+      )}
+      {pinOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setPinOpen(false)}>
+          <div className="w-full max-w-xs bg-white rounded-xl p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <b className="block text-dark mb-1">🔒 {t('att.pinTitle')}</b>
+            <p className="text-xs text-muted mb-3">{t('att.pinHint')}</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              autoComplete="off"
+              autoFocus
+              className="border border-line rounded px-3 py-2 w-full tracking-widest text-center text-lg"
+              value={pin}
+              onChange={(e) => enterPin(e.target.value)}
+            />
+            {pinError && <div className="text-xs text-red-600 mt-2">{pinError}</div>}
+            <button type="button" className="btn ghost w-full mt-3" onClick={() => setPinOpen(false)}>
+              {t('set.cancel')}
+            </button>
+          </div>
         </div>
       )}
     </div>

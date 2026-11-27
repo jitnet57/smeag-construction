@@ -1,12 +1,11 @@
-import { useEffect, useState } from 'react';
-import { authApi, useAuth } from '../auth';
+import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 import type { Lang } from '../i18n';
 
-// Same flow as pelham-shift: team leaders / managers type only the last 4
-// digits of their phone. Once 4 digits are in, the server is asked whose they
-// are and the name appears in the (read-only) field above, so the person
-// confirms it is them before logging in. Admins switch to user ID + password.
+// Team leaders / managers type only the last 4 digits of their phone; the
+// 4th digit logs them in straight away (no button press). Admins can switch to
+// user ID + password.
 export default function Login() {
   const { login, loginPhone } = useAuth();
   const { t, lang, setLang } = useI18n();
@@ -14,41 +13,45 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [digits, setDigits] = useState('');
-  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-
-  // Look the name up only for a full 4 digits and only after typing pauses.
+  const digitsRef = useRef<HTMLInputElement>(null);
+  // Back to the digits box after a failed try.
   useEffect(() => {
-    if (adminMode || !/^\d{4}$/.test(digits)) {
-      setName('');
-      return;
-    }
-    let live = true;
-    const timer = setTimeout(() => {
-      authApi
-        .lookupPhone(digits)
-        .then((n) => live && setName(n ?? ''))
-        .catch(() => live && setName(''));
-    }, 300);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [digits, adminMode]);
+    if (!busy && !adminMode) digitsRef.current?.focus();
+  }, [busy, adminMode]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doLogin = async (pin: string) => {
     setBusy(true);
     setError('');
     try {
-      const ok = adminMode ? await login(username, password) : await loginPhone(digits);
-      if (!ok) setError(t(adminMode ? 'auth.invalid' : 'auth.phoneInvalid'));
+      const ok = adminMode ? await login(username, password) : await loginPhone(pin);
+      if (!ok) {
+        setError(t(adminMode ? 'auth.invalid' : 'auth.phoneInvalid'));
+        if (!adminMode) setDigits(''); // ready for another try
+      }
     } catch {
       setError(t('auth.error'));
+      if (!adminMode) setDigits('');
     } finally {
       setBusy(false);
     }
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void doLogin(digits);
+  };
+
+  // The 4th digit logs in immediately.
+  const typeDigits = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 4);
+    setDigits(d);
+    if (d.length < 4) {
+      if (d) setError('');
+      return;
+    }
+    if (!busy) void doLogin(d);
   };
 
   const switchMode = () => {
@@ -106,17 +109,6 @@ export default function Login() {
           </>
         ) : (
           <>
-            <label className="block text-sm font-bold text-dark mb-1">{t('auth.phoneName')}</label>
-            {/* Display only — the name appearing here is how the person confirms it is them. */}
-            <input
-              className="border border-line rounded px-3 py-2 w-full mb-3 bg-bg font-bold text-dark"
-              value={name}
-              placeholder={t('auth.phoneNamePh')}
-              aria-label={t('auth.phoneName')}
-              tabIndex={-1}
-              readOnly
-              disabled
-            />
             <label className="block text-sm font-bold text-dark mb-1">{t('auth.phoneDigits')}</label>
             <input
               type="password"
@@ -126,7 +118,9 @@ export default function Login() {
               autoComplete="off"
               className="border border-line rounded px-3 py-2 w-full mb-3 tracking-widest text-center text-lg"
               value={digits}
-              onChange={(e) => setDigits(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              ref={digitsRef}
+              onChange={(e) => typeDigits(e.target.value)}
+              readOnly={busy}
               required
               autoFocus
             />

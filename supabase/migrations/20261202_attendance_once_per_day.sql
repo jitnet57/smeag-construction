@@ -1,6 +1,7 @@
 -- One check-in and one check-out per worker per day: once AM IN / PM OUT is
 -- saved, only the override accounts ('admin' = Emmeline Hwang,
--- 'carloongos23@gmail.com' = Carlo Ongos) can change or clear it.
+-- 'admin1' = Jaesun Hwang, 'carloongos23@gmail.com' = Carlo Ongos) can change
+-- or clear it. Those three may also change times after the cutoffs.
 -- Raises CHECKIN_DONE / CHECKOUT_DONE. Replaces the guard from
 -- 20261201_attendance_times.sql (same rules plus this one).
 
@@ -41,7 +42,7 @@ begin
 
   select * into win from _attendance_times();
 
-  if me.username not in ('admin', 'carloongos23@gmail.com') then
+  if me.username not in ('admin', 'admin1', 'carloongos23@gmail.com') then
     if old_am is not null and new.am_in is distinct from old_am then
       raise exception 'CHECKIN_DONE: % already checked in on %', new.employee_id, new.date;
     end if;
@@ -50,12 +51,12 @@ begin
     end if;
     if new.am_in is distinct from old_am
        and now() >= ((new.date::date + win.check_in) at time zone 'Asia/Manila') then
-      raise exception 'CHECKIN_CLOSED: AM IN for % on % closed at %; only Emmeline Hwang or Carlo can change it',
+      raise exception 'CHECKIN_CLOSED: AM IN for % on % closed at %; only Emmeline Hwang, Jaesun Hwang or Carlo can change it',
         new.employee_id, new.date, to_char(win.check_in, 'HH24:MI');
     end if;
     if new.pm_out is distinct from old_pm
        and now() >= ((new.date::date + win.check_out_close) at time zone 'Asia/Manila') then
-      raise exception 'CHECKOUT_CLOSED: PM OUT for % on % closed at %; only Emmeline Hwang or Carlo can change it',
+      raise exception 'CHECKOUT_CLOSED: PM OUT for % on % closed at %; only Emmeline Hwang, Jaesun Hwang or Carlo can change it',
         new.employee_id, new.date, to_char(win.check_out_close, 'HH24:MI');
     end if;
   end if;

@@ -434,9 +434,10 @@ export function isCheckoutClosed(workDate: string): boolean {
 
 /** Whether this session may edit AM IN for `workDate`. */
 // Accounts that may still change AM IN / PM OUT after the cutoff
-// (Emmeline Hwang, Carlo Ongos). Keep in sync with
-// supabase/migrations/20261201_attendance_times.sql.
-export const TIME_OVERRIDE_USERS = ['admin', 'carloongos23@gmail.com'];
+// (Emmeline Hwang, Jaesun Hwang, Carlo Ongos). In the app they unlock the
+// time inputs with their own 4-digit phone PIN. Keep in sync with
+// supabase/migrations/20261202_attendance_once_per_day.sql.
+export const TIME_OVERRIDE_USERS = ['admin', 'admin1', 'carloongos23@gmail.com'];
 export const canOverrideTimes = (s: Session | null) =>
   !!s && TIME_OVERRIDE_USERS.includes(s.username.toLowerCase());
 
