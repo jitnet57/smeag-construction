@@ -140,6 +140,16 @@ export interface ContributionTable {
   note?: string;
 }
 
+/** Daily check-in / check-out windows, Asia/Manila time, "HH:MM" 24h. */
+export interface AttendanceTimes {
+  /** Morning check-in (AM IN) closes at this time. */
+  checkIn: string;          // "07:00"
+  /** Scheduled check-out time. */
+  checkOut: string;         // "17:00"
+  /** Check-out (PM OUT) stays open this many minutes after checkOut. */
+  checkOutGraceMin: number; // 15
+}
+
 export interface PayrollConfig {
   currency: string;               // "PHP"
   standardHoursPerDay: number;    // 8
@@ -151,6 +161,8 @@ export interface PayrollConfig {
   skills?: SkillDef[];
   /** Editable Employees info columns. Falls back to DEFAULT_EMPLOYEE_FIELDS. */
   employeeFields?: EmployeeFieldDef[];
+  /** Check-in / check-out windows (Settings → Attendance times). Falls back to DEFAULT_ATTENDANCE_TIMES. */
+  attendanceTimes?: AttendanceTimes;
   // deductions the employer applies per-employee (loans, cash advance, canteen)
   // are supplied per payroll run, not in global config.
 }

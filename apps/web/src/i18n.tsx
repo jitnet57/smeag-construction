@@ -83,20 +83,28 @@ const DICT = {
   'acct.duplicate': { en: 'That user ID already exists.', ko: '이미 존재하는 아이디입니다.' },
   'acct.confirmDelete': { en: 'Delete account', ko: '계정을 삭제할까요:' },
   'acct.note': {
-    en: 'User ID: 3–64 lowercase letters, digits, dot, dash, underscore, or an email address. Team leaders see only their crew and are the only ones who can change the morning check-in (AM IN) after 07:00.',
-    ko: '아이디: 영문 소문자·숫자·점·하이픈·밑줄 3~64자 또는 이메일 주소. 팀 리더는 자기 조만 보며, 07:00 이후 오전 출근(AM IN)은 팀 리더만 수정할 수 있습니다.',
+    en: 'User ID: 3–64 lowercase letters, digits, dot, dash, underscore, or an email address. Team leaders see only their crew. After the Settings cutoff only Emmeline Hwang and Carlo can change check-in (AM IN) / check-out (PM OUT).',
+    ko: '아이디: 영문 소문자·숫자·점·하이픈·밑줄 3~64자 또는 이메일 주소. 팀 리더는 자기 조만 봅니다. 설정된 마감 시간 이후 출근(AM IN)·퇴근(PM OUT)은 Emmeline Hwang, Carlo만 수정할 수 있습니다.',
   },
   'att.checkinLocked': {
-    en: 'Morning check-in closed at 07:00 — only a team leader can change AM IN for this date.',
-    ko: '오전 출근 체크인은 07:00에 마감되었습니다 — 이 날짜의 AM IN은 팀 리더만 수정할 수 있습니다.',
+    en: 'Morning check-in closed at {time} — only Emmeline Hwang or Carlo can change AM IN for this date.',
+    ko: '오전 출근 체크인은 {time}에 마감되었습니다 — 이 날짜의 AM IN은 Emmeline Hwang, Carlo만 수정할 수 있습니다.',
+  },
+  'att.checkoutLocked': {
+    en: 'Check-out closed at {time} — only Emmeline Hwang or Carlo can change PM OUT for this date.',
+    ko: '퇴근 체크아웃은 {time}에 마감되었습니다 — 이 날짜의 PM OUT은 Emmeline Hwang, Carlo만 수정할 수 있습니다.',
+  },
+  'att.checkoutOpen': {
+    en: 'Check-out (PM OUT) is open until {time}.',
+    ko: '퇴근 체크아웃(PM OUT)은 {time}까지 가능합니다.',
   },
   'att.checkinOpen': {
-    en: 'Morning check-in (AM IN) is open until 07:00.',
-    ko: '오전 출근 체크인(AM IN)은 07:00까지 입력 가능합니다.',
+    en: 'Morning check-in (AM IN) is open until {time}.',
+    ko: '오전 출근 체크인(AM IN)은 {time}까지 입력 가능합니다.',
   },
   'att.checkinTl': {
-    en: 'Team leader: you can change AM IN after the 07:00 cutoff.',
-    ko: '팀 리더: 07:00 마감 이후에도 AM IN을 수정할 수 있습니다.',
+    en: 'Override access: you can change AM IN / PM OUT after the cutoff.',
+    ko: '관리 권한: 마감 이후에도 AM IN / PM OUT을 수정할 수 있습니다.',
   },
 
   // --- Skills matrix --------------------------------------------------------
@@ -767,6 +775,16 @@ const DICT = {
   'set.statutoryNote': {
     en: '※ The WEEKLY run deducts no SSS/PhilHealth/Pag-IBIG — matching the company sheet, these are collected on a separate monthly cycle. Add tables here to enable monthly deductions.',
     ko: '※ 주급 정산에서는 SSS/PhilHealth/Pag-IBIG를 공제하지 않습니다 — 회사 시트와 동일하게 이 항목들은 별도 월 단위로 징수됩니다. 월 공제를 적용하려면 여기에 기여금표를 추가하세요.',
+  },
+  'set.attTitle': { en: 'Check-in / Check-out Times', ko: '체크인 / 체크아웃 시간' },
+  'set.attCheckIn': { en: 'Check-in cutoff', ko: '체크인 마감 시간' },
+  'set.attCheckInCond': { en: 'Morning check-in (AM IN) is not possible after this time.', ko: '이 시간이 지나면 오전 체크인(AM IN)이 불가합니다.' },
+  'set.attCheckOut': { en: 'Check-out time', ko: '체크아웃 시간' },
+  'set.attGrace': { en: 'Check-out allowed until', ko: '체크아웃 허용 시간' },
+  'set.attGraceCond': { en: 'minutes after check-out time — closes at {time}', ko: '분 (체크아웃 시간 이후) — {time}에 마감' },
+  'set.attNote': {
+    en: '※ Asia/Manila time, judged by the server clock. After a cutoff only Emmeline Hwang or Carlo can change that time. Applies to the camera buttons and to saving.',
+    ko: '※ 마닐라 시간, 서버 시계 기준. 마감 이후에는 Emmeline Hwang, Carlo만 해당 시간을 수정할 수 있습니다. 카메라 버튼과 저장 모두에 적용됩니다.',
   },
   'set.otherTitle': { en: 'Other Settings', ko: '기타 설정' },
   'set.incentiveRate': { en: 'Default Incentive Daily Rate', ko: '기본 인센티브 일당 (Default Daily Rate)' },

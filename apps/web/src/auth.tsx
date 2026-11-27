@@ -15,6 +15,8 @@
 // ============================================================================
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { DEFAULT_ATTENDANCE_TIMES, hhmmToHour } from '@brightem/shared';
+import type { AttendanceTimes } from '@brightem/shared';
 import { sb } from './supabaseApi';
 import { setApiCrewScope } from './api';
 import {
@@ -349,10 +351,25 @@ export function useAuth(): AuthCtx {
   return c;
 }
 
-// ---- Morning check-in cutoff ----------------------------------------------
-// AM IN for a work date may be entered by anyone until 07:00 (Asia/Manila) on
-// that date. After the cutoff only a team leader may change it.
-export const CHECKIN_CUTOFF_HOUR = 7;
+// ---- Check-in / check-out windows -----------------------------------------
+// AM IN for a work date may be entered by anyone until the check-in time
+// (Settings, default 07:00 Asia/Manila) on that date; PM OUT until the
+// check-out time + grace (default 17:00 + 15 min). After that only the
+// override accounts (TIME_OVERRIDE_USERS) may change them. The database
+// enforces the same rule on save.
+let attTimes: AttendanceTimes = DEFAULT_ATTENDANCE_TIMES;
+
+/** Use the attendance windows saved in Settings (call after loading config). */
+export function setAttendanceTimes(t: AttendanceTimes): void {
+  attTimes = t;
+}
+export function getAttendanceTimes(): AttendanceTimes {
+  return attTimes;
+}
+/** Decimal hour when check-out closes (check-out time + grace). */
+export function checkoutCloseHour(t: AttendanceTimes = attTimes): number {
+  return hhmmToHour(t.checkOut) + t.checkOutGraceMin / 60;
+}
 
 // Server clock: the lock is judged by the database's time, not the phone's.
 // We keep the server time at the last sync plus a monotonic timer
@@ -398,15 +415,36 @@ export function manilaNow(): { date: string; hour: number } {
   };
 }
 
-/** True once the 07:00 check-in window for `workDate` has closed. */
-export function isCheckinClosed(workDate: string): boolean {
+function closedAt(workDate: string, hour: number): boolean {
   const now = manilaNow();
   if (workDate < now.date) return true;
   if (workDate > now.date) return false;
-  return now.hour >= CHECKIN_CUTOFF_HOUR;
+  return now.hour >= hour;
+}
+
+/** True once the morning check-in window for `workDate` has closed. */
+export function isCheckinClosed(workDate: string): boolean {
+  return closedAt(workDate, hhmmToHour(attTimes.checkIn));
+}
+
+/** True once the check-out window (check-out time + grace) has closed. */
+export function isCheckoutClosed(workDate: string): boolean {
+  return closedAt(workDate, checkoutCloseHour());
 }
 
 /** Whether this session may edit AM IN for `workDate`. */
+// Accounts that may still change AM IN / PM OUT after the cutoff
+// (Emmeline Hwang, Carlo Ongos). Keep in sync with
+// supabase/migrations/20261201_attendance_times.sql.
+export const TIME_OVERRIDE_USERS = ['admin', 'carloongos23@gmail.com'];
+export const canOverrideTimes = (s: Session | null) =>
+  !!s && TIME_OVERRIDE_USERS.includes(s.username.toLowerCase());
+
 export function canEditCheckin(s: Session | null, workDate: string): boolean {
-  return isTeamLeader(s) || !isCheckinClosed(workDate);
+  return canOverrideTimes(s) || !isCheckinClosed(workDate);
+}
+
+/** Whether this session may edit PM OUT for `workDate`. */
+export function canEditCheckout(s: Session | null, workDate: string): boolean {
+  return canOverrideTimes(s) || !isCheckoutClosed(workDate);
 }

@@ -1,4 +1,36 @@
-import type { EmployeeFieldDef, PayrollConfig, SkillDef } from "./types.js";
+import type { AttendanceTimes, EmployeeFieldDef, PayrollConfig, SkillDef } from "./types.js";
+
+// Default check-in / check-out windows. Editable in Settings; the saved value
+// lives in PayrollConfig.attendanceTimes and the database guard reads it too.
+export const DEFAULT_ATTENDANCE_TIMES: AttendanceTimes = {
+  checkIn: "07:00",
+  checkOut: "17:00",
+  checkOutGraceMin: 15,
+};
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** The attendance windows in effect for a config (saved values, else the defaults). */
+export function attendanceTimesOf(
+  config: Pick<PayrollConfig, "attendanceTimes"> | null | undefined
+): AttendanceTimes {
+  const a = config?.attendanceTimes;
+  const d = DEFAULT_ATTENDANCE_TIMES;
+  return {
+    checkIn: a && HHMM.test(a.checkIn) ? a.checkIn : d.checkIn,
+    checkOut: a && HHMM.test(a.checkOut) ? a.checkOut : d.checkOut,
+    checkOutGraceMin:
+      a && Number.isFinite(a.checkOutGraceMin) && a.checkOutGraceMin >= 0
+        ? Math.round(a.checkOutGraceMin)
+        : d.checkOutGraceMin,
+  };
+}
+
+/** "07:30" → 7.5 */
+export function hhmmToHour(s: string): number {
+  const [h, m] = s.split(":").map(Number);
+  return h + m / 60;
+}
 
 // Default trade catalog in TEAMS.xlsx column order. Editable in Settings; the
 // saved list lives in PayrollConfig.skills.

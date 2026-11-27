@@ -3,6 +3,8 @@ import {
   DEFAULT_EMPLOYEE_FIELDS,
   DEFAULT_SKILLS,
   FOREMAN_TEAM_KEY,
+  attendanceTimesOf,
+  hhmmToHour,
   REQUIRED_EMPLOYEE_FIELDS,
   employeeFieldsOf,
   skillsOf,
@@ -14,9 +16,17 @@ import type {
   SkillDef,
   EmployeeFieldDef,
   EmployeeFieldType,
+  AttendanceTimes,
 } from '@brightem/shared';
 import { api } from '../api';
 import { useI18n } from '../i18n';
+import { setAttendanceTimes } from '../auth';
+
+// 17.25 → "17:15"
+const hourToHhmm = (h: number) => {
+  const m = Math.round(h * 60) % (24 * 60);
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+};
 
 // A skill row being edited; `isNew` rows get their key generated on save.
 type SkillRow = SkillDef & { isNew?: boolean };
@@ -69,6 +79,11 @@ export default function Settings() {
         [field]: value,
       },
     });
+  };
+
+  const updateAttTimes = (patch: Partial<AttendanceTimes>) => {
+    if (!config) return;
+    setConfig({ ...config, attendanceTimes: { ...attendanceTimesOf(config), ...patch } });
   };
 
   const updateSkill = (i: number, patch: Partial<SkillDef>) =>
@@ -182,8 +197,14 @@ export default function Settings() {
     if (!finalFields) return;
     setSaving(true);
     try {
-      const next = { ...config, skills: finalSkills, employeeFields: finalFields };
+      const next = {
+        ...config,
+        attendanceTimes: attendanceTimesOf(config),
+        skills: finalSkills,
+        employeeFields: finalFields,
+      };
       await api.updateConfig(next);
+      setAttendanceTimes(next.attendanceTimes);
       setConfig(next);
       setSkills(finalSkills.map((sk) => ({ ...sk })));
       setFields(finalFields.map((f) => ({ ...f })));
@@ -359,6 +380,68 @@ export default function Settings() {
           {t('set.statutoryNote')}
         </div>
       </div>
+
+      {/* Check-in / check-out times */}
+      {(() => {
+        const at = attendanceTimesOf(config);
+        const closeAt = hourToHhmm(hhmmToHour(at.checkOut) + at.checkOutGraceMin / 60);
+        return (
+          <div className="panel">
+            <h3 className="text-sm font-bold text-dark mb-3">
+              <span className="inline-block w-1 h-4 bg-primary rounded mr-2" />
+              {t('set.attTitle')}
+            </h3>
+            <div className="overflow-x-auto">
+              <table>
+                <tbody>
+                  <tr>
+                    <td>{t('set.attCheckIn')}</td>
+                    <td className="text-center">
+                      <input
+                        type="time"
+                        value={at.checkIn}
+                        onChange={(e) => e.target.value && updateAttTimes({ checkIn: e.target.value })}
+                        className="border border-line rounded px-2 py-1 w-28 text-center"
+                      />
+                    </td>
+                    <td>{t('set.attCheckInCond')}</td>
+                  </tr>
+                  <tr>
+                    <td>{t('set.attCheckOut')}</td>
+                    <td className="text-center">
+                      <input
+                        type="time"
+                        value={at.checkOut}
+                        onChange={(e) => e.target.value && updateAttTimes({ checkOut: e.target.value })}
+                        className="border border-line rounded px-2 py-1 w-28 text-center"
+                      />
+                    </td>
+                    <td />
+                  </tr>
+                  <tr>
+                    <td>{t('set.attGrace')}</td>
+                    <td className="text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={240}
+                        step={1}
+                        value={at.checkOutGraceMin}
+                        onChange={(e) =>
+                          updateAttTimes({ checkOutGraceMin: Math.max(0, Math.round(Number(e.target.value) || 0)) })
+                        }
+                        className="border border-line rounded px-2 py-1 w-20 text-center"
+                      />
+                    </td>
+                    <td>{t('set.attGraceCond').replace('{time}', closeAt)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="note">{t('set.attNote')}</div>
+          </div>
+        );
+      })()}
 
       {/* Incentive Configuration */}
       <div className="panel">
