@@ -18,7 +18,7 @@ import Settings from './screens/Settings';
 import Accounts, { ROLE_LABEL } from './screens/Accounts';
 import Login from './screens/Login';
 import { authApi, useAuth } from './auth';
-import type { Role } from './auth';
+import type { Role, Session } from './auth';
 import SyncBadge from './components/SyncBadge';
 import WorkBell from './components/WorkBell';
 
@@ -66,7 +66,16 @@ const TEAM_LEADER_SCREENS: ScreenKey[] = ['attendance', 'skills', 'tasks', 'unit
 type View = 'staff' | 'admin';
 const VIEW_KEY = 'brightem.view'; // "<token>:<view>", kept for this browser tab
 
-function canOpen(role: Role, key: ScreenKey, view: View = 'admin'): boolean {
+// Task Assign · Unit Progress · Materials · Material Stock · Settings are
+// hidden from everyone except Kenneth's account (phone login 0000).
+const KENNETH_ONLY: ScreenKey[] = ['tasks', 'units', 'materials', 'stock', 'settings'];
+function isKenneth(s: Session): boolean {
+  const digits = (s.phone ?? '').replace(/\D/g, '');
+  return digits.endsWith('0000') || /kenneth/i.test(`${s.username} ${s.displayName}`);
+}
+
+function canOpen(role: Role, key: ScreenKey, view: View = 'admin', kenneth = false): boolean {
+  if (KENNETH_ONLY.includes(key) && !kenneth) return false;
   if (view === 'staff') return TEAM_LEADER_SCREENS.includes(key);
   if (role === 'admin') return true;
   if (role === 'manager') return key !== 'accounts';
@@ -196,8 +205,9 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
   const { t, lang, setLang } = useI18n();
   const { session, logout } = useAuth();
   const role = session!.role;
-  const navItems = NAV_ITEMS.filter((n) => canOpen(role, n.key, view));
-  const bottomTabs = BOTTOM_TABS.filter((n) => canOpen(role, n.key, view));
+  const kenneth = isKenneth(session!);
+  const navItems = NAV_ITEMS.filter((n) => canOpen(role, n.key, view, kenneth));
+  const bottomTabs = BOTTOM_TABS.filter((n) => canOpen(role, n.key, view, kenneth));
   const [pwOpen, setPwOpen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<ScreenKey>(
     role === 'team_leader' || view === 'staff' ? 'attendance' : 'dashboard'
@@ -218,7 +228,7 @@ function Shell({ view, onSwitchView }: { view: View; onSwitchView?: () => void }
   }, []);
 
   const renderScreen = () => {
-    if (!canOpen(role, currentScreen, view)) return null;
+    if (!canOpen(role, currentScreen, view, kenneth)) return null;
     if (
       !currentPeriod &&
       currentScreen !== 'settings' &&
